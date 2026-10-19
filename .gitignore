@@ -1,0 +1,11 @@
+node_modules/
+.next/
+out/
+.env*.local
+.vercel
+*.log
+.DS_Store
+next-env.d.ts
+
+# your business data (parties, amounts) — keep it out of GitHub
+public/data/backup.json

@@ -1,0 +1,43 @@
+# Khata App — notes for Claude (read this first)
+
+Bangla bookkeeping app for **কাজী রোমান এন্ড ব্রাদার্স** (steel coil / sheet trader, Dhaka).
+Tabs: স্টক · দৈনিক · মেমো · খতিয়ান · বাকি লিস্ট · কোম্পানি · লেবার · ড্যাশবোর্ড · সেটিং.
+
+## How the owner wants to work
+- Talk in **easy English**, short answers; the app UI is **Bangla** (Bangla digits ০-৯).
+- He sends a screenshot + a short request → make the change → **test on computer (1440) and phone (390)** → tell him in a few lines what changed.
+- After any change: `npm run dev`, open http://localhost:3000, check the page, no console errors.
+
+## Where the code is (step 1 of the move to Next.js)
+- The whole app is still **one file**: `public/khata/index.html` (~6,500 lines, plain HTML + CSS + JS, no build).
+  - `<style>` (lines ~10–2770): base → খতিয়ান paper → স্টক/দৈনিক notebook → memo → desktop layout → side menu → pro theme → each feature's CSS (later blocks override earlier ones).
+  - `<script>`: shared helpers at the top (`kDialog`, `kToast`, `uHead`, `bnLongDate`, `splitCols`, `makeCombo`, `attachWords`, `attachBanglish`, `__shortage`, `__canSend`), then one `(function(){ … })()` module per tab:
+    স্টক (~3050) · কোম্পানি (~3976) · খতিয়ান + নতুন মেমো form + দৈনিক (~4389, দৈনিক ~5008) · ড্যাশবোর্ড (~5565) · মেমো + লেবার + PDF (~5714) · সেটিং (~6268) · বাকি লিস্ট (~6344).
+  - Modules talk through `window.__ledger`, `window.__stock`, `window.__marka`, `window.__company`, `window.showMemo`, `window.__memoStyle` …
+- `app/page.tsx` just redirects to `/khata/index.html`.
+
+## Data
+- Stored in the browser (`localStorage`). On claude.ai it also synced to `window.claude` db — that does **not** exist here, so right now data lives in **one browser only** (see Roadmap).
+- localStorage keys: `kg-khata-days-v1` (stock days `[{id:'YYYY-MM-DD', opening, due, entries[], outs[]}]`),
+  `kg-khata-ledger-v1` (parties `[{id, name, address, opening, entries[]}]`; memo entry = `{id, memoNo, date, credit, debit, kg, items[{t,kg,rate}], picks[{item,cat,t,kg,cost}], status:'pending'|'confirmed', confirmedOn, labour…}`),
+  `kg-khata-company-v1` (companies + চালান/রসিদ), `kg-khata-khoroch-v1` (`{date: [{id,desc,amt}]}`), `kg-khata-sabek-v1`,
+  `kg-khata-cats-v1` (মার্কা → sizes `[{id,name,tone,items[{id,h,w,open,cost}]}]`), `kg-khata-rates`, `kg-khata-labour-rate`, UI prefs `kg-khata-*`.
+- Old data from claude.ai: `public/data/backup.json` → open `/import.html` once to load it into the browser.
+
+## Rules the owner already decided (keep them)
+- Same header on every tab: page title left, date pill right. Old date = red frame + "↩ বর্তমান দিনে ফিরে যান".
+- স্টক sub-tabs: 📊 সর্বমোট মাল (purple) | 🚚 মাল আসছে (green) | 📦 মাল যাচ্ছে (red). Tables with box lines + ক্রমিক, newest on top.
+- মাল is picked with the pop-up **মার্কা → সাইজ**. Printed memo shows only **সফট / হার্ড + কেজি** (no sizes).
+- Memo form: কাগজ or ডিজিটাল (setting). Digital = step by step: party first → মাল; one কেজি box per size; লেবার hidden until মাল picked; full summary pop-up before saving.
+- Stock check: warn when making a memo with low stock ("তবুও মেমো করুন (মাল পরে যাবে)"); that memo shows "⏳ স্টকে কম — মাল আসলে নিজে যাবে" until stock arrives.
+- Saving a memo = the goods leave the stock right away (no "মাল পাঠান / গেছে / ফেরান" buttons anywhere). Only if a size is short, the memo waits and goes out **by itself** when enough stock comes in (`window.__ledger.autoSend`).
+- লাভ = (বিক্রি দর − কেনা দর) × কেজি per size; কেনা দর = size ✎ value, else latest কোম্পানি চালান দর (per টন ÷ 1000). লেবার is not profit. Memo stores the cost of that day.
+- দৈনিক: 3 tiles (সাবেক জমা + নিট = হাতে নগদ), then আমদানি | খরচ | বিক্রয় columns; adding happens in pop-ups.
+- Fonts: Noto Sans Bengali (clear ১), Baloo Da 2 for numbers, Tiro Bangla headings.
+
+## Roadmap (do in this order, one small step at a time)
+1. ✅ Run the existing app inside Next.js (this repo).
+2. Backup / restore buttons inside the app (JSON download/upload).
+3. **Supabase** backend: replace `getDB()` with an adapter that has the same small API (`collection(n).get()`, `doc(path).get()/set()/update()/delete()`) → data on every device.
+4. Login (owner / staff roles).
+5. Move tabs one by one into React components under `app/` (start with বাকি লিস্ট — smallest), sharing one data layer.
