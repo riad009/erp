@@ -5,13 +5,19 @@ Bangla bookkeeping app (স্টক, দৈনিক, মেমো, খতি�
 ## Run
 ```bash
 npm install
+cp .env.example .env.local   # put your MONGO_URI + APP_PASSWORD in it
 npm run dev
 # open http://localhost:3000
 ```
-First time only: open **http://localhost:3000/import.html** → "✓ backup.json থেকে আনুন" to load the data copied from claude.ai.
+
+## Data — MongoDB
+All data is saved in MongoDB (database `khata`), so every phone / computer sees the same khata.
+- The first time the app opens on an empty database, it uploads the data that is already in that browser.
+- To load a backup file: open **/import.html** → choose `backup.json`. This **replaces** everything in the database.
+- If the database can't be reached, the app keeps working in that browser only (as before).
 
 ## Deploy (Vercel)
-Push to GitHub → import the repo on vercel.com → Deploy (no settings needed).
-
-## Note
-Data is saved in the browser for now (one device). Next step is a Supabase backend — see `CLAUDE.md` → Roadmap.
+1. vercel.com → Add New → Project → import `riad009/erp`.
+2. Environment Variables: `MONGO_URI`, `APP_PASSWORD` (and `MONGO_DB` if not `khata`).
+3. MongoDB Atlas → Network Access → allow `0.0.0.0/0` (Vercel has no fixed IP).
+4. Deploy. Open the site → enter the password → open `/import.html` once and choose your `backup.json`.

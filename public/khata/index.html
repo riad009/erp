@@ -2800,6 +2800,7 @@ html body #stock .ssub .st[aria-selected="false"]:hover{filter:brightness(.97)}
 <main class="wrap coy" id="company" hidden><p class="loading">কোম্পানি খতিয়ান খোলা হচ্ছে…</p></main>
 <main class="wrap" id="settings" hidden><p class="loading">সেটিং খোলা হচ্ছে…</p></main>
 <main class="wrap" id="dash" hidden><p class="loading">ড্যাশবোর্ড খোলা হচ্ছে…</p></main>
+<script src="/khata/db.js"></script>
 <script>
 // same page header everywhere: title on the left, date pill on the right (same place, same look on every tab)
 function bnLongDate(iso){
@@ -3048,7 +3049,8 @@ let __dbp = null;
 function getDB(){
   if(!__dbp){
     __dbp = (window.claude && typeof window.claude.use === 'function')
-      ? window.claude.use('db').catch(()=>null) : Promise.resolve(null);
+      ? window.claude.use('db').catch(()=>null)
+      : (window.__khataDB ? window.__khataDB.open() : Promise.resolve(null));   // MongoDB via /api/db (db.js)
   }
   return __dbp;
 }

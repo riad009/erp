@@ -17,12 +17,14 @@ Tabs: স্টক · দৈনিক · মেমো · খতিয়ান �
 - `app/page.tsx` just redirects to `/khata/index.html`.
 
 ## Data
-- Stored in the browser (`localStorage`). On claude.ai it also synced to `window.claude` db — that does **not** exist here, so right now data lives in **one browser only** (see Roadmap).
-- localStorage keys: `kg-khata-days-v1` (stock days `[{id:'YYYY-MM-DD', opening, due, entries[], outs[]}]`),
+- **MongoDB** via `app/api/db/route.ts` (+ `lib/mongo.ts`, env `MONGO_URI`, `MONGO_DB` default `khata`). Each app collection (`days`, `ledgers`, `companies`, `khoroch`, `settings`, `amdani`) is one Mongo collection; a doc is `{_id: id, data}`.
+- Browser side: `public/khata/db.js` gives the same small API the app had on claude.ai (`collection(n).get()`, `doc('col/id').get()/set()/delete()`); `getDB()` in index.html uses it. On an empty database it first uploads that browser's localStorage. If the server can't be reached → `null` → app works from localStorage only.
+- `proxy.ts`: whole site behind Basic Auth when `APP_PASSWORD` is set (in production the API refuses to run without it).
+- localStorage is still written too (cache / offline). Keys: `kg-khata-days-v1` (stock days `[{id:'YYYY-MM-DD', opening, due, entries[], outs[]}]`),
   `kg-khata-ledger-v1` (parties `[{id, name, address, opening, entries[]}]`; memo entry = `{id, memoNo, date, credit, debit, kg, items[{t,kg,rate}], picks[{item,cat,t,kg,cost}], status:'pending'|'confirmed', confirmedOn, labour…}`),
   `kg-khata-company-v1` (companies + চালান/রসিদ), `kg-khata-khoroch-v1` (`{date: [{id,desc,amt}]}`), `kg-khata-sabek-v1`,
   `kg-khata-cats-v1` (মার্কা → sizes `[{id,name,tone,items[{id,h,w,open,cost}]}]`), `kg-khata-rates`, `kg-khata-labour-rate`, UI prefs `kg-khata-*`.
-- Old data from claude.ai: `public/data/backup.json` → open `/import.html` once to load it into the browser.
+- Backup file (`backup.json`, kept out of git) → `/import.html` replaces the whole database with it.
 
 ## Rules the owner already decided (keep them)
 - Same header on every tab: page title left, date pill right. Old date = red frame + "↩ বর্তমান দিনে ফিরে যান".
@@ -38,6 +40,6 @@ Tabs: স্টক · দৈনিক · মেমো · খতিয়ান �
 ## Roadmap (do in this order, one small step at a time)
 1. ✅ Run the existing app inside Next.js (this repo).
 2. Backup / restore buttons inside the app (JSON download/upload).
-3. **Supabase** backend: replace `getDB()` with an adapter that has the same small API (`collection(n).get()`, `doc(path).get()/set()/update()/delete()`) → data on every device.
-4. Login (owner / staff roles).
+3. ✅ Online database (MongoDB instead of Supabase) → data on every device.
+4. Login (owner / staff roles). Now: one shared password (`APP_PASSWORD`).
 5. Move tabs one by one into React components under `app/` (start with বাকি লিস্ট — smallest), sharing one data layer.

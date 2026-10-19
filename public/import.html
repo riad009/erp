@@ -14,24 +14,29 @@
 </head>
 <body>
 <h1>📥 পুরনো ডেটা এই ব্রাউজারে আনুন</h1>
-<p>claude.ai থেকে নেওয়া <b>public/data/backup.json</b> এই ব্রাউজারের অ্যাপে বসাবে।
-এই ব্রাউজারে আগে কোনো ডেটা থাকলে তা বদলে যাবে।</p>
+<p>ব্যাকআপ ফাইল (<b>backup.json</b>) অনলাইন ডেটাবেসে (MongoDB) আর এই ব্রাউজারে বসাবে।
+আগের সব ডেটা বদলে যাবে — সব ডিভাইসে।</p>
 <button id="go">✓ backup.json থেকে আনুন</button>
 <p>অথবা অন্য ব্যাকআপ ফাইল বাছুন: <input type="file" id="file" accept="application/json"></p>
 <p id="msg"></p>
+<script src="/khata/db.js"></script>
 <script>
   const KEYS = {days:'kg-khata-days-v1', ledgers:'kg-khata-ledger-v1', companies:'kg-khata-company-v1',
                 khoroch:'kg-khata-khoroch-v1', cats:'kg-khata-cats-v1', rates:'kg-khata-rates', sabek:'kg-khata-sabek-v1'};
   const msg = (t, c) => { const m = document.getElementById('msg'); m.textContent = t; m.className = c; };
-  function apply(b){
+  async function apply(b){
     if(!b || !Array.isArray(b.ledgers)) throw new Error('ফাইলটা ঠিক ব্যাকআপ না');
+    msg('⏳ ডেটাবেসে পাঠানো হচ্ছে…', '');
+    try{ await window.__khataDB.importAll(b); }
+    catch(e){ throw new Error('ডেটাবেসে যায়নি (' + e.message + ') — কিছু বদলানো হয়নি'); }
     Object.entries(KEYS).forEach(([k, ls]) => { if(b[k] != null) localStorage.setItem(ls, JSON.stringify(b[k])); });
     localStorage.setItem('kg-khata-ledger-seeded', '1');
+    if(Number(b.labour) > 0) localStorage.setItem('kg-khata-labour-rate', String(b.labour));
     msg('✓ ডেটা বসানো হয়েছে — ' + b.ledgers.length + ' পার্টি, ' + (b.days||[]).length + ' দিনের স্টক। অ্যাপ খুলছে…', 'ok');
     setTimeout(() => { location.href = '/khata/index.html'; }, 1200);
   }
   document.getElementById('go').onclick = async () => {
-    try{ const r = await fetch('/data/backup.json', {cache:'no-store'}); apply(await r.json()); }
+    try{ const r = await fetch('/data/backup.json', {cache:'no-store'}); if(!r.ok) throw new Error('backup.json এখানে নেই — নিচে ফাইল বাছুন'); await apply(await r.json()); }
     catch(e){ msg('✗ ' + e.message, 'err'); }
   };
   document.getElementById('file').onchange = e => {
