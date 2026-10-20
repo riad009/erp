@@ -5,6 +5,7 @@ import { getMongo } from '@/lib/mongo';
 //   doc('col/id').get/set/delete → {op:'get'|'set'|'delete', path}
 // Each app collection is one Mongo collection; a doc is stored as {_id: id, data}.
 export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';   // the MongoDB driver needs Node, not the Edge runtime
 
 const COLS = ['days', 'ledgers', 'companies', 'khoroch', 'settings', 'amdani'];
 
@@ -15,6 +16,17 @@ function split(path: unknown): [string, string] {
 }
 
 type Doc = { _id: string; data: unknown };
+
+// open /api/db in the browser to check the database connection
+export async function GET() {
+  try {
+    const db = await getMongo();
+    const counts = Object.fromEntries(await Promise.all(COLS.map(async n => [n, await db.collection(n).estimatedDocumentCount()])));
+    return Response.json({ ok: true, database: db.databaseName, counts });
+  } catch (e) {
+    return Response.json({ ok: false, error: (e as Error).message }, { status: 500 });
+  }
+}
 
 export async function POST(req: Request) {
   try {

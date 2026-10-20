@@ -17,7 +17,14 @@ All data is saved in MongoDB (database `khata`), so every phone / computer sees 
 - If the database can't be reached, the app keeps working in that browser only (as before).
 
 ## Deploy (Vercel)
-1. vercel.com → Add New → Project → import `riad009/erp`.
-2. Environment Variables: `MONGO_URI`, `APP_PASSWORD` (and `MONGO_DB` if not `khata`).
-3. MongoDB Atlas → Network Access → allow `0.0.0.0/0` (Vercel has no fixed IP).
-4. Deploy. Open the site → enter the password → open `/import.html` once and choose your `backup.json`.
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Friad009%2Ferp&env=MONGO_URI,APP_PASSWORD&envDescription=MONGO_URI%3A%20your%20MongoDB%20Atlas%20connection%20string.%20APP_PASSWORD%3A%20password%20for%20the%20site.)
+
+1. MongoDB Atlas → **Network Access** → Add IP Address → **Allow access from anywhere** (`0.0.0.0/0`). Vercel has no fixed IP.
+2. Click the button above (or vercel.com → Add New → Project → import `riad009/erp`).
+3. Fill in the Environment Variables:
+   - `MONGO_URI` = `mongodb+srv://USER:PASSWORD@cluster0.xxxxx.mongodb.net/`
+   - `APP_PASSWORD` = a password for the site
+   - (optional) `MONGO_DB` — database name, default `khata`
+4. Deploy. Then:
+   - open `https://<your-site>/api/db` → enter the password → should show `"ok": true` (database connected)
+   - open `https://<your-site>/import.html` → choose your `backup.json` once to load the old data
