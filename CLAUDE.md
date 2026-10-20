@@ -35,6 +35,7 @@ Tabs: স্টক · দৈনিক · মেমো · খতিয়ান �
 - মাল is picked with the pop-up **মার্কা → সাইজ**. Printed memo shows only **সফট / হার্ড + কেজি** (no sizes).
 - Memo form: কাগজ or ডিজিটাল (setting). Digital = step by step: party first → মাল; one কেজি box per size; লেবার hidden until মাল picked; full summary pop-up before saving.
 - Stock check: warn when making a memo with low stock ("তবুও মেমো করুন (মাল পরে যাবে)"); that memo shows "⏳ স্টকে কম — মাল আসলে নিজে যাবে" until stock arrives.
+- **মেমো = মাল বিক্রি only.** টাকা জমা (from খতিয়ান or দৈনিক → নতুন জমা) gets no memo number and never shows in the মেমো tab — it is only in খতিয়ান / দৈনিক.
 - Saving a memo = the goods leave the stock right away (no "মাল পাঠান / গেছে / ফেরান" buttons anywhere). Only if a size is short, the memo waits and goes out **by itself** when enough stock comes in (`window.__ledger.autoSend`).
 - লাভ = (বিক্রি দর − কেনা দর) × কেজি per size; কেনা দর = size ✎ value, else latest কোম্পানি চালান দর (per টন ÷ 1000). লেবার is not profit. Memo stores the cost of that day.
 - দৈনিক: 3 tiles (সাবেক জমা + নিট = হাতে নগদ), then আমদানি | খরচ | বিক্রয় columns; adding happens in pop-ups.

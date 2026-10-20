@@ -2888,7 +2888,7 @@ function mtBadges(e){
 // next memo number across every party
 function nextMemoNo(){
   const L = window.__ledger; let m = 0;
-  if(L) L.accs().forEach(a => (a.entries||[]).forEach(e => { if((e.memoNo||0) > m) m = e.memoNo; }));
+  if(L) L.accs().forEach(a => (a.entries||[]).forEach(e => { if(Number(e.credit) > 0 && (e.memoNo||0) > m) m = e.memoNo; }));   // টাকা জমা is not a memo
   return m + 1;
 }
 // party name with ঠিকানা in brackets, e.g. Riad (Bagber)
@@ -5066,7 +5066,7 @@ function getDB(){
         Object.assign(target, data); flashId = target.id;
       } else {
         acc.seq = (acc.seq||acc.entries.length) + 1;
-        target = Object.assign({id:uid(), seq:acc.seq, ts:Date.now(), memoNo: nextMemoNo()}, data); acc.entries.push(target); flashId = target.id;
+        target = Object.assign({id:uid(), seq:acc.seq, ts:Date.now()}, data.credit > 0 ? {memoNo: nextMemoNo()} : {}, data); acc.entries.push(target); flashId = target.id;
       }
       if(form.type==='credit'){
         const ts = selTypes();
@@ -5568,7 +5568,7 @@ function getDB(){
       if(!a){ a = {id:uid(), name:n, opening:0, openingNote:'', created:Date.now(), seq:0, entries:[]}; accs.push(a); }
       const before = balOf(a);
       a.seq = (a.seq||a.entries.length)+1;
-      a.entries.push({id:uid(), seq:a.seq, ts:Date.now(), memoNo: nextMemoNo(), date:aDate, debit:v, credit:0, desc:'আমদানি'});
+      a.entries.push({id:uid(), seq:a.seq, ts:Date.now(), date:aDate, debit:v, credit:0, desc:'আমদানি'});
       save(a);
       aMsg = `✓ ${a.name}: ${balTxt(before)} → ${balTxt(balOf(a))}`;
       aAddOpen = false;
@@ -5986,7 +5986,7 @@ document.addEventListener('input', e=>{
   // give every old line a memo number once (oldest first)
   function ensureMemoNos(){
     if(!L()) return;
-    const lines = allLines();
+    const lines = allLines().filter(x => Number(x.e.credit) > 0);   // only মাল বিক্রি gets a memo number
     let max = 0; lines.forEach(x => { if((x.e.memoNo||0) > max) max = x.e.memoNo; });
     const missing = lines.filter(x => !x.e.memoNo).sort((x,y)=> x.e.date<y.e.date?-1:x.e.date>y.e.date?1:((x.e.ts||0)-(y.e.ts||0))||((x.e.seq||0)-(y.e.seq||0)));
     if(!missing.length) return;
@@ -6288,12 +6288,10 @@ document.addEventListener('input', e=>{
     if(!mroot || mroot.hidden || !L()) return;
     const [f,t] = rangeOf(mst);
     const q = (mst.q||'').trim().toLowerCase();
-    let lines = allLines().filter(x => x.e.date>=f && x.e.date<=t);
-    if(mst.k==='sale') lines = lines.filter(x => Number(x.e.credit)>0);
-    if(mst.k==='pay')  lines = lines.filter(x => Number(x.e.debit)>0);
+    let lines = allLines().filter(x => x.e.date>=f && x.e.date<=t && Number(x.e.credit)>0);   // মেমো = মাল বিক্রি only (টাকা জমা is in খতিয়ান / দৈনিক)
     if(q) lines = lines.filter(x => x.a.name.toLowerCase().includes(q) || String(x.e.memoNo||'')===toEn(q));
     lines.sort((x,y)=> x.e.date>y.e.date?-1:x.e.date<y.e.date?1:((y.e.memoNo||0)-(x.e.memoNo||0)));
-    const sale = lines.reduce((s,x)=>s+(Number(x.e.credit)||0),0), pay = lines.reduce((s,x)=>s+(Number(x.e.debit)||0),0);
+    const sale = lines.reduce((s,x)=>s+(Number(x.e.credit)||0),0);
     const kgSum = lines.reduce((s,x)=>s+kgOf(x.e),0);
     const groups = []; lines.forEach(x => { const g = groups[groups.length-1]; if(g && g.d===x.e.date) g.l.push(x); else groups.push({d:x.e.date, l:[x]}); });
     const focusQ = document.activeElement && document.activeElement.id === 'mQ';
@@ -6310,13 +6308,10 @@ document.addEventListener('input', e=>{
         <span class="nm-ar" aria-hidden="true">›</span>
       </button>
       <button type="button" class="ftoggle" id="mFT" aria-expanded="${!!mst.open}">
-        <span>🔍 ফিল্টার <small>${({all:'সব',sale:'মাল বিক্রি',pay:'টাকা জমা'})[mst.k]} · ${({today:'আজ',week:'৭ দিন',month:'এই মাস',last:'গত মাস',all:'সব সময়',custom:'কাস্টম'})[mst.p]}${mst.q ? ' · "'+esc(mst.q)+'"' : ''}</small></span>
+        <span>🔍 ফিল্টার <small>${({today:'আজ',week:'৭ দিন',month:'এই মাস',last:'গত মাস',all:'সব সময়',custom:'কাস্টম'})[mst.p]}${mst.q ? ' · "'+esc(mst.q)+'"' : ''}</small></span>
         <span class="ft-ar">${mst.open ? '▴' : '▾'}</span>
       </button>
       <div class="fpanel" ${mst.open ? '' : 'hidden'}>
-      <div class="kchips" role="group" aria-label="ধরন">
-        ${[['all','সব'],['sale','🔴 মাল বিক্রি'],['pay','🔵 টাকা জমা']].map(([k,l])=>`<button type="button" class="chip k" data-mk="${k}" aria-pressed="${mst.k===k}">${l}</button>`).join('')}
-      </div>
       ${periodUI(mst,'m')}
       <input id="mQ" class="msearch" placeholder="🔍 নাম বা মেমো নং দিয়ে খুঁজুন" value="${esc(mst.q||'')}" autocomplete="off">
       </div>
@@ -6331,7 +6326,6 @@ document.addEventListener('input', e=>{
           </div>`; })()}
         <div><span>মেমো</span><b>${bn(lines.length)} টি</b></div>
         <div><span>মাল বিক্রি</span><b class="r">${bn(sale)}</b></div>
-        <div><span>টাকা জমা</span><b class="b">${bn(pay)}</b></div>
         <div><span>মোট মাল</span><b>${bn(kgSum)} কেজি</b></div>
       </section>
       <div class="mviewbar" role="group" aria-label="মেমো তালিকায় কী দেখাবে">
