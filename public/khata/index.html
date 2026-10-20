@@ -2838,9 +2838,15 @@ html body #stock .ssub .st[aria-selected="false"]:hover{filter:brightness(.97)}
 #amdani .kmiscsum .arow2 .nm{white-space:normal;overflow:visible}
 #stock .d-mal .coilno{display:block;font-size:12.5px;color:#475467;font-weight:600}
 #ledger .lt td.dt{position:relative}
-#ledger .lt .ldelrow{position:absolute;top:8px;right:8px;width:34px;height:34px;padding:0;border-radius:8px;background:#fff;border:1.5px solid #E8A3AE;color:#B3122B;font-size:15px;line-height:1;cursor:pointer}
+#ledger .lt .lrowacts{position:absolute;top:8px;right:8px;display:flex;gap:6px}
+#ledger .lt .ldelrow,#ledger .lt .leditrow{width:34px;height:34px;padding:0;border-radius:8px;background:#fff;border:1.5px solid #E8A3AE;color:#B3122B;font-size:15px;line-height:1;cursor:pointer}
+#ledger .lt .leditrow{border-color:#B9C8E6;color:#1F4AA8!important;font-size:18px;font-weight:900;font-family:"Segoe UI Symbol","DejaVu Sans",sans-serif}
 #ledger .lt .ldelrow:hover{background:#FDE8EB}
-@media (max-width: 700px){ #ledger .lt .ldelrow{position:static;display:block;width:30px;height:26px;margin-top:4px;font-size:13px} }
+#ledger .lt .leditrow:hover{background:#EEF3FB}
+@media (max-width: 700px){ #ledger .lt .lrowacts{position:static;margin-top:4px} #ledger .lt .ldelrow,#ledger .lt .leditrow{width:30px;height:26px;font-size:13px} }
+.nz.np .jebal{margin:4px 0 8px;font-size:14px;color:#475467}
+.nz.np .jebal b{color:#C3122F}.nz.np .jebal b.g{color:#1F7A3D}
+.nz.np select{width:100%}
 .nz.np .npsl{display:grid;grid-template-columns:96px minmax(0,1fr);gap:10px}
 .nz.np #npSl{text-align:center;font-weight:700}
 /* বাকি লিস্ট: 3 cards side by side on a computer */
@@ -4733,13 +4739,13 @@ function getDB(){
           <tbody>
             ${[...c.rows].reverse().map(({e,bal})=>`
             <tr class="r ${form.editId===e.id?'sel':''} ${flashId===e.id?'flash':''}" data-id="${e.id}" id="r-${e.id}">
-              <td class="dt"><b>${fmtDate(e.date)}</b>${typeTag(e)}<button type="button" class="ldelrow" aria-label="মুছুন" title="মুছুন">🗑</button></td>
+              <td class="dt"><b>${fmtDate(e.date)}</b>${typeTag(e)}<span class="lrowacts"><button type="button" class="leditrow" aria-label="বদলান" title="বদলান">✎</button><button type="button" class="ldelrow" aria-label="মুছুন" title="মুছুন">🗑</button></span></td>
               <td class="n">${e.debit?bn(e.debit):''}</td>
               <td class="n">${e.credit?bn(e.credit):''}</td>
               ${balCell(bal)}
             </tr>`).join('')}
             <tr class="r open ${form.mode==='opening'?'sel':''}" data-open="1">
-              <td class="dt"><b>আগের জের</b><small>${esc(acc.openingNote||'শুরুর বাকি')}</small>${acc.openDate ? `<small class="od">খাতার তারিখ: ${fmtDate(acc.openDate)}</small>` : ''}${acc.created ? `<small class="od">যোগ করা: ${fmtDate(isoOfL(new Date(acc.created)))}</small>` : ''}</td>
+              <td class="dt"><b>আগের জের</b><small>${esc(acc.openingNote||'শুরুর বাকি')}</small>${acc.openDate ? `<small class="od">খাতার তারিখ: ${fmtDate(acc.openDate)}</small>` : ''}${acc.created ? `<small class="od">যোগ করা: ${fmtDate(isoOfL(new Date(acc.created)))}</small>` : ''}<span class="lrowacts"><button type="button" class="leditrow" aria-label="আগের জের বদলান" title="বদলান">✎</button></span></td>
               <td class="n">${acc.openJoma ? bn(acc.openJoma) : ''}</td><td class="n">${acc.openKhoroch ? bn(acc.openKhoroch) : ''}</td>${balCell(Number(acc.opening)||0)}
             </tr>
           </tbody>
@@ -4814,24 +4820,27 @@ function getDB(){
     bEl.addEventListener('input', () => { own = bEl.value.trim() !== ''; });
   }
   // ＋ নতুন পার্টি: নাম → ঠিকানা → পুরনো খাতার জমা / খরচ / অবশিষ্ট (Enter goes to the next box)
-  function openNewParty(){
+  function openNewParty(ed){
+    ed = ed && ed.id ? ed : null;   // ed = edit this party (✎ on আগের জের), else a new one
     const old = document.getElementById('npBg'); if(old) old.remove();
+    const byAdded0 = [...accs].sort((x, y) => (x.created||0) - (y.created||0)), pos0 = ed ? byAdded0.indexOf(ed) + 1 : accs.length + 1;
+    const v = n => Number(n) ? bn(n) : '';
     const bg = document.createElement('div'); bg.className = 'nz-bg'; bg.id = 'npBg';
     bg.innerHTML = `<div class="nz np" role="dialog" aria-modal="true" aria-labelledby="npT">
-      <h3 id="npT">＋ নতুন পার্টি</h3>
+      <h3 id="npT">${ed ? '✎ পার্টি বদলান' : '＋ নতুন পার্টি'}</h3>
       <div class="npsl">
-        <label>ক্রমিক নং<input id="npSl" inputmode="numeric" autocomplete="off" value="${toBn(accs.length + 1)}"></label>
-        <label>নাম<input id="npName" autocomplete="off"></label>
+        <label>ক্রমিক নং<input id="npSl" inputmode="numeric" autocomplete="off" value="${toBn(pos0)}"></label>
+        <label>নাম<input id="npName" autocomplete="off" value="${ed ? esc(ed.name) : ''}"></label>
       </div>
       <div class="nppaid">
-        <label>অবশিষ্ট (পুরনো খাতার বাকি)<input id="npBaki" class="num" inputmode="decimal"></label>
-        <button type="button" class="paidbtn" id="npPaid" aria-pressed="false" title="পুরনো খাতার সব টাকা শোধ — বাকি ০">✓ Paid</button>
+        <label>অবশিষ্ট (পুরনো খাতার বাকি)<input id="npBaki" class="num" inputmode="decimal" value="${ed ? (ed.oldPaid ? bn(0) : v(ed.opening)) : ''}" ${ed && ed.oldPaid ? 'readonly' : ''}></label>
+        <button type="button" class="paidbtn" id="npPaid" aria-pressed="${!!(ed && ed.oldPaid)}" title="পুরনো খাতার সব টাকা শোধ — বাকি ০">✓ Paid</button>
       </div>
-      <label>ঠিকানা<input id="npAddr" autocomplete="off"></label>
+      <label>ঠিকানা<input id="npAddr" autocomplete="off" value="${ed ? esc(ed.address||'') : ''}"></label>
       <p class="npsub">পুরনো খাতার জমা / খরচ <small>(না থাকলে খালি রাখুন)</small></p>
       <div class="np3 np2">
-        <label>জমা<input id="npJoma" class="num" inputmode="decimal"></label>
-        <label>খরচ<input id="npKhoroch" class="num" inputmode="decimal"></label>
+        <label>জমা<input id="npJoma" class="num" inputmode="decimal" value="${ed ? v(ed.openJoma) : ''}"></label>
+        <label>খরচ<input id="npKhoroch" class="num" inputmode="decimal" value="${ed ? v(ed.openKhoroch) : ''}"></label>
       </div>
       <p class="nzmsg" id="npMsg" role="status"></p>
       <div class="nzacts"><button type="button" class="ghost" id="npNo">বাতিল</button><button type="button" id="npOk">সেভ করুন</button></div>
@@ -4856,22 +4865,27 @@ function getDB(){
     const save1 = () => {
       const name = $('npName').value.trim(), addr = $('npAddr').value.trim();
       if(!name) return msg('পার্টির নাম লিখুন।', $('npName'));
-      if(accs.some(a => a.name.trim() === name && (a.address||'').trim() === addr)) return msg('এই নামে পার্টি আগেই আছে।', $('npName'));
+      if(accs.some(a => a !== ed && a.name.trim() === name && (a.address||'').trim() === addr)) return msg('এই নামে পার্টি আগেই আছে।', $('npName'));
       const j = parseNum($('npJoma').value), k = parseNum($('npKhoroch').value), b = parseNum($('npBaki').value);
       // ক্রমিক নং: the next number puts it at the end; a smaller number puts it in that place (the ones after move down)
-      const sl = parseNum($('npSl').value), byAdded = [...accs].sort((x, y) => (x.created||0) - (y.created||0));
-      let created = Date.now();
-      if(sl >= 1 && sl <= byAdded.length){
-        const after = byAdded[sl - 1].created || 0, before = sl > 1 ? (byAdded[sl - 2].created || 0) : after - 2000;
-        created = Math.floor((before + after) / 2);
+      const sl = parseNum($('npSl').value), byAdded = [...accs].filter(x => x !== ed).sort((x, y) => (x.created||0) - (y.created||0));
+      let created = ed ? ed.created : Date.now();
+      if(!(ed && sl === pos0)){
+        if(sl >= 1 && sl <= byAdded.length){
+          const after = byAdded[sl - 1].created || 0, before = sl > 1 ? (byAdded[sl - 2].created || 0) : after - 2000;
+          created = Math.floor((before + after) / 2);
+        } else if(ed && byAdded.length) created = Math.max(Date.now(), (byAdded[byAdded.length - 1].created || 0) + 1000);
       }
-      const a = {id:uid(), name, opening:isNaN(b)?0:b, openingNote:'', created, seq:0, entries:[]};
-      if(addr) a.address = addr;
-      if(j > 0) a.openJoma = j;
-      if(k > 0) a.openKhoroch = k;
-      if(j > 0 || k > 0 || b) a.openingNote = 'পুরনো খাতা থেকে';
+      const a = ed || {id:uid(), seq:0, entries:[]};
+      Object.assign(a, {name, opening:isNaN(b)?0:b, openingNote: ed && a.openingNote && !/^পুরনো খাতা/.test(a.openingNote) ? a.openingNote : '', created});
+      if(addr) a.address = addr; else delete a.address;
+      if(j > 0) a.openJoma = j; else delete a.openJoma;
+      if(k > 0) a.openKhoroch = k; else delete a.openKhoroch;
+      delete a.oldPaid;
+      if(!a.openingNote && (j > 0 || k > 0 || b)) a.openingNote = 'পুরনো খাতা থেকে';
       if($('npPaid').getAttribute('aria-pressed') === 'true'){ a.opening = 0; a.oldPaid = true; a.openingNote = 'পুরনো খাতা — ✓ Paid'; }
-      accs.push(a); accs.sort((x, y) => (x.created||0) - (y.created||0)); curId = a.id; save(a);
+      if(!ed) accs.push(a);
+      accs.sort((x, y) => (x.created||0) - (y.created||0)); curId = a.id; save(a);
       try{ localStorage.setItem(LSCUR, curId); }catch(_){}
       close(); accMode = null; render();
     };
@@ -4879,6 +4893,57 @@ function getDB(){
     const next = {npName:'npBaki', npAddr:'npJoma', npJoma:'npKhoroch'};
     ['npName','npBaki','npAddr','npJoma','npKhoroch'].forEach(id => $(id).addEventListener('keydown', e => { if(e.key === 'Enter'){ e.preventDefault(); if(next[id]) $(next[id]).focus(); else save1(); } }));
     setTimeout(() => $('npName').focus(), 30);
+  }
+
+  // ✎ on a জমা line: the same values it was added with — পার্টি, তারিখ, টাকা, কার মাধ্যমে, রেফারেন্স
+  function openJomaEdit(acc, e){
+    const old = document.getElementById('jeBg'); if(old) old.remove();
+    const bg = document.createElement('div'); bg.className = 'nz-bg'; bg.id = 'jeBg';
+    bg.innerHTML = `<div class="nz np" role="dialog" aria-modal="true" aria-labelledby="jeT">
+      <h3 id="jeT">✎ জমা বদলান</h3>
+      <label>পার্টি<select id="jeAcc">${[...accs].sort((x,y)=>x.name.localeCompare(y.name,'bn')).map(a=>`<option value="${a.id}" ${a.id===acc.id?'selected':''}>${esc(pnm(a))}</option>`).join('')}</select></label>
+      <div class="np3 np2">
+        <label>তারিখ<input type="date" id="jeDate" value="${e.date}"></label>
+        <label>জমা (টাকা)<input id="jeAmt" class="num" inputmode="decimal" value="${bn(e.debit)}"></label>
+      </div>
+      <div class="np3 np2">
+        <label>কার মাধ্যমে<input id="jeVia" autocomplete="off" value="${esc(e.via||'')}"></label>
+        <label>রেফারেন্স<input id="jeRef" autocomplete="off" value="${esc(e.ref||'')}"></label>
+      </div>
+      <p class="jebal" id="jeBal"></p>
+      <p class="nzmsg" id="jeMsg" role="status"></p>
+      <div class="nzacts"><button type="button" class="ghost" id="jeNo">বাতিল</button><button type="button" id="jeOk">সেভ করুন</button></div>
+    </div>`;
+    document.body.appendChild(bg);
+    const $ = id => document.getElementById(id);
+    const onKey = ev => { if(ev.key === 'Escape') close(); };
+    const close = () => { bg.remove(); document.removeEventListener('keydown', onKey); };
+    document.addEventListener('keydown', onKey);
+    bg.addEventListener('click', ev => { if(ev.target === bg) close(); });
+    $('jeNo').onclick = close;
+    if(typeof attachWords === 'function') attachWords($('jeAmt'));
+    // the party's অবশিষ্ট after this change
+    const paint = () => {
+      const a2 = accs.find(x => x.id === $('jeAcc').value), nv = parseNum($('jeAmt').value), amt2 = isNaN(nv) ? 0 : nv;
+      let bal = compute(a2).bal + (a2 === acc ? Number(e.debit)||0 : 0) - amt2;
+      $('jeBal').innerHTML = `${esc(pnm(a2))} — অবশিষ্ট হবে: <b class="${bal < 0 ? 'g' : ''}">${bal < 0 ? 'অগ্রিম ' + bn(-bal) : bn(bal)} ৳</b>`;
+    };
+    ['jeAcc','jeAmt'].forEach(id => { $(id).addEventListener('input', paint); $(id).addEventListener('change', paint); }); paint();
+    const go = () => {
+      const nv = parseNum($('jeAmt').value);
+      if(!(nv > 0)){ $('jeMsg').textContent = 'সঠিক টাকা লিখুন।'; $('jeAmt').focus(); return; }
+      const to = accs.find(x => x.id === $('jeAcc').value) || acc;
+      e.debit = nv; if($('jeDate').value) e.date = $('jeDate').value;
+      const v1 = $('jeVia').value.trim(), v2 = $('jeRef').value.trim();
+      if(v1) e.via = v1; else delete e.via; if(v2) e.ref = v2; else delete e.ref;
+      if(to !== acc){ acc.entries = acc.entries.filter(x => x !== e); to.entries.push(e); save(acc); }
+      save(to); flashId = e.id; keepY = window.scrollY; close(); render();
+      if(window.__dashRender) window.__dashRender();
+      if(typeof kToast === 'function') kToast(`<b>✅ জমা বদলানো হয়েছে</b><span>${esc(pnm(to))} · ${bn(nv)} ৳</span>`);
+    };
+    $('jeOk').onclick = go;
+    ['jeAmt','jeVia','jeRef'].forEach(id => $(id).addEventListener('keydown', ev => { if(ev.key === 'Enter'){ ev.preventDefault(); go(); } }));
+    setTimeout(() => { $('jeAmt').focus(); $('jeAmt').select(); }, 30);
   }
 
   function bindForm(acc){
@@ -4897,6 +4962,13 @@ function getDB(){
     if($('fCfm')) $('fCfm').onclick = async ()=>{ if(window.__canSend && !(await window.__canSend(acc.id, form.editId))) return; const e = acc.entries.find(x=>x.id===form.editId); setStatus(e,'confirmed'); restoreDate(); form = {mode:'new', type:form.type, editId:null}; render(); };
     if($('fUnc')) $('fUnc').onclick = ()=>{ const e = acc.entries.find(x=>x.id===form.editId); setStatus(e,'pending'); restoreDate(); form = {mode:'new', type:form.type, editId:null}; render(); };
     document.querySelectorAll('.lt tr.r').forEach(tr=>tr.onclick=async ev=>{
+      if(ev.target.closest && ev.target.closest('.leditrow')){   // ✎ on the line: edit with the same values it was added with
+        ev.stopPropagation();
+        if(tr.dataset.open) return openNewParty(acc);
+        const e = acc.entries.find(x=>x.id===tr.dataset.id); if(!e) return;
+        if(Number(e.credit) > 0) return window.__ledger.edit(acc.id, e.id);   // memo → the memo form
+        return openJomaEdit(acc, e);
+      }
       if(ev.target.closest && ev.target.closest('.ldelrow')){   // 🗑 on the line: delete it (asks first)
         ev.stopPropagation();
         const e = acc.entries.find(x=>x.id===tr.dataset.id); if(!e) return;
