@@ -6661,17 +6661,17 @@ setTimeout(() => { try{ if(window.__ledger && window.__ledger.autoSend) window._
   const shortD = iso => { if(!iso) return '—'; const [y,m,d] = iso.split('-'); return toBn(d+'/'+m+'/'+y.slice(2)); };
   const M = ['জানুয়ারি','ফেব্রুয়ারি','মার্চ','এপ্রিল','মে','জুন','জুলাই','আগস্ট','সেপ্টেম্বর','অক্টোবর','নভেম্বর','ডিসেম্বর'];
   const longToday = () => { const d = new Date(); return `${toBn(d.getDate())} ${M[d.getMonth()]} ${toBn(d.getFullYear())}`; };
-  const LSV = 'kg-khata-baki-view';
-  let view = {f:'due', sort:'bal', q:''};
+  const LSV = 'kg-khata-baki-view2';   // v2: default = সব পার্টি in খতিয়ান order
+  let view = {f:'all', sort:'added', q:''};
   try{ view = Object.assign(view, JSON.parse(localStorage.getItem(LSV)) || {}); }catch(_){}
   const saveView = () => { try{ localStorage.setItem(LSV, JSON.stringify({f:view.f, sort:view.sort})); }catch(_){} };
 
   function data(){
     const L = window.__ledger; if(!L) return [];
-    return L.accs().map(a => {
+    return L.accs().map((a, i) => {
       const k = L.compute(a);
       const last = (a.entries||[]).reduce((m, e) => e.date > m ? e.date : m, '');
-      return {a, bal:k.bal, last, n:(a.entries||[]).length};
+      return {a, bal:k.bal, last, n:(a.entries||[]).length, pos:i};
     });
   }
   function shown(all){
@@ -6680,7 +6680,8 @@ setTimeout(() => { try{ if(window.__ledger && window.__ledger.autoSend) window._
     if(q) list = list.filter(x => (x.a.name + ' ' + (x.a.address||'')).toLowerCase().includes(q));
     if(view.sort === 'bal') list.sort((p, q2) => Math.abs(q2.bal) - Math.abs(p.bal));
     else if(view.sort === 'name') list.sort((p, q2) => p.a.name.localeCompare(q2.a.name, 'bn'));
-    else list.sort((p, q2) => (q2.last||'').localeCompare(p.last||''));
+    else if(view.sort === 'last') list.sort((p, q2) => (q2.last||'').localeCompare(p.last||''));
+    else list.sort((p, q2) => ((p.a.created||0) - (q2.a.created||0)) || (p.pos - q2.pos));   // যেভাবে যোগ করা: same order as খতিয়ান
     return list;
   }
   const amt = b => b < 0 ? `<span class="adv">অগ্রিম ${bn(-b)}</span>` : bn(b);
@@ -6719,7 +6720,7 @@ setTimeout(() => { try{ if(window.__ledger && window.__ledger.autoSend) window._
           ${[['due','বাকি আছে'],['adv','অগ্রিম'],['all','সব পার্টি']].map(([k,l]) => `<button type="button" data-f="${k}" aria-pressed="${view.f===k}">${l}</button>`).join('')}
         </div>
         <div class="bk-chips" role="group" aria-label="সাজানো">
-          ${[['bal','বেশি টাকা আগে'],['name','নাম অনুযায়ী'],['last','নতুন লেনদেন আগে']].map(([k,l]) => `<button type="button" data-s="${k}" aria-pressed="${view.sort===k}">${l}</button>`).join('')}
+          ${[['added','যেভাবে যোগ করা'],['bal','বেশি টাকা আগে'],['name','নাম অনুযায়ী'],['last','নতুন লেনদেন আগে']].map(([k,l]) => `<button type="button" data-s="${k}" aria-pressed="${view.sort===k}">${l}</button>`).join('')}
         </div>
       </div>
       <div class="bk-tw">
