@@ -2811,9 +2811,11 @@ html body #stock .ssub .st[aria-selected="false"]:hover{filter:brightness(.97)}
 #stock .add.add2 .xrow{grid-column:1 / -1;display:grid;grid-template-columns:subgrid;align-items:center}
 #stock .add.add2 .xrow .pkrow{grid-column:1 / 3}
 #stock .add.add2 .xrow .xkg{grid-column:3}
-#stock .add.add2 .xrow .xdel{grid-column:4;justify-self:start;width:46px!important;height:46px;border-radius:10px;background:#fff!important;color:#B3122B!important;border:1.5px solid #E8A3AE!important;font-size:20px;padding:0!important;box-shadow:none!important}
+#stock .add.add2 .xrow .xcw{grid-column:4;display:flex;gap:6px;min-width:0}
+#stock .add.add2 .xrow .xcoil{flex:1;min-width:0}
+#stock .add.add2 .xrow .xdel{flex:none;width:46px!important;height:46px;border-radius:10px;background:#fff!important;color:#B3122B!important;border:1.5px solid #E8A3AE!important;font-size:20px;padding:0!important;box-shadow:none!important}
 #stock .add.add2 .xmore{grid-column:1 / -1;background:#fff!important;color:#2E7D4F!important;border:1.5px dashed #8CC59A!important;border-radius:10px;padding:10px;font-family:"Noto Sans Bengali",sans-serif;font-weight:700;font-size:15px;box-shadow:none!important}
-@media (max-width: 700px){ #stock .add.add2 .xrow{grid-template-columns:minmax(0,1fr) 46px;gap:8px} #stock .add.add2 .xrow .pkrow{grid-column:1 / -1} #stock .add.add2 .xrow .xkg{grid-column:1} #stock .add.add2 .xrow .xdel{grid-column:2} }
+@media (max-width: 700px){ #stock .add.add2 .xrow{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px} #stock .add.add2 .xrow .pkrow{grid-column:1 / -1} #stock .add.add2 .xrow .xkg{grid-column:1} #stock .add.add2 .xrow .xcw{grid-column:2} }
 .mrow.mrow2 .mst .mdel{margin-left:auto;font-family:"Noto Sans Bengali",sans-serif;font-size:13px;font-weight:700;color:#B3122B;background:#fff;border:1.5px solid #E8A3AE;border-radius:999px;padding:3px 10px;cursor:pointer}
 .mrow.mrow2 .mst .mdel:hover{background:#FDE8EB}
 .m-acts:has(#mDel){grid-template-columns:repeat(4,minmax(0,1fr))}
@@ -2834,6 +2836,7 @@ html body #stock .ssub .st[aria-selected="false"]:hover{filter:brightness(.97)}
 #amdani .kmiscsum .nm{color:#8A1C2C;font-weight:700}
 #amdani .kmiscsum .arow2{grid-template-columns:2em auto minmax(0,1fr)}
 #amdani .kmiscsum .arow2 .nm{white-space:normal;overflow:visible}
+#stock .d-mal .coilno{display:block;font-size:12.5px;color:#475467;font-weight:600}
 </style>
 </head>
 <body>
@@ -3798,9 +3801,10 @@ function getDB(){
           <input type="hidden" id="itemSel" value="${lastItemId && findItem(lastItemId) ? lastItemId : ''}">
         </div>
         <div><label for="kg">কেজি</label><input id="kg" class="num" inputmode="decimal"></div>
-        <div><label for="car">গাড়ি নং</label><input id="car" inputmode="numeric" autocomplete="off" value="${toBn(nextCar(cur))}"></div>
+        <div><label for="coilNo">কয়েল নং</label><input id="coilNo" autocomplete="off" autocorrect="off" spellcheck="false"></div>
         <div class="xrows" id="xRows"></div>
         <button type="button" class="xmore" id="xMore">＋ আরো মাল (এই গাড়িতে)</button>
+        <div><label for="car">গাড়ি নং</label><input id="car" inputmode="numeric" autocomplete="off" value="${toBn(nextCar(cur))}"></div>
         <div class="cof"><label for="coRate">দর (প্রতি টন)</label><input id="coRate" class="num" inputmode="decimal" value="${lastCo && C ? (C.lastRate(lastCo) ? toBn(C.lastRate(lastCo)) : '') : ''}" placeholder="১,০১,০০০"></div>
         <div class="cof"><label for="coVno">চালান নং</label><input id="coVno" autocomplete="off" placeholder="যেমন ৮৪৯৮৭"></div>
         <p class="cocalc cof" id="coCalc"></p>
@@ -3820,6 +3824,7 @@ function getDB(){
             <input id="el" inputmode="decimal" data-plain value="${e.len?toBn(e.len):''}" placeholder="লম্বা" aria-label="লম্বা">`}
             <input id="ek" class="num" inputmode="decimal" value="${bn(e.kg)}" aria-label="কেজি">
             <input id="ec" value="${esc(e.car||'')}" placeholder="গাড়ি নং" aria-label="গাড়ি নং">
+            <input id="ecoil" value="${esc(e.coil||'')}" placeholder="কয়েল নং" aria-label="কয়েল নং">
             <div class="acts"><button class="save" id="saveEdit" type="button">সেভ করুন</button><button class="cancel" id="cancelEdit" type="button">বাতিল</button></div>
           </li>` : `
           <li class="drow"${i===entries.length-1?' id="lastRow"':''}>
@@ -3827,7 +3832,7 @@ function getDB(){
             <span class="d-kg"><b class="kg num">${bn(e.kg)} <small>কেজি</small></b><small class="when">${whenTxt(cur.id, e.ts)}</small></span>
             <span class="d-mal">${(() => { const f = e.item ? findItem(e.item) : null; const c = e.cat ? catOf(e.cat) : (f ? f.c : null);
                 if(c) return `<span class="itm mk ${c.tone||''}">${esc(c.name)}</span>${f ? `<span class="spec">${dimTxt(f.it)}</span>` : ''}`;
-                return e.item || e.mt ? `<span class="itm">${esc(e.item||'')}${e.mt ? ` <b class="mtb ${e.mt}">${MTN[e.mt]}</b>` : ''}</span>` : '<i class="na">—</i>'; })()}${e.mili || e.size || e.len ? `<span class="spec">${specTxt(e)}</span>` : ''}</span>
+                return e.item || e.mt ? `<span class="itm">${esc(e.item||'')}${e.mt ? ` <b class="mtb ${e.mt}">${MTN[e.mt]}</b>` : ''}</span>` : '<i class="na">—</i>'; })()}${e.mili || e.size || e.len ? `<span class="spec">${specTxt(e)}</span>` : ''}${e.coil ? `<span class="coilno">কয়েল নং ${esc(toBn(e.coil))}</span>` : ''}</span>
             <span class="d-car">${e.b ? '<span class="btag">বেশি (B)</span>' : (e.car ? `<b class="carno">${esc(toBn(e.car))}</b>` : '<i class="na">—</i>')}</span>
             <span class="d-co">${e.co && window.__company ? `<span class="coname">🏭 ${esc(window.__company.name(e.co) || '')}</span>` : '<i class="na">—</i>'}</span>
             <span class="d-act"><button class="edit" data-i="${i}" aria-label="বদলান">✎</button><button class="del" data-i="${i}" aria-label="মুছুন">×</button></span>
@@ -3946,12 +3951,13 @@ function getDB(){
     // ＋ আরো মাল: more sizes on the same গাড়ি — each line = its own মাল + কেজি
     const addXRow = () => {
       const r = document.createElement('div'); r.className = 'xrow';
-      r.innerHTML = `<div class="pkrow"><button type="button" class="pkbtn xpk" data-item="">${pickHtml(cur.id, '')}</button></div><input class="num xkg" inputmode="decimal" aria-label="কেজি"><button type="button" class="xdel" aria-label="এই মাল বাদ দিন">×</button>`;
+      r.innerHTML = `<div class="pkrow"><button type="button" class="pkbtn xpk" data-item="">${pickHtml(cur.id, '')}</button></div><input class="num xkg" inputmode="decimal" aria-label="কেজি"><span class="xcw"><input class="xcoil" aria-label="কয়েল নং" placeholder="কয়েল নং" autocomplete="off"><button type="button" class="xdel" aria-label="এই মাল বাদ দিন">×</button></span>`;
       const pb = r.querySelector('.xpk'), kIn = r.querySelector('.xkg');
       pb.onclick = () => openPicker(cur.id, id => { pb.dataset.item = id || ''; pb.innerHTML = pickHtml(cur.id, id || ''); kIn.focus(); });
       r.querySelector('.xdel').onclick = () => r.remove();
       kIn.addEventListener('input', paintCo);
-      kIn.addEventListener('keydown', e => { if(e.key === 'Enter'){ e.preventDefault(); $('xMore').focus(); } });
+      kIn.addEventListener('keydown', e => { if(e.key === 'Enter'){ e.preventDefault(); r.querySelector('.xcoil').focus(); } });
+      r.querySelector('.xcoil').addEventListener('keydown', e => { if(e.key === 'Enter'){ e.preventDefault(); $('xMore').focus(); } });
       $('xRows').appendChild(r);
       pb.click();
     };
@@ -3981,12 +3987,12 @@ function getDB(){
       const n = parseNum(kg.value);
       if(isNaN(n) || n<=0){ hint.textContent='সঠিক কেজি লিখুন।'; hint.className='hint err'; kg.focus(); return; }
       // the first line + every ＋ আরো মাল line (an empty extra line is skipped)
-      const lines = [{kg:n, itId: box.classList.contains('detopen') && itemSel.value && itemSel.value !== '__new' ? itemSel.value : ''}];
+      const lines = [{kg:n, coil:$('coilNo').value.trim(), itId: box.classList.contains('detopen') && itemSel.value && itemSel.value !== '__new' ? itemSel.value : ''}];
       for(const x of document.querySelectorAll('#xRows .xrow')){
         const xk = parseNum(x.querySelector('.xkg').value), xi = x.querySelector('.xpk').dataset.item || '';
         if(!xi && !(xk > 0)) continue;
         if(!(xk > 0)){ hint.textContent = 'প্রতিটা মালের কেজি লিখুন।'; hint.className = 'hint err'; x.querySelector('.xkg').focus(); return; }
-        lines.push({kg:xk, itId:xi});
+        lines.push({kg:xk, itId:xi, coil:x.querySelector('.xcoil').value.trim()});
       }
       const coId = coSel ? coSel.value : '';
       const withCo = coId && coId !== '__new' && C, rate = parseNum(coRate.value);
@@ -3995,6 +4001,7 @@ function getDB(){
       const ts = Date.now();
       lines.forEach((ln, i) => {
         const row = {kg:ln.kg, car:car.value.trim(), ts:ts + i};
+        if(ln.coil) row.coil = ln.coil;
         let picked = null;
         const f = ln.itId ? findItem(ln.itId) : null;
         if(f){
@@ -4013,7 +4020,8 @@ function getDB(){
       $('kg').focus();
     };
     $('addBtn').onclick = add;
-    kg.addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); car.focus(); }});
+    kg.addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); $('coilNo').focus(); }});
+    $('coilNo').addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); car.focus(); }});
     car.addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); if(box.classList.contains('withco')) coRate.focus(); else add(); }});
     coRate.addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); coVno.focus(); }});
     coVno.addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); add(); }});
@@ -4025,6 +4033,7 @@ function getDB(){
         if(isNaN(n)||n<=0){ ek.classList.add('bad'); ek.focus(); return; }
         const old = cur.entries[editIndex] || {};
         const row = {kg:n, car:ec.value.trim()};
+        { const cl = $('ecoil') ? $('ecoil').value.trim() : (old.coil || ''); if(cl) row.coil = cl; }
         if(old.cat){ row.cat = old.cat; if(old.item) row.item = old.item; }
         if(old.b) row.b = true;
         if(old.ts) row.ts = old.ts;
@@ -4038,7 +4047,7 @@ function getDB(){
       };
       $('saveEdit').onclick = doSave;
       $('cancelEdit').onclick = ()=>{ editIndex=-1; render(); };
-      [$('eitm'),$('em'),$('es'),$('el'),$('ek'),$('ec')].forEach(x=>{ if(x) x.addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); doSave(); }}); });
+      [$('eitm'),$('em'),$('es'),$('el'),$('ek'),$('ec'),$('ecoil')].forEach(x=>{ if(x) x.addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); doSave(); }}); });
       if($('eitm')){ makeCombo($('eitm'), () => opts('item')); makeCombo($('em'), () => opts('mili')); makeCombo($('es'), () => opts('size')); makeCombo($('el'), () => opts('len')); }
     }
 
