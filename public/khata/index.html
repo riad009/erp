@@ -2860,6 +2860,12 @@ html body #stock .ssub .st[aria-selected="false"]:hover{filter:brightness(.97)}
   #baki .bk-cols.multi .bk-tw + .bk-tw thead{display:none}
   #baki .bk-cols.multi .bk-tw + .bk-tw{margin-top:-1px}
 }
+.nz.np .nppaid{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:end}
+.nz.np .paidbtn{height:46px;margin-bottom:10px;padding:0 14px;border-radius:10px;background:#fff;color:#1F7A3D;border:1.5px solid #9FD6AE;font-family:"Noto Sans Bengali",sans-serif;font-weight:800;font-size:15px;white-space:nowrap}
+.nz.np .paidbtn[aria-pressed="true"]{background:#1F7A3D;border-color:#1F7A3D;color:#fff}
+.nz.np #npBaki[readonly]{background:#F1F8F3;color:#1F7A3D}
+#baki .bk-t .paid{color:#1F7A3D;font-size:15px}
+#ledger .tile.big.paid .v{color:#1F7A3D!important}
 </style>
 </head>
 <body>
@@ -4713,7 +4719,7 @@ function getDB(){
         <div class="tile"><div class="k">মোট জমা (টাকা পেয়েছি)</div><div class="v num">${bn(c.tD + (Number(acc.openJoma)||0))}</div></div>
         <div class="tile"><div class="k">মোট খরচ (মাল দিয়েছি)</div><div class="v num">${bn(c.tC + (Number(acc.openKhoroch)||0))}</div></div>
         ${(()=>{ let pk=0, pn=0; (acc.entries||[]).forEach(e=>{ const k=entryKg(e); if(k>0 && e.status!=='confirmed'){ pk+=k; pn++; } }); return pn ? `<div class="tile pend"><div class="k">⏳ স্টকে কম — মাল আসলে নিজে যাবে</div><div class="v num">${bn(pk)} কেজি · ${bn(pn)} টি</div></div>` : ''; })()}
-        <div class="tile big ${c.bal<0?'adv':''}"><div class="k">${c.bal<0?'অগ্রিম জমা আছে':'অবশিষ্ট বাকি'}</div><div class="v num">${bn(Math.abs(c.bal))} ৳</div></div>
+        <div class="tile big ${c.bal<0?'adv':''} ${c.bal===0?'paid':''}"><div class="k">${c.bal<0?'অগ্রিম জমা আছে':'অবশিষ্ট বাকি'}</div><div class="v num">${c.bal===0 ? '✓ Paid' : bn(Math.abs(c.bal)) + ' ৳'}</div></div>
       </div>
       ${editing ? `<div class="lform-ph" style="height:${formH}px" aria-hidden="true"></div>` : formHtml}
       <div class="tw">
@@ -4803,7 +4809,7 @@ function getDB(){
   // অবশিষ্ট = খরচ − জমা, filled in by itself until it is typed by hand
   function autoBaki(jEl, kEl, bEl){
     let own = false;
-    const fill = () => { if(own) return; const j = parseNum(jEl.value), k = parseNum(kEl.value); if(isNaN(j) && isNaN(k)) return; bEl.value = bn((isNaN(k)?0:k) - (isNaN(j)?0:j)); bEl.dispatchEvent(new Event('change')); };
+    const fill = () => { if(own || bEl.readOnly) return; const j = parseNum(jEl.value), k = parseNum(kEl.value); if(isNaN(j) && isNaN(k)) return; bEl.value = bn((isNaN(k)?0:k) - (isNaN(j)?0:j)); bEl.dispatchEvent(new Event('change')); };
     jEl.addEventListener('input', fill); kEl.addEventListener('input', fill);
     bEl.addEventListener('input', () => { own = bEl.value.trim() !== ''; });
   }
@@ -4817,7 +4823,10 @@ function getDB(){
         <label>ক্রমিক নং<input id="npSl" inputmode="numeric" autocomplete="off" value="${toBn(accs.length + 1)}"></label>
         <label>নাম<input id="npName" autocomplete="off"></label>
       </div>
-      <label>অবশিষ্ট (পুরনো খাতার বাকি)<input id="npBaki" class="num" inputmode="decimal"></label>
+      <div class="nppaid">
+        <label>অবশিষ্ট (পুরনো খাতার বাকি)<input id="npBaki" class="num" inputmode="decimal"></label>
+        <button type="button" class="paidbtn" id="npPaid" aria-pressed="false" title="পুরনো খাতার সব টাকা শোধ — বাকি ০">✓ Paid</button>
+      </div>
       <label>ঠিকানা<input id="npAddr" autocomplete="off"></label>
       <p class="npsub">পুরনো খাতার জমা / খরচ <small>(না থাকলে খালি রাখুন)</small></p>
       <div class="np3 np2">
@@ -4836,6 +4845,12 @@ function getDB(){
     $('npNo').onclick = close;
     if(typeof attachBanglish === 'function'){ attachBanglish($('npName')); attachBanglish($('npAddr')); }
     autoBaki($('npJoma'), $('npKhoroch'), $('npBaki'));
+    $('npPaid').onclick = () => {   // ✓ Paid: old book fully paid → অবশিষ্ট ০
+      const on = $('npPaid').getAttribute('aria-pressed') !== 'true', bk = $('npBaki');
+      $('npPaid').setAttribute('aria-pressed', on);
+      bk.value = on ? bn(0) : ''; bk.readOnly = on; bk.dispatchEvent(new Event('change'));
+      $('npName').focus();
+    };
     if(typeof attachWords === 'function') ['npBaki','npJoma','npKhoroch'].forEach(id => attachWords($(id)));   // কথায়: … টাকা মাত্র
     const msg = (t, el) => { $('npMsg').textContent = t; if(el) el.focus(); };
     const save1 = () => {
@@ -4855,6 +4870,7 @@ function getDB(){
       if(j > 0) a.openJoma = j;
       if(k > 0) a.openKhoroch = k;
       if(j > 0 || k > 0 || b) a.openingNote = 'পুরনো খাতা থেকে';
+      if($('npPaid').getAttribute('aria-pressed') === 'true'){ a.opening = 0; a.oldPaid = true; a.openingNote = 'পুরনো খাতা — ✓ Paid'; }
       accs.push(a); accs.sort((x, y) => (x.created||0) - (y.created||0)); curId = a.id; save(a);
       try{ localStorage.setItem(LSCUR, curId); }catch(_){}
       close(); accMode = null; render();
@@ -6722,7 +6738,7 @@ setTimeout(() => { try{ if(window.__ledger && window.__ledger.autoSend) window._
     else list.sort((p, q2) => ((p.a.created||0) - (q2.a.created||0)) || (p.pos - q2.pos));   // যেভাবে যোগ করা: same order as খতিয়ান
     return list;
   }
-  const amt = b => b < 0 ? `<span class="adv">অগ্রিম ${bn(-b)}</span>` : bn(b);
+  const amt = b => b < 0 ? `<span class="adv">অগ্রিম ${bn(-b)}</span>` : b === 0 ? '<span class="paid">✓ Paid</span>' : bn(b);
 
   function paper(list, tot){
     const S = window.__shop || {};
