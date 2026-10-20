@@ -2819,6 +2819,7 @@ html body #stock .ssub .st[aria-selected="false"]:hover{filter:brightness(.97)}
 .m-acts:has(#mDel){grid-template-columns:repeat(4,minmax(0,1fr))}
 .mbtn.del{background:#fff!important;color:#B3122B!important;border:1.5px solid #E8A3AE}
 #ledger .acct .lbtn.ldel{color:#B3122B!important;border-color:#E8A3AE!important;background:#fff!important}
+.nz.np .np3.np2{grid-template-columns:repeat(2,minmax(0,1fr))}
 </style>
 </head>
 <body>
@@ -4678,7 +4679,7 @@ function getDB(){
               ${balCell(bal)}
             </tr>`).join('')}
             <tr class="r open ${form.mode==='opening'?'sel':''}" data-open="1">
-              <td class="dt"><b>আগের জের</b><small>${esc(acc.openingNote||'শুরুর বাকি')}</small>${acc.openDate ? `<small class="od">খাতার তারিখ: ${fmtDate(acc.openDate)}</small>` : ''}${(acc.openDate || acc.openJoma || acc.openKhoroch) && acc.created ? `<small class="od">যোগ করা: ${fmtDate(isoOfL(new Date(acc.created)))}</small>` : ''}</td>
+              <td class="dt"><b>আগের জের</b><small>${esc(acc.openingNote||'শুরুর বাকি')}</small>${acc.openDate ? `<small class="od">খাতার তারিখ: ${fmtDate(acc.openDate)}</small>` : ''}${acc.created ? `<small class="od">যোগ করা: ${fmtDate(isoOfL(new Date(acc.created)))}</small>` : ''}</td>
               <td class="n">${acc.openJoma ? bn(acc.openJoma) : ''}</td><td class="n">${acc.openKhoroch ? bn(acc.openKhoroch) : ''}</td>${balCell(Number(acc.opening)||0)}
             </tr>
           </tbody>
@@ -4759,13 +4760,12 @@ function getDB(){
     bg.innerHTML = `<div class="nz np" role="dialog" aria-modal="true" aria-labelledby="npT">
       <h3 id="npT">＋ নতুন পার্টি</h3>
       <label>নাম<input id="npName" autocomplete="off"></label>
+      <label>অবশিষ্ট (পুরনো খাতার বাকি)<input id="npBaki" class="num" inputmode="decimal"></label>
       <label>ঠিকানা<input id="npAddr" autocomplete="off"></label>
-      <p class="npsub">পুরনো খাতার হিসাব <small>(না থাকলে খালি রাখুন)</small></p>
-      <label>খাতার তারিখ<input type="date" id="npDate"></label>
-      <div class="np3">
+      <p class="npsub">পুরনো খাতার জমা / খরচ <small>(না থাকলে খালি রাখুন)</small></p>
+      <div class="np3 np2">
         <label>জমা<input id="npJoma" class="num" inputmode="decimal"></label>
         <label>খরচ<input id="npKhoroch" class="num" inputmode="decimal"></label>
-        <label>অবশিষ্ট<input id="npBaki" class="num" inputmode="decimal"></label>
       </div>
       <p class="nzmsg" id="npMsg" role="status"></p>
       <div class="nzacts"><button type="button" class="ghost" id="npNo">বাতিল</button><button type="button" id="npOk">সেভ করুন</button></div>
@@ -4789,15 +4789,14 @@ function getDB(){
       if(addr) a.address = addr;
       if(j > 0) a.openJoma = j;
       if(k > 0) a.openKhoroch = k;
-      if($('npDate').value) a.openDate = $('npDate').value;
       if(j > 0 || k > 0 || b) a.openingNote = 'পুরনো খাতা থেকে';
       accs.push(a); curId = a.id; save(a);
       try{ localStorage.setItem(LSCUR, curId); }catch(_){}
       close(); accMode = null; render();
     };
     $('npOk').onclick = save1;
-    const order = ['npName','npAddr','npDate','npJoma','npKhoroch','npBaki'].map($);
-    order.forEach((el, i) => el.addEventListener('keydown', e => { if(e.key === 'Enter'){ e.preventDefault(); if(order[i+1]) order[i+1].focus(); else save1(); } }));
+    const next = {npName:'npBaki', npAddr:'npJoma', npJoma:'npKhoroch'};
+    ['npName','npBaki','npAddr','npJoma','npKhoroch'].forEach(id => $(id).addEventListener('keydown', e => { if(e.key === 'Enter'){ e.preventDefault(); if(next[id]) $(next[id]).focus(); else save1(); } }));
     setTimeout(() => $('npName').focus(), 30);
   }
 
