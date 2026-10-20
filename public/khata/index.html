@@ -2918,6 +2918,13 @@ const markBtns = (pre, cur) => ['B','K'].map(m => `<button type="button" class="
 // B / K buttons: tap one to choose it, tap again to clear
 function wireMarks(pre){ const bs = ['B','K'].map(m => document.getElementById(pre + m)).filter(Boolean); bs.forEach(b => b.onclick = () => { const on = b.getAttribute('aria-pressed') !== 'true'; bs.forEach(x => x.setAttribute('aria-pressed', x === b && on)); }); }
 const pickedMark = pre => ((['B','K'].map(m => document.getElementById(pre + m)).find(b => b && b.getAttribute('aria-pressed') === 'true')) || {}).dataset?.mark || '';
+// party names: first letter of each word capital (arafat steel → Arafat Steel); Bangla is left as it is
+const capName = v => String(v||'').replace(/(^|[\s(.\-\/])([a-z])/g, (m, a, b) => a + b.toUpperCase());
+document.addEventListener('input', e => {
+  const el = e.target; if(!el || !['npName','fNewParty','aNewName','accName','arName','npAddr','fNewLoc','aNewAddr','fAddr'].includes(el.id)) return;
+  const v = capName(el.value); if(v === el.value) return;
+  const pos = el.selectionStart; el.value = v; try{ el.setSelectionRange(pos, pos); }catch(_){}
+});
 function pnm(a){ return a.name + (a.address ? ' (' + a.address + ')' : ''); }
 // ---- Banglish → বাংলা while typing (English keyboard, sound-based) ----
 const BN_WORDS = {dhaka:'ঢাকা',bangladesh:'বাংলাদেশ',keraniganj:'কেরাণীগঞ্জ',narayanganj:'নারায়ণগঞ্জ',gazipur:'গাজীপুর',chittagong:'চট্টগ্রাম',chattogram:'চট্টগ্রাম',
@@ -4428,7 +4435,7 @@ function getDB(){
   /* storage */
   const lsSave = () => { try{ localStorage.setItem(LS, JSON.stringify(accs)); }catch(e){} };
   const lsLoad = () => { try{ return JSON.parse(localStorage.getItem(LS)||'[]'); }catch(e){ return []; } };
-  function save(acc){ lsSave(); if(db) db.doc('ledgers/'+acc.id).set(clone(acc)).catch(()=>{}); if(window.__stock) setTimeout(()=>window.__stock.render(), 0); if(window.__extrasRefresh) setTimeout(()=>window.__extrasRefresh(), 0); }
+  function save(acc){ if(acc && acc.name){ acc.name = capName(acc.name); if(acc.address) acc.address = capName(acc.address); } lsSave(); if(db) db.doc('ledgers/'+acc.id).set(clone(acc)).catch(()=>{}); if(window.__stock) setTimeout(()=>window.__stock.render(), 0); if(window.__extrasRefresh) setTimeout(()=>window.__extrasRefresh(), 0); }
   /* রেট for each kind of goods: remembered from the last time it was used */
   const MT = {soft:'সফট', hard:'হার্ড'};
   let rates = {}; try{ rates = JSON.parse(localStorage.getItem('kg-khata-rates')||'{}'); }catch(_){ rates = {}; }
@@ -4458,6 +4465,7 @@ function getDB(){
       catch(e){ db = null; accs = lsLoad(); }
     } else accs = lsLoad();
     accs.sort((a,b)=>(a.created||0)-(b.created||0));
+    accs.forEach(a => { if(capName(a.name) !== a.name || (a.address && capName(a.address) !== a.address)) save(a); });   // old names → Capital first letters
   }
 
   /* starting data copied from the two ledger pages (566 + 567) */
