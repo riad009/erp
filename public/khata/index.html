@@ -2841,6 +2841,8 @@ html body #stock .ssub .st[aria-selected="false"]:hover{filter:brightness(.97)}
 #ledger .lt .ldelrow{position:absolute;top:8px;right:8px;width:34px;height:34px;padding:0;border-radius:8px;background:#fff;border:1.5px solid #E8A3AE;color:#B3122B;font-size:15px;line-height:1;cursor:pointer}
 #ledger .lt .ldelrow:hover{background:#FDE8EB}
 @media (max-width: 700px){ #ledger .lt .ldelrow{position:static;display:block;width:30px;height:26px;margin-top:4px;font-size:13px} }
+.nz.np .npsl{display:grid;grid-template-columns:96px minmax(0,1fr);gap:10px}
+.nz.np #npSl{text-align:center;font-weight:700}
 </style>
 </head>
 <body>
@@ -4794,7 +4796,10 @@ function getDB(){
     const bg = document.createElement('div'); bg.className = 'nz-bg'; bg.id = 'npBg';
     bg.innerHTML = `<div class="nz np" role="dialog" aria-modal="true" aria-labelledby="npT">
       <h3 id="npT">＋ নতুন পার্টি</h3>
-      <label>নাম<input id="npName" autocomplete="off"></label>
+      <div class="npsl">
+        <label>ক্রমিক নং<input id="npSl" inputmode="numeric" autocomplete="off" value="${toBn(accs.length + 1)}"></label>
+        <label>নাম<input id="npName" autocomplete="off"></label>
+      </div>
       <label>অবশিষ্ট (পুরনো খাতার বাকি)<input id="npBaki" class="num" inputmode="decimal"></label>
       <label>ঠিকানা<input id="npAddr" autocomplete="off"></label>
       <p class="npsub">পুরনো খাতার জমা / খরচ <small>(না থাকলে খালি রাখুন)</small></p>
@@ -4821,12 +4826,19 @@ function getDB(){
       if(!name) return msg('পার্টির নাম লিখুন।', $('npName'));
       if(accs.some(a => a.name.trim() === name && (a.address||'').trim() === addr)) return msg('এই নামে পার্টি আগেই আছে।', $('npName'));
       const j = parseNum($('npJoma').value), k = parseNum($('npKhoroch').value), b = parseNum($('npBaki').value);
-      const a = {id:uid(), name, opening:isNaN(b)?0:b, openingNote:'', created:Date.now(), seq:0, entries:[]};
+      // ক্রমিক নং: the next number puts it at the end; a smaller number puts it in that place (the ones after move down)
+      const sl = parseNum($('npSl').value), byAdded = [...accs].sort((x, y) => (x.created||0) - (y.created||0));
+      let created = Date.now();
+      if(sl >= 1 && sl <= byAdded.length){
+        const after = byAdded[sl - 1].created || 0, before = sl > 1 ? (byAdded[sl - 2].created || 0) : after - 2000;
+        created = Math.floor((before + after) / 2);
+      }
+      const a = {id:uid(), name, opening:isNaN(b)?0:b, openingNote:'', created, seq:0, entries:[]};
       if(addr) a.address = addr;
       if(j > 0) a.openJoma = j;
       if(k > 0) a.openKhoroch = k;
       if(j > 0 || k > 0 || b) a.openingNote = 'পুরনো খাতা থেকে';
-      accs.push(a); curId = a.id; save(a);
+      accs.push(a); accs.sort((x, y) => (x.created||0) - (y.created||0)); curId = a.id; save(a);
       try{ localStorage.setItem(LSCUR, curId); }catch(_){}
       close(); accMode = null; render();
     };
