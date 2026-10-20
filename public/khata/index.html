@@ -2872,6 +2872,7 @@ html body #stock .ssub .st[aria-selected="false"]:hover{filter:brightness(.97)}
 .nz.np #npBaki[readonly]{background:#F1F8F3;color:#1F7A3D}
 #baki .bk-t .paid{color:#1F7A3D;font-size:15px}
 #ledger .tile.big.paid .v{color:#1F7A3D!important}
+#amdani .acol.kout .cnt .kmhint{color:#8A1C2C;font-weight:700;font-size:12.5px}
 </style>
 </head>
 <body>
@@ -5509,7 +5510,7 @@ function getDB(){
         </ol>
         </section>
         <section class="acol kout">
-          <div class="acol-h"><h2>🧾 খরচ</h2><span class="cnt num">${bn(kt)} ৳ · ${toBn(krows.length + (mrows.length ? 1 : 0))} টি</span></div>
+          <div class="acol-h"><h2>🧾 খরচ</h2><span class="cnt num">${bn(kt)} ৳ · ${toBn(krows.length + (mrows.length ? 1 : 0))} টি${mrows.length ? `<small class="kmhint"> · বিবিধ খরচ ${bn(mt)} ৳ সহ</small>` : ''}</span></div>
           <button type="button" class="abig k" id="kOpenM">＋ নতুন খরচ</button>
           ${kMsg ? `<p class="lmsg">${kMsg}</p>` : ''}
           <ol class="alist">
@@ -5536,7 +5537,7 @@ function getDB(){
           ${mrows.length ? `<li class="kmiscsum"><div class="arow2"><span class="no num">${toBn(krows.length + 1)}/</span><span class="amt num">${bn(mt)}/-</span><span class="nm" title="নিচের বিবিধ খরচ খাতা থেকে নিজে যোগ হয়">বিবিধ খরচ (খুচরা)</span></div></li>` : ''}
         </ol>
         <div class="kmisc">
-          <div class="acol-h"><h3>🪙 বিবিধ খরচ <small>খুচরা খরচ</small></h3><span class="cnt num">${bn(mt)} ৳ · ${toBn(mrows.length)} টি</span></div>
+          <div class="acol-h"><h3>💰 বিবিধ খরচ <small>খুচরা খরচ</small></h3><span class="cnt num">${bn(mt)} ৳ · ${toBn(mrows.length)} টি</span></div>
           <button type="button" class="abig km" id="mOpenM">＋ খুচরা খরচ</button>
           <ol class="alist">
           ${mrows.length ? mrows.map((x,i)=>{

@@ -41,7 +41,7 @@ Tabs: স্টক · দৈনিক · মেমো · খতিয়ান �
 - লাভ = (বিক্রি দর − কেনা দর) × কেজি per size; কেনা দর = size ✎ value, else latest কোম্পানি চালান দর (per টন ÷ 1000). লেবার is not profit. Memo stores the cost of that day.
 - দৈনিক: 3 tiles (সাবেক জমা + নিট = হাতে নগদ), then আমদানি | খরচ | বিক্রয় columns; adding happens in pop-ups.
   - নতুন জমা has কার মাধ্যমে (`via`) + optional রেফারেন্স (`ref`) on the জমা entry, shown in আমদানি list and খতিয়ান.
-  - খরচ column has a 🪙 বিবিধ খরচ (খুচরা) card: items saved in the same day's khoroch list with `misc:true`; the main খরচ list shows them as one auto line "বিবিধ খরচ (খুচরা)" = their sum (totals already include them).
+  - খরচ column has a 💰 বিবিধ খরচ (খুচরা) card: items saved in the same day's khoroch list with `misc:true`; the main খরচ list shows them as one auto line "বিবিধ খরচ (খুচরা)" = their sum (totals already include them).
 - Fonts: Noto Sans Bengali (clear ১), Baloo Da 2 for numbers, Tiro Bangla headings.
 
 ## Roadmap (do in this order, one small step at a time)
