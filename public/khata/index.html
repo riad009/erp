@@ -4784,7 +4784,7 @@ function getDB(){
   // অবশিষ্ট = খরচ − জমা, filled in by itself until it is typed by hand
   function autoBaki(jEl, kEl, bEl){
     let own = false;
-    const fill = () => { if(own) return; const j = parseNum(jEl.value), k = parseNum(kEl.value); if(isNaN(j) && isNaN(k)) return; bEl.value = bn((isNaN(k)?0:k) - (isNaN(j)?0:j)); };
+    const fill = () => { if(own) return; const j = parseNum(jEl.value), k = parseNum(kEl.value); if(isNaN(j) && isNaN(k)) return; bEl.value = bn((isNaN(k)?0:k) - (isNaN(j)?0:j)); bEl.dispatchEvent(new Event('change')); };
     jEl.addEventListener('input', fill); kEl.addEventListener('input', fill);
     bEl.addEventListener('input', () => { own = bEl.value.trim() !== ''; });
   }
@@ -4814,6 +4814,7 @@ function getDB(){
     $('npNo').onclick = close;
     if(typeof attachBanglish === 'function'){ attachBanglish($('npName')); attachBanglish($('npAddr')); }
     autoBaki($('npJoma'), $('npKhoroch'), $('npBaki'));
+    if(typeof attachWords === 'function') ['npBaki','npJoma','npKhoroch'].forEach(id => attachWords($(id)));   // কথায়: … টাকা মাত্র
     const msg = (t, el) => { $('npMsg').textContent = t; if(el) el.focus(); };
     const save1 = () => {
       const name = $('npName').value.trim(), addr = $('npAddr').value.trim();
