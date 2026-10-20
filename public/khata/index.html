@@ -870,9 +870,11 @@ body.memo-open{overflow:hidden}
 #lhost .cm-acts .lbtn:not(.solid),#ledger .cm-acts .lbtn:not(.solid){background:#FBF4DF!important;color:#7A4A1E!important;border-color:#7A4A1E!important}
 #lhost .cmform .lhint{color:#FBF4DF;text-align:center;margin-top:8px;font-size:13px}
 #lhost .cmform .lhint.err{color:#FFD1D1;font-weight:700}
-.cm-newname{display:flex;align-items:center;gap:6px;width:100%;flex-wrap:wrap}
-.cm-newname #fNewParty{flex:1 1 0;min-width:0;width:auto}
-.cm-newname .cm-newloc{flex:1 1 100%;min-width:0}
+.cm-newname{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px;width:100%}
+.cm-newname .nf{display:flex;flex-direction:column;gap:4px;min-width:0}
+.cm-newname .nfl{font-size:12.5px;font-weight:700;opacity:.8}
+.cm-newname .nfb{display:flex;align-items:center;gap:6px;min-width:0}
+.cm-newname .nfb input{flex:1 1 0;min-width:0;width:auto}
 .cm-newname[hidden]{display:none!important}
 #lhost select#fParty[hidden]{display:none!important}
 .cm-back{flex:none;width:30px;height:30px;border-radius:50%;background:#7A4A1E;color:#fff;font-size:14px;padding:0;line-height:1}
@@ -2788,6 +2790,14 @@ html body #stock .ssub .st[aria-selected="false"]:hover{filter:brightness(.97)}
 #stock .qlist.qtab .qdone{font-size:13px;font-weight:700;color:#1F7A3D}
 .tg.tg-wait{display:inline-block;margin-top:3px;padding:1px 8px;border-radius:999px;background:#FDECEE;color:#B3122B;font-weight:700}
 .m-paynote.warn{background:#FFF5F6;color:#B3122B;border-color:#F3A9B5}
+/* নতুন পার্টি: নাম আর লোকেশন — two separate half-width boxes */
+.cmform.cmd .cm-field.isnew > span{display:none!important}
+.cmform.cmd .cm-field.isnew > b{border:0!important;background:transparent!important;box-shadow:none!important;padding:0!important;min-height:0!important}
+.cmform.cmd .cm-newname .nfl{display:block;background:none!important;color:#475467!important;padding:0!important;font-size:13.5px!important;font-weight:700}
+.cmform.cmd .cm-newname .nfb{background:#fff!important;border:1.5px solid #C7D6EB;border-radius:12px;min-height:44px;padding:0 6px 0 10px!important}
+.cmform.cmd .cm-newname .nfb:focus-within{border-color:#1F4AA8;box-shadow:0 0 0 3px rgba(31,74,168,.12)}
+.cmform:not(.cmd) .cm-newname .nfl{background:none!important;color:var(--br)!important;padding:4px 0 0!important;min-width:0!important;font-size:12px!important}
+.cmform:not(.cmd) .cm-newname .nfb{background:none!important;color:inherit!important;padding:0!important;min-width:0!important;border-bottom:1.5px dotted var(--br)}
 </style>
 </head>
 <body>
@@ -4486,7 +4496,7 @@ function getDB(){
           </div>
           <div class="cm-field cm-name"><span>নাম</span><b class="cm-sel">
             <select id="fParty" aria-label="পার্টি"><option value="" ${form.preParty?'':'selected'} disabled>পার্টি বাছাই করুন</option>${[...accs].sort((x,y)=>x.name.localeCompare(y.name,'bn')).map(a=>`<option value="${a.id}" ${a.id===form.preParty?'selected':''}>${esc(pnm(a))}</option>`).join('')}<option value="__new">＋ নতুন পার্টি</option></select>
-            <span class="cm-newname" id="fNewWrap" hidden><input id="fNewParty" autocomplete="off" placeholder="নতুন পার্টির নাম লিখুন"><button type="button" class="cm-back" id="fBackList" title="তালিকা থেকে বাছুন">✕</button><input id="fNewLoc" class="cm-newloc" autocomplete="off" placeholder="📍 লোকেশন (যেমন: নবাবপুর)"></span></b></div>
+            <span class="cm-newname" id="fNewWrap" hidden><label class="nf"><span class="nfl">পার্টির নাম</span><span class="nfb"><input id="fNewParty" autocomplete="off"><button type="button" class="cm-back" id="fBackList" title="তালিকা থেকে বাছুন">✕</button></span></label><label class="nf"><span class="nfl">লোকেশন</span><span class="nfb"><input id="fNewLoc" class="cm-newloc" autocomplete="off"></span></label></span></b></div>
           ${isD ? `<div class="cmd-pstep"><p>👆 আগে পার্টি বাছাই করুন — তারপর ঠিকানা, মাল আর দর দেওয়ার ঘর খুলবে।</p><button type="button" class="cmd-newp" id="cmdNewP">＋ নতুন পার্টি তৈরি করুন</button></div>` : ''}
           <div class="cm-field cm-addrf"><span>ঠিকানা</span><b class="cm-sel"><input id="fAddr" autocomplete="off" placeholder="ঠিকানা লিখুন" value="${esc((party&&party.address)||'')}"></b></div>
 
@@ -4551,7 +4561,7 @@ function getDB(){
         ${form.mode==='sale' ? `<label class="full">পার্টি
             <select id="fParty" class="mtype"><option value="" ${form.preParty?'':'selected'} disabled>পার্টি বাছাই করুন</option>${[...accs].sort((x,y)=>x.name.localeCompare(y.name,'bn')).map(a=>`<option value="${a.id}" ${a.id===form.preParty?'selected':''}>${esc(pnm(a))}</option>`).join('')}<option value="__new">＋ নতুন পার্টি</option></select></label>
           <label class="full" id="fNewWrap" hidden>নতুন পার্টির নাম<input id="fNewParty" autocomplete="off"></label>
-          <label class="full" id="fNewLocWrap" hidden>📍 লোকেশন<input id="fNewLoc" autocomplete="off" placeholder="যেমন: নবাবপুর"></label>` : ''}
+          <label class="full" id="fNewLocWrap" hidden>📍 লোকেশন<input id="fNewLoc" autocomplete="off"></label>` : ''}
         ${editing ? `<label class="full">তারিখ<input type="date" id="fEDate" value="${LD()}"></label>` : ''}
         ${ed && entryKg(ed) > 0 ? `<div class="stline ${ed.status==='confirmed'?'ok':''}">${ed.status==='confirmed'
             ? `<span>✓ স্টক থেকে বাদ হয়েছে (${bn(entryKg(ed))} কেজি)</span>`
@@ -4986,7 +4996,7 @@ function getDB(){
         ? `<b>✅ মেমো সেভ হয়েছে · ⏳ মাল এখনো যায়নি</b><span>${esc(pnm(acc))} · মেমো #${toBn(target.memoNo||'')} · স্টকে মাল আসলে নিজে থেকে যাবে</span>`
         : `<b>✅ মেমো করা হয়ে গেছে · 🚚 মাল পাঠানো হয়েছে</b><span>${esc(pnm(acc))} · মেমো #${toBn(target.memoNo||'')} · ${bn(target.credit)} ৳ · স্টক থেকে বাদ হলো</span>`, 6000);
     };
-    if($('fParty')) $('fParty').addEventListener('change', ()=>{ const nw = $('fParty').value==='__new'; $('fNewWrap').hidden = !nw; if($('fNewLocWrap')) $('fNewLocWrap').hidden = !nw; if($('fParty').closest('.cm-sel')) $('fParty').hidden = nw; if(nw) $('fNewParty').focus(); });
+    if($('fParty')) $('fParty').addEventListener('change', ()=>{ const nw = $('fParty').value==='__new'; $('fNewWrap').hidden = !nw; { const fld = $('fParty').closest('.cm-field'); if(fld) fld.classList.toggle('isnew', nw); } if($('fNewLocWrap')) $('fNewLocWrap').hidden = !nw; if($('fParty').closest('.cm-sel')) $('fParty').hidden = nw; if(nw) $('fNewParty').focus(); });
     if($('fBackList')) $('fBackList').onclick = ()=>{ const sel = $('fParty'); sel.value = curId || (sel.options[0]||{}).value; sel.hidden = false; $('fNewWrap').hidden = true; $('fNewParty').value = ''; if($('fNewLoc')) $('fNewLoc').value = ''; if($('fNewLocWrap')) $('fNewLocWrap').hidden = true; sel.dispatchEvent(new Event('change')); };
     if($('fToSale')) $('fToSale').onclick = ()=>window.__ledger.newMemo(accRef.id);
     if($('fEDate')) $('fEDate').addEventListener('change', ev=>{ if(ev.target.value) lDate = ev.target.value; });
