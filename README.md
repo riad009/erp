@@ -5,7 +5,7 @@ Bangla bookkeeping app (স্টক, দৈনিক, মেমো, খতি�
 ## Run
 ```bash
 npm install
-cp .env.example .env.local   # put your MONGO_URI + APP_PASSWORD in it
+cp .env.example .env.local   # put your MONGO_URI in it
 npm run dev
 # open http://localhost:3000
 ```
@@ -17,14 +17,15 @@ All data is saved in MongoDB (database `khata`), so every phone / computer sees 
 - If the database can't be reached, the app keeps working in that browser only (as before).
 
 ## Deploy (Vercel)
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Friad009%2Ferp&env=MONGO_URI,APP_PASSWORD&envDescription=MONGO_URI%3A%20your%20MongoDB%20Atlas%20connection%20string.%20APP_PASSWORD%3A%20password%20for%20the%20site.)
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Friad009%2Ferp&env=MONGO_URI&envDescription=Your%20MongoDB%20Atlas%20connection%20string.)
 
 1. MongoDB Atlas → **Network Access** → Add IP Address → **Allow access from anywhere** (`0.0.0.0/0`). Vercel has no fixed IP.
 2. Click the button above (or vercel.com → Add New → Project → import `riad009/erp`).
 3. Fill in the Environment Variables:
    - `MONGO_URI` = `mongodb+srv://USER:PASSWORD@cluster0.xxxxx.mongodb.net/`
-   - `APP_PASSWORD` = a password for the site
    - (optional) `MONGO_DB` — database name, default `khata`
 4. Deploy. Then:
-   - open `https://<your-site>/api/db` → enter the password → should show `"ok": true` (database connected)
+   - open `https://<your-site>/api/db` → should show `"ok": true` (database connected)
    - open `https://<your-site>/import.html` → choose your `backup.json` once to load the old data
+
+> ⚠️ The site has **no password** (owner's choice): anyone with the link can see and change the data. Keep the link private.

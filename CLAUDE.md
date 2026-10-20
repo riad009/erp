@@ -19,7 +19,7 @@ Tabs: স্টক · দৈনিক · মেমো · খতিয়ান �
 ## Data
 - **MongoDB** via `app/api/db/route.ts` (+ `lib/mongo.ts`, env `MONGO_URI`, `MONGO_DB` default `khata`). Each app collection (`days`, `ledgers`, `companies`, `khoroch`, `settings`, `amdani`) is one Mongo collection; a doc is `{_id: id, data}`.
 - Browser side: `public/khata/db.js` gives the same small API the app had on claude.ai (`collection(n).get()`, `doc('col/id').get()/set()/delete()`); `getDB()` in index.html uses it. On an empty database it first uploads that browser's localStorage. If the server can't be reached → `null` → app works from localStorage only.
-- `proxy.ts`: whole site behind Basic Auth when `APP_PASSWORD` is set (in production the API refuses to run without it).
+- **No password** on the site (owner removed it on purpose) — anyone with the link can read/write. Don't add one back unless he asks.
 - localStorage is still written too (cache / offline). Keys: `kg-khata-days-v1` (stock days `[{id:'YYYY-MM-DD', opening, due, entries[], outs[]}]`),
   `kg-khata-ledger-v1` (parties `[{id, name, address, opening, entries[]}]`; memo entry = `{id, memoNo, date, credit, debit, kg, items[{t,kg,rate}], picks[{item,cat,t,kg,cost}], status:'pending'|'confirmed', confirmedOn, labour…}`),
   `kg-khata-company-v1` (companies + চালান/রসিদ), `kg-khata-khoroch-v1` (`{date: [{id,desc,amt}]}`), `kg-khata-sabek-v1`,
@@ -41,5 +41,5 @@ Tabs: স্টক · দৈনিক · মেমো · খতিয়ান �
 1. ✅ Run the existing app inside Next.js (this repo).
 2. Backup / restore buttons inside the app (JSON download/upload).
 3. ✅ Online database (MongoDB instead of Supabase) → data on every device.
-4. Login (owner / staff roles). Now: one shared password (`APP_PASSWORD`).
+4. Login (owner / staff roles).
 5. Move tabs one by one into React components under `app/` (start with বাকি লিস্ট — smallest), sharing one data layer.
