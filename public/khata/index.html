@@ -2843,6 +2843,23 @@ html body #stock .ssub .st[aria-selected="false"]:hover{filter:brightness(.97)}
 @media (max-width: 700px){ #ledger .lt .ldelrow{position:static;display:block;width:30px;height:26px;margin-top:4px;font-size:13px} }
 .nz.np .npsl{display:grid;grid-template-columns:96px minmax(0,1fr);gap:10px}
 .nz.np #npSl{text-align:center;font-weight:700}
+/* বাকি লিস্ট: 3 cards side by side on a computer */
+#baki .bk-cols{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;align-items:start}
+#baki .bk-cols:not(.multi){grid-template-columns:minmax(0,1fr)}
+#baki .bk-cols .bk-tw{margin:0}
+#baki .bk-cols .bk-t td.nm b{font-size:16px}
+#baki .bk-cols .bk-t td.n{font-size:17px}
+#baki .bk-cols .bk-t td.n i{margin-left:4px}
+#baki .bk-cols .bk-t{width:100%}
+#baki .bk-cols .bk-t td.n{white-space:normal;line-height:1.25}
+#baki .bk-tot{display:flex;justify-content:space-between;align-items:center;margin-top:10px;padding:10px 14px;background:#EAF0FB;border:1.5px solid var(--blue);border-radius:10px;font-family:"Tiro Bangla",serif;font-weight:700;font-size:16px}
+#baki .bk-tot b{font-family:"Baloo Da 2","Noto Sans Bengali",sans-serif;font-size:21px;color:var(--red)}
+#baki .bk-tot b.g{color:#1F7A3D}
+@media (max-width: 900px){
+  #baki .bk-cols{grid-template-columns:minmax(0,1fr);gap:0}
+  #baki .bk-cols.multi .bk-tw + .bk-tw thead{display:none}
+  #baki .bk-cols.multi .bk-tw + .bk-tw{margin-top:-1px}
+}
 </style>
 </head>
 <body>
@@ -6744,21 +6761,28 @@ setTimeout(() => { try{ if(window.__ledger && window.__ledger.autoSend) window._
           ${[['added','যেভাবে যোগ করা'],['bal','বেশি টাকা আগে'],['name','নাম অনুযায়ী'],['last','নতুন লেনদেন আগে']].map(([k,l]) => `<button type="button" data-s="${k}" aria-pressed="${view.sort===k}">${l}</button>`).join('')}
         </div>
       </div>
-      <div class="bk-tw">
-        <table class="bk-t">
-          <thead><tr><th class="c">ক্রমিক</th><th>পার্টির নাম</th><th class="d">শেষ লেনদেন</th><th class="n">বাকি (৳)</th></tr></thead>
-          <tbody>
-            ${list.length ? list.map((x, i) => `
-            <tr data-id="${x.a.id}" tabindex="0" title="খতিয়ান খুলুন">
-              <td class="c">${toBn(i+1)}</td>
-              <td class="nm"><b>${esc(x.a.name)}</b>${x.a.address ? `<small>${esc(x.a.address)}</small>` : ''}<small class="ld">শেষ লেনদেন: ${shortD(x.last)}</small></td>
-              <td class="d">${shortD(x.last)}</td>
-              <td class="n ${x.bal<0?'g':''}">${amt(x.bal)}<i aria-hidden="true">›</i></td>
-            </tr>`).join('') : `<tr class="none"><td colspan="4" class="nn">${view.q ? 'এই নামে কোনো পার্টি নেই।' : view.f === 'adv' ? 'কেউ অগ্রিম দেয়নি।' : 'কারো কাছে বাকি নেই।'}</td></tr>`}
-          </tbody>
-          ${list.length ? `<tfoot><tr><td colspan="2">মোট (${toBn(list.length)} জন)</td><td class="d"></td><td class="n ${listTot<0?'g':''}">${amt(listTot)}</td></tr></tfoot>` : ''}
-        </table>
-      </div>
+      ${(() => {
+        // 3 cards side by side (১–১৪ | ১৫–২৮ | ২৯–…), numbered down each card; one list on a phone
+        const empty = `<tr class="none"><td colspan="3" class="nn">${view.q ? 'এই নামে কোনো পার্টি নেই।' : view.f === 'adv' ? 'কেউ অগ্রিম দেয়নি।' : 'কারো কাছে বাকি নেই।'}</td></tr>`;
+        const per = Math.max(1, Math.ceil(list.length / 3)), parts = [];
+        for(let k = 0; k < list.length; k += per) parts.push(list.slice(k, k + per).map((x, j) => ({x, n:k + j + 1})));
+        if(!parts.length) parts.push([]);
+        return `<div class="bk-cols ${parts.length > 1 ? 'multi' : ''}">${parts.map(part => `
+        <div class="bk-tw">
+          <table class="bk-t">
+            <thead><tr><th class="c">ক্রমিক</th><th>পার্টির নাম</th><th class="n">বাকি (৳)</th></tr></thead>
+            <tbody>
+              ${part.length ? part.map(({x, n}) => `
+              <tr data-id="${x.a.id}" tabindex="0" title="খতিয়ান খুলুন">
+                <td class="c">${toBn(n)}</td>
+                <td class="nm"><b>${esc(x.a.name)}</b>${x.a.address ? `<small>${esc(x.a.address)}</small>` : ''}</td>
+                <td class="n ${x.bal<0?'g':''}">${amt(x.bal)}<i aria-hidden="true">›</i></td>
+              </tr>`).join('') : empty}
+            </tbody>
+          </table>
+        </div>`).join('')}</div>
+        ${list.length ? `<div class="bk-tot"><span>মোট (${toBn(list.length)} জন)</span><b class="${listTot<0?'g':''}">${amt(listTot)}</b></div>` : ''}`;
+      })()}
       <p class="bk-note">লাইনে চাপ দিলে ওই পার্টির খতিয়ান খুলবে।</p>
       <button type="button" class="bk-pdf" id="bkPdf" ${list.length ? '' : 'disabled'}>⬇ বাকি লিস্ট PDF</button>`;
 
