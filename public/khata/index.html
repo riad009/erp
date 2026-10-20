@@ -2804,6 +2804,7 @@ html body #stock .ssub .st[aria-selected="false"]:hover{filter:brightness(.97)}
 .nz.np .np3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
 .nz.np .np3 input{padding-left:8px;padding-right:8px}
 #ledger .lform .g3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-bottom:8px}
+#ledger tr.open .dt small.od{display:block;margin-top:2px}
 </style>
 </head>
 <body>
@@ -4559,7 +4560,7 @@ function getDB(){
           <label>খরচ<input id="oKhoroch" class="num" inputmode="decimal" value="${acc.openKhoroch?bn(acc.openKhoroch):''}"></label>
           <label>অবশিষ্ট<input id="oAmt" class="num" inputmode="decimal" value="${acc.opening?bn(acc.opening):''}"></label>
         </div>
-        <label class="full">নোট<input id="oNote" value="${esc(acc.openingNote||'')}"></label>
+        <div class="g2"><label>খাতার তারিখ<input type="date" id="oDate" value="${acc.openDate||''}"></label><label>নোট<input id="oNote" value="${esc(acc.openingNote||'')}"></label></div>
         <div class="lacts"><button class="lbtn solid" id="fSave">সেভ করুন</button><button class="lbtn" id="fCancel">বাতিল</button></div>
       </div>`;
     } else {
@@ -4637,7 +4638,7 @@ function getDB(){
               ${balCell(bal)}
             </tr>`).join('')}
             <tr class="r open ${form.mode==='opening'?'sel':''}" data-open="1">
-              <td class="dt"><b>আগের জের</b><small>${esc(acc.openingNote||'শুরুর বাকি')}</small></td>
+              <td class="dt"><b>আগের জের</b><small>${esc(acc.openingNote||'শুরুর বাকি')}</small>${acc.openDate ? `<small class="od">খাতার তারিখ: ${fmtDate(acc.openDate)}</small>` : ''}${(acc.openDate || acc.openJoma || acc.openKhoroch) && acc.created ? `<small class="od">যোগ করা: ${fmtDate(isoOfL(new Date(acc.created)))}</small>` : ''}</td>
               <td class="n">${acc.openJoma ? bn(acc.openJoma) : ''}</td><td class="n">${acc.openKhoroch ? bn(acc.openKhoroch) : ''}</td>${balCell(Number(acc.opening)||0)}
             </tr>
           </tbody>
@@ -4704,6 +4705,7 @@ function getDB(){
       <label>নাম<input id="npName" autocomplete="off"></label>
       <label>ঠিকানা<input id="npAddr" autocomplete="off"></label>
       <p class="npsub">পুরনো খাতার হিসাব <small>(না থাকলে খালি রাখুন)</small></p>
+      <label>খাতার তারিখ<input type="date" id="npDate"></label>
       <div class="np3">
         <label>জমা<input id="npJoma" class="num" inputmode="decimal"></label>
         <label>খরচ<input id="npKhoroch" class="num" inputmode="decimal"></label>
@@ -4731,13 +4733,14 @@ function getDB(){
       if(addr) a.address = addr;
       if(j > 0) a.openJoma = j;
       if(k > 0) a.openKhoroch = k;
+      if($('npDate').value) a.openDate = $('npDate').value;
       if(j > 0 || k > 0 || b) a.openingNote = 'পুরনো খাতা থেকে';
       accs.push(a); curId = a.id; save(a);
       try{ localStorage.setItem(LSCUR, curId); }catch(_){}
       close(); accMode = null; render();
     };
     $('npOk').onclick = save1;
-    const order = ['npName','npAddr','npJoma','npKhoroch','npBaki'].map($);
+    const order = ['npName','npAddr','npDate','npJoma','npKhoroch','npBaki'].map($);
     order.forEach((el, i) => el.addEventListener('keydown', e => { if(e.key === 'Enter'){ e.preventDefault(); if(order[i+1]) order[i+1].focus(); else save1(); } }));
     setTimeout(() => $('npName').focus(), 30);
   }
@@ -4771,6 +4774,7 @@ function getDB(){
         acc.opening = isNaN(n)?0:n; acc.openingNote = $('oNote').value.trim();
         if(j > 0) acc.openJoma = j; else delete acc.openJoma;
         if(k > 0) acc.openKhoroch = k; else delete acc.openKhoroch;
+        if($('oDate').value) acc.openDate = $('oDate').value; else delete acc.openDate;
         save(acc); reset();
       };
       autoBaki($('oJoma'), $('oKhoroch'), $('oAmt'));

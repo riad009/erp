@@ -24,7 +24,7 @@ Tabs: স্টক · দৈনিক · মেমো · খতিয়ান �
 - Browser side: `public/khata/db.js` gives the same small API the app had on claude.ai (`collection(n).get()`, `doc('col/id').get()/set()/delete()`); `getDB()` in index.html uses it. On an empty database it first uploads that browser's localStorage. If the server can't be reached → `null` → app works from localStorage only.
 - **No password** on the site (owner removed it on purpose) — anyone with the link can read/write. Don't add one back unless he asks.
 - localStorage is still written too (cache / offline). Keys: `kg-khata-days-v1` (stock days `[{id:'YYYY-MM-DD', opening, due, entries[], outs[]}]`),
-  `kg-khata-ledger-v1` (parties `[{id, name, address, opening, openJoma, openKhoroch, entries[]}]` — opening = আগের জের (অবশিষ্ট), openJoma/openKhoroch = old paper-book জমা/খরচ, added into the totals; memo entry = `{id, memoNo, date, credit, debit, kg, items[{t,kg,rate}], picks[{item,cat,t,kg,cost}], status:'pending'|'confirmed', confirmedOn, labour…}`),
+  `kg-khata-ledger-v1` (parties `[{id, name, address, opening, openJoma, openKhoroch, entries[]}]` — opening = আগের জের (অবশিষ্ট), openJoma/openKhoroch = old paper-book জমা/খরচ, added into the totals; openDate = date on the paper khatian; memo entry = `{id, memoNo, date, credit, debit, kg, items[{t,kg,rate}], picks[{item,cat,t,kg,cost}], status:'pending'|'confirmed', confirmedOn, labour…}`),
   `kg-khata-company-v1` (companies + চালান/রসিদ), `kg-khata-khoroch-v1` (`{date: [{id,desc,amt}]}`), `kg-khata-sabek-v1`,
   `kg-khata-cats-v1` (মার্কা → sizes `[{id,name,tone,items[{id,h,w,open,cost}]}]`), `kg-khata-rates`, `kg-khata-labour-rate`, UI prefs `kg-khata-*`.
 - Backup file (`backup.json`, kept out of git) → `/import.html` replaces the whole database with it.
