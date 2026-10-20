@@ -2814,6 +2814,10 @@ html body #stock .ssub .st[aria-selected="false"]:hover{filter:brightness(.97)}
 #stock .add.add2 .xrow .xdel{grid-column:4;justify-self:start;width:46px!important;height:46px;border-radius:10px;background:#fff!important;color:#B3122B!important;border:1.5px solid #E8A3AE!important;font-size:20px;padding:0!important;box-shadow:none!important}
 #stock .add.add2 .xmore{grid-column:1 / -1;background:#fff!important;color:#2E7D4F!important;border:1.5px dashed #8CC59A!important;border-radius:10px;padding:10px;font-family:"Noto Sans Bengali",sans-serif;font-weight:700;font-size:15px;box-shadow:none!important}
 @media (max-width: 700px){ #stock .add.add2 .xrow{grid-template-columns:minmax(0,1fr) 46px;gap:8px} #stock .add.add2 .xrow .pkrow{grid-column:1 / -1} #stock .add.add2 .xrow .xkg{grid-column:1} #stock .add.add2 .xrow .xdel{grid-column:2} }
+.mrow.mrow2 .mst .mdel{margin-left:auto;font-family:"Noto Sans Bengali",sans-serif;font-size:13px;font-weight:700;color:#B3122B;background:#fff;border:1.5px solid #E8A3AE;border-radius:999px;padding:3px 10px;cursor:pointer}
+.mrow.mrow2 .mst .mdel:hover{background:#FDE8EB}
+.m-acts:has(#mDel){grid-template-columns:repeat(4,minmax(0,1fr))}
+.mbtn.del{background:#fff!important;color:#B3122B!important;border:1.5px solid #E8A3AE}
 </style>
 </head>
 <body>
@@ -5636,6 +5640,17 @@ function getDB(){
     accs: () => accs, kh: () => kh, compute, sabekInfo, dayTotal, khTotal,
     newDay: (oldD, newD) => { if(aDate === oldD) aDate = newD; render(); },
     saveAcc: a => save(a),
+    // delete one memo / জমা from a party's খতিয়ান (its মাল goes back to স্টক by itself)
+    deleteEntry: (aid, eid) => {
+      const a = accs.find(x => x.id === aid); if(!a) return false;
+      const n = (a.entries||[]).length;
+      a.entries = (a.entries||[]).filter(x => x.id !== eid);
+      if(a.entries.length === n) return false;
+      save(a); render();
+      if(window.__stock) window.__stock.render();
+      if(window.__dashRender) window.__dashRender();
+      return true;
+    },
     newMemo: (aid) => {
       if(aid && accs.find(a=>a.id===aid)) curId = aid;
       if(!curId && accs[0]) curId = accs[0].id;
@@ -6201,6 +6216,19 @@ document.addEventListener('input', e=>{
   }
 
   let msheet = null;
+  // 🗑 মেমো ডিলিট করুন — asks first
+  async function delMemo(aid, eid){
+    const a = L() && L().accs().find(x => x.id === aid), e = a && (a.entries||[]).find(x => x.id === eid);
+    if(!e) return;
+    const sale = Number(e.credit) > 0, amt = sale ? e.credit : e.debit;
+    const ok = await kDialog({icon:'🗑', tone:'warn', title:`মেমো #${toBn(e.memoNo||'—')} ডিলিট করবেন?`,
+      html:`<p><b>${esc(pnm(a))}</b> · ${bn(amt)} ৳</p><p class="kd-note">${sale ? 'এই মেমোর মাল আবার স্টকে ফিরে যাবে, আর পার্টির বাকি থেকে টাকাটা বাদ যাবে।' : 'এই টাকা জমাটা বাদ যাবে — পার্টির বাকি বাড়বে।'} পরে ফেরানো যাবে না।</p>`,
+      ok:'হ্যাঁ, ডিলিট করুন', cancel:'না'});
+    if(!ok) return;
+    if(!L().deleteEntry(aid, eid)) return;
+    closeMemo(); renderMemo();
+    if(typeof kToast === 'function') kToast(`<b>🗑 মেমো #${toBn(e.memoNo||'—')} ডিলিট হয়েছে</b><span>${esc(pnm(a))} · ${bn(amt)} ৳</span>`, 5000);
+  }
   function closeMemo(){ if(msheet){ msheet.remove(); msheet = null; document.body.classList.remove('memo-open'); } }
   window.showMemo = function(aid, eid){
     if(!L()) return;
@@ -6216,6 +6244,7 @@ document.addEventListener('input', e=>{
         <div class="m-acts">
           <button type="button" class="mbtn" id="mEdit">✎ বদলান</button>
           <button type="button" class="mbtn" id="mPdf">⬇ PDF</button>
+          <button type="button" class="mbtn del" id="mDel">🗑 ডিলিট</button>
           <button type="button" class="mbtn ghost" id="mClose">বন্ধ</button>
         </div>
       </div>`;
@@ -6223,6 +6252,7 @@ document.addEventListener('input', e=>{
     document.body.classList.add('memo-open');
     msheet.addEventListener('click', ev => { if(ev.target === msheet) closeMemo(); });
     msheet.querySelector('#mClose').onclick = closeMemo;
+    msheet.querySelector('#mDel').onclick = () => delMemo(aid, eid);
     msheet.querySelector('#mX').onclick = closeMemo;
     msheet.querySelectorAll('[data-mv]').forEach(b => b.onclick = () => { if(window.__setMemoStyle) window.__setMemoStyle(b.dataset.mv); window.showMemo(aid, eid); });
     if(!window.__memoEsc){ window.__memoEsc = true; document.addEventListener('keydown', e => { if(e.key === 'Escape' && document.querySelector('.msheet-bg')) closeMemo(); }); }
@@ -6311,7 +6341,7 @@ document.addEventListener('input', e=>{
               : `<span class="pl">কেনা <b>${fx(q.cost)}</b> → বিক্রি <b>${fx(q.sell)}</b> <small>৳/কেজি</small></span><b class="pf ${q.profit < 0 ? 'neg' : ''}">${q.profit < 0 ? 'লস' : 'লাভ'} ${bn(Math.abs(Math.round(q.profit)))} ৳</b>${q.missing > 0 ? `<i>${bn(q.missing)} কেজির দর নেই</i>` : ''}`)}</span>
             <span class="mst">${k ? (x.e.status === 'confirmed'
               ? ''
-              : '<em class="mshort" title="স্টকে এই মেমোর মাল কম আছে">⏳ স্টকে কম — মাল আসলে নিজে যাবে</em>') : (s ? '' : '<em class="gst pay">💵 টাকা জমা</em>')}</span>
+              : '<em class="mshort" title="স্টকে এই মেমোর মাল কম আছে">⏳ স্টকে কম — মাল আসলে নিজে যাবে</em>') : (s ? '' : '<em class="gst pay">💵 টাকা জমা</em>')}<span class="mdel" role="button" tabindex="0" title="মেমো ডিলিট করুন">🗑 মুছুন</span></span>
             <span class="ma ${s?'r':'b'}">${bn(s ? x.e.credit : x.e.debit)}</span>
           </button></li>`; }).join('')}</ol>`).join('')
       : `<p class="dnone">এই সময়ে কোনো মেমো নেই।</p>`}`;
@@ -6329,6 +6359,7 @@ document.addEventListener('input', e=>{
     qi.oninput = () => { mst.q = qi.value; const pos = qi.selectionStart; renderMemo(); const n = document.getElementById('mQ'); n.focus(); try{ n.setSelectionRange(pos,pos); }catch(_){} };
     if(focusQ) qi.focus();
     mroot.querySelectorAll('.mrow').forEach(b => b.onclick = async ev => {
+      if(ev.target.closest && ev.target.closest('.mdel')){ ev.preventDefault(); ev.stopPropagation(); return delMemo(b.dataset.a, b.dataset.e); }
       const snd = ev.target.closest && ev.target.closest('.msend');
       if(!snd) return window.showMemo(b.dataset.a, b.dataset.e);
       // 🚚 মাল পাঠান right from the list (one tap)
