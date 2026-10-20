@@ -2837,6 +2837,10 @@ html body #stock .ssub .st[aria-selected="false"]:hover{filter:brightness(.97)}
 #amdani .kmiscsum .arow2{grid-template-columns:2em auto minmax(0,1fr)}
 #amdani .kmiscsum .arow2 .nm{white-space:normal;overflow:visible}
 #stock .d-mal .coilno{display:block;font-size:12.5px;color:#475467;font-weight:600}
+#ledger .lt td.dt{position:relative}
+#ledger .lt .ldelrow{position:absolute;top:8px;right:8px;width:34px;height:34px;padding:0;border-radius:8px;background:#fff;border:1.5px solid #E8A3AE;color:#B3122B;font-size:15px;line-height:1;cursor:pointer}
+#ledger .lt .ldelrow:hover{background:#FDE8EB}
+@media (max-width: 700px){ #ledger .lt .ldelrow{position:static;display:block;width:30px;height:26px;margin-top:4px;font-size:13px} }
 </style>
 </head>
 <body>
@@ -4696,7 +4700,7 @@ function getDB(){
           <tbody>
             ${[...c.rows].reverse().map(({e,bal})=>`
             <tr class="r ${form.editId===e.id?'sel':''} ${flashId===e.id?'flash':''}" data-id="${e.id}" id="r-${e.id}">
-              <td class="dt"><b>${fmtDate(e.date)}</b>${typeTag(e)}</td>
+              <td class="dt"><b>${fmtDate(e.date)}</b>${typeTag(e)}<button type="button" class="ldelrow" aria-label="মুছুন" title="মুছুন">🗑</button></td>
               <td class="n">${e.debit?bn(e.debit):''}</td>
               <td class="n">${e.credit?bn(e.credit):''}</td>
               ${balCell(bal)}
@@ -4838,7 +4842,21 @@ function getDB(){
     });
     if($('fCfm')) $('fCfm').onclick = async ()=>{ if(window.__canSend && !(await window.__canSend(acc.id, form.editId))) return; const e = acc.entries.find(x=>x.id===form.editId); setStatus(e,'confirmed'); restoreDate(); form = {mode:'new', type:form.type, editId:null}; render(); };
     if($('fUnc')) $('fUnc').onclick = ()=>{ const e = acc.entries.find(x=>x.id===form.editId); setStatus(e,'pending'); restoreDate(); form = {mode:'new', type:form.type, editId:null}; render(); };
-    document.querySelectorAll('.lt tr.r').forEach(tr=>tr.onclick=()=>{
+    document.querySelectorAll('.lt tr.r').forEach(tr=>tr.onclick=async ev=>{
+      if(ev.target.closest && ev.target.closest('.ldelrow')){   // 🗑 on the line: delete it (asks first)
+        ev.stopPropagation();
+        const e = acc.entries.find(x=>x.id===tr.dataset.id); if(!e) return;
+        const sale = Number(e.credit) > 0, amt = sale ? e.credit : e.debit;
+        const ok = await kDialog({icon:'🗑', tone:'warn', title: sale ? `মেমো #${toBn(e.memoNo||'—')} ডিলিট করবেন?` : 'এই জমা ডিলিট করবেন?',
+          html:`<p><b>${esc(pnm(acc))}</b> · ${fmtDate(e.date)} · ${bn(amt)} ৳</p><p class="kd-note">${sale ? 'এই মেমোর মাল আবার স্টকে ফিরে যাবে, আর বাকি থেকে টাকাটা বাদ যাবে।' : 'এই টাকা জমাটা বাদ যাবে — বাকি বাড়বে।'} পরে ফেরানো যাবে না।</p>`,
+          ok:'হ্যাঁ, ডিলিট করুন', cancel:'না'});
+        if(!ok) return;
+        if(form.editId === e.id) form = {mode:'new', type:form.type, editId:null};
+        acc.entries = acc.entries.filter(x=>x.id!==e.id); save(acc); keepY = window.scrollY; render();
+        if(window.__dashRender) window.__dashRender();
+        if(typeof kToast === 'function') kToast(`<b>🗑 ${sale ? 'মেমো' : 'জমা'} ডিলিট হয়েছে</b><span>${esc(pnm(acc))} · ${bn(amt)} ৳</span>`, 5000);
+        return;
+      }
       if(tr.dataset.open){ form = {mode:'opening', type:form.type, editId:null}; }
       else { if(window.showMemo){ window.showMemo(acc.id, tr.dataset.id); return; } const e = acc.entries.find(x=>x.id===tr.dataset.id); if(form.mode!=='edit') lPrevDate = LD(); lDate = e.date; form = {mode:'edit', type: e.credit?'credit':'debit', editId:e.id}; }
       keepY = window.scrollY; render();
