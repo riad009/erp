@@ -1,0 +1,6 @@
+node_modules
+.next
+.env*
+!.env.example
+public/data/backup.json
+.claude
