@@ -12,6 +12,7 @@ npm run dev
 
 ## Data — MongoDB
 All data is saved in MongoDB (database `khata`), so every phone / computer sees the same khata.
+Collections: `stock_markas`, `stock_sizes`, `stock_days`, `parties`, `companies`, `expenses`, `cash_opening`, `settings` — one record per item.
 - The first time the app opens on an empty database, it uploads the data that is already in that browser.
 - To load a backup file: open **/import.html** → choose `backup.json`. This **replaces** everything in the database.
 - If the database can't be reached, the app keeps working in that browser only (as before).

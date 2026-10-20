@@ -17,7 +17,9 @@ Tabs: স্টক · দৈনিক · মেমো · খতিয়ান �
 - `app/page.tsx` just redirects to `/khata/index.html`.
 
 ## Data
-- **MongoDB** via `app/api/db/route.ts` (+ `lib/mongo.ts`, env `MONGO_URI`, `MONGO_DB` default `khata`). Each app collection (`days`, `ledgers`, `companies`, `khoroch`, `settings`, `amdani`) is one Mongo collection; a doc is `{_id: id, data}`.
+- **MongoDB** via `app/api/db/route.ts` + `lib/store.ts` (+ `lib/mongo.ts`, env `MONGO_URI`, `MONGO_DB` default `khata`). The app still uses its old paths; `lib/store.ts` maps them to clearly named collections, one record per item, fields stored directly:
+  `stock_days` (days/<date>) · `stock_markas` + `stock_sizes` (settings/cats; sizes stored as `height`, `width`, `open_kg`, `buy_rate`, `is_z`, `marka_id`, `position` = order added) · `parties` (ledgers) · `companies` · `expenses` (khoroch) · `cash_opening` (amdani/sabek, one per date) · `settings` (`sale_rates`, `labour_rate`).
+  The first layout (`{_id, data}` in days/ledgers/settings…) is moved over automatically on the first request (`migrateOldLayout`). Open `/api/db` to see record counts.
 - Browser side: `public/khata/db.js` gives the same small API the app had on claude.ai (`collection(n).get()`, `doc('col/id').get()/set()/delete()`); `getDB()` in index.html uses it. On an empty database it first uploads that browser's localStorage. If the server can't be reached → `null` → app works from localStorage only.
 - **No password** on the site (owner removed it on purpose) — anyone with the link can read/write. Don't add one back unless he asks.
 - localStorage is still written too (cache / offline). Keys: `kg-khata-days-v1` (stock days `[{id:'YYYY-MM-DD', opening, due, entries[], outs[]}]`),
