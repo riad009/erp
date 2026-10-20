@@ -3253,11 +3253,11 @@ function getDB(){
       <label>কোন মার্কার মাল?<select id="nzCat">${cats.map(c => `<option value="${c.id}" ${c.id===pre?'selected':''}>${esc(c.name)}</option>`).join('')}<option value="__newcat" ${pre==='__newcat'?'selected':''}>＋ নতুন মার্কা / ধরন</option></select></label>
       <label class="nzname" ${pre==='__newcat'?'':'hidden'}>নতুন মার্কার নাম<input id="nzName" autocomplete="off" placeholder="যেমন: হার্ড মাল (কাজী G মার্কা)"></label>
       <div class="nz2">
-        <label>উচ্চতা<input id="nzH" inputmode="decimal" data-plain placeholder="৪৫"></label>
+        <label>উচ্চতা<input id="nzH" inputmode="decimal" data-plain></label>
         <span class="x2">×</span>
         <label>লম্বা<input id="nzW" inputmode="decimal" data-plain></label>
       </div>
-      ${o.withOpen ? '<div class="zrow"><label>এখন আছে (কেজি)<input id="nzK" class="num" inputmode="decimal" placeholder="০"></label><button type="button" class="zbtn" id="nzZ" aria-pressed="false" title="Z মাল — লাল দেখাবে">Z</button></div>' : ''}
+      ${o.withOpen ? '<div class="zrow"><label>এখন আছে (কেজি)<input id="nzK" class="num" inputmode="decimal"></label><button type="button" class="zbtn" id="nzZ" aria-pressed="false" title="Z মাল — লাল দেখাবে">Z</button></div>' : ''}
       <p class="nzmsg" id="nzMsg" role="status"></p>
       <div class="nzacts"><button type="button" class="ghost" id="nzNo">বাতিল</button><button type="button" id="nzOk">সেভ করুন</button></div>
     </div>`;
@@ -3391,9 +3391,9 @@ function getDB(){
             }).join('') || '<li class="none">এখনো কোনো সাইজ নেই — নিচে ＋ নতুন সাইজ চাপুন</li>'}</ol>
             <div class="ts-sum"><span>মোট</span><b>${bn(base)}</b>${now ? `<em>+${bn(now)}</em>` : ''}${sold ? `<em class="so">−${bn(sold)}</em>` : ''}${now || sold ? `<strong>= ${bn(base + now - sold)} কেজি</strong>` : '<b>কেজি</b>'}</div>
             ${tsNew === c.id ? `<div class="ts-newf">
-                <label>উচ্চতা<input id="nH" inputmode="decimal" data-plain placeholder="৪৫"></label><span class="x2">×</span>
+                <label>উচ্চতা<input id="nH" inputmode="decimal" data-plain></label><span class="x2">×</span>
                 <label>লম্বা<input id="nW" inputmode="decimal" data-plain></label>
-                <label>এখন আছে (কেজি)<input id="nK" class="num" inputmode="decimal" placeholder="০"></label>
+                <label>এখন আছে (কেজি)<input id="nK" class="num" inputmode="decimal"></label>
                 <span class="bts"><button type="button" id="nOk">সেভ</button><button type="button" id="nNo" class="x">×</button></span>
               </div>` : `<button type="button" class="ts-new" data-cat="${c.id}">＋ নতুন সাইজ</button>`}
           </div>` : ''}
