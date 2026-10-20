@@ -1837,6 +1837,12 @@ body.theme-pro #stock ol.entries .spec,body.theme-pro #stock ol.entries .itm,bod
 .tstock .ts-g.soft2 .kbad{background:#E3F2F8;color:#155A73}
 .tstock .kbad small{font-size:11.5px;font-weight:600;opacity:.8}
 .tstock .kbad.neg{background:#FDE8EB!important;color:#B3122B!important}
+/* Z মাল: counted in stock, shown red with a Z mark */
+.tstock .kbad.z{background:#FDE8EB!important;color:#C3122F!important}
+.tstock .kbad .zt{font-family:"Noto Sans Bengali",sans-serif;font-size:12px;font-weight:800;background:#C3122F;color:#fff;border-radius:6px;padding:0 5px;margin-left:2px}
+.zrow{display:flex;align-items:flex-end;gap:8px}.zrow>label{flex:1;min-width:0}
+.zbtn{flex:none;min-width:52px;height:46px;margin-bottom:10px;border:1.5px solid #E8A3AE;border-radius:10px;background:#fff;color:#C3122F;font:800 18px "Noto Sans Bengali",sans-serif;cursor:pointer}
+.zbtn[aria-pressed="true"]{background:#C3122F;border-color:#C3122F;color:#fff}
 .tstock .mvt{background:transparent!important;border:0!important;padding:0 2px!important;height:auto!important;width:auto!important;font-family:"Noto Sans Bengali","Hind Siliguri",sans-serif;font-size:12.5px!important;font-weight:600;color:#6B7690!important;cursor:pointer;white-space:nowrap}
 .tstock .mvt i{font-style:normal;font-weight:700}
 .tstock .mvt i.in{color:#1F7A3D}
@@ -3249,7 +3255,7 @@ function getDB(){
         <span class="x2">×</span>
         <label>লম্বা<input id="nzW" inputmode="decimal" data-plain value="৯১৪" placeholder="৯১৪"></label>
       </div>
-      ${o.withOpen ? '<label>এখন আছে (কেজি)<input id="nzK" class="num" inputmode="decimal" placeholder="০"></label>' : ''}
+      ${o.withOpen ? '<div class="zrow"><label>এখন আছে (কেজি)<input id="nzK" class="num" inputmode="decimal" placeholder="০"></label><button type="button" class="zbtn" id="nzZ" aria-pressed="false" title="Z মাল — লাল দেখাবে">Z</button></div>' : ''}
       <p class="nzmsg" id="nzMsg" role="status"></p>
       <div class="nzacts"><button type="button" class="ghost" id="nzNo">বাতিল</button><button type="button" id="nzOk">সেভ করুন</button></div>
     </div>`;
@@ -3260,6 +3266,7 @@ function getDB(){
     document.addEventListener('keydown', onKey);
     bg.addEventListener('click', e => { if(e.target === bg) close(null); });
     $('nzNo').onclick = () => close(null);
+    if($('nzZ')) $('nzZ').onclick = () => { const b = $('nzZ'); b.setAttribute('aria-pressed', b.getAttribute('aria-pressed') !== 'true'); };
     $('nzCat').onchange = () => { const nw = $('nzCat').value === '__newcat'; bg.querySelector('.nzname').hidden = !nw; (nw ? $('nzName') : $('nzH')).focus(); };
     if(typeof attachBanglish === 'function') attachBanglish($('nzName'));
     const msg = (t, el) => { $('nzMsg').textContent = t; if(el) el.focus(); };
@@ -3280,7 +3287,7 @@ function getDB(){
       if(h > 0 && w > 0){
         const ex = (c.items||[]).find(x => x.h === h && x.w === w);
         if(ex){ if(!o.allowExisting) return msg('এই সাইজ এই মার্কায় আগেই আছে — লিস্ট থেকে বাছাই করুন।', $('nzH')); itId = ex.id; }
-        else { itId = uidS(); const k = $('nzK') ? parseNum($('nzK').value) : 0; c.items = c.items || []; c.items.push({id:itId, h, w, open:k > 0 ? k : 0}); }
+        else { itId = uidS(); const k = $('nzK') ? parseNum($('nzK').value) : 0; c.items = c.items || []; const it = {id:itId, h, w, open:k > 0 ? k : 0}; if(k > 0 && $('nzZ') && $('nzZ').getAttribute('aria-pressed') === 'true') it.z = true; c.items.push(it); }
       }
       saveCats();
       lastCat = c.id; try{ localStorage.setItem('kg-khata-lastcat', lastCat); }catch(_){}
@@ -3363,7 +3370,7 @@ function getDB(){
               if(tsEdit === it.id) return `<li class="ts-ed">
                 <label>উচ্চতা<input id="eH" inputmode="decimal" data-plain value="${toBn(it.h)}"></label><span class="x2">×</span>
                 <label>লম্বা<input id="eW" inputmode="decimal" data-plain value="${toBn(it.w)}"></label>
-                <label>শুরুর কেজি<input id="eK" class="num" inputmode="decimal" value="${it.open ? bn(it.open) : ''}"></label>
+                <span class="zrow"><label>শুরুর কেজি<input id="eK" class="num" inputmode="decimal" value="${it.open ? bn(it.open) : ''}"></label><button type="button" class="zbtn" id="eZ" aria-pressed="${!!it.z}" title="Z মাল — লাল দেখাবে">Z</button></span>
                 <label>কেনা দর (৳/কেজি)<input id="eC" inputmode="decimal" data-plain value="${Number(it.cost) > 0 ? toBn(it.cost) : ''}" placeholder="${(() => { const a = autoCost(it.id); return a ? 'কোম্পানির দর: ' + toBn(a) : 'যেমন ৯৮'; })()}"></label>
                 <span class="bts"><button type="button" id="eOk">সেভ</button><button type="button" id="eDel" class="del">মুছুন</button><button type="button" id="eNo" class="x">×</button></span>
               </li>`;
@@ -3371,7 +3378,7 @@ function getDB(){
                 <span class="sp">${dimTxt(it)}</span>
                 <span class="kv">${(() => {
                   const tot = b0 + x.now - (x.sold||0), mv = (x.moves||[]).slice().sort((p,q) => (p.ts||0) - (q.ts||0)), op = openMv.has(it.id);
-                  return `<span class="kbad ${tot < 0 ? 'neg' : ''}">${bn(tot)} <small>কেজি</small></span>`
+                  return `<span class="kbad ${tot < 0 ? 'neg' : ''} ${it.z ? 'z' : ''}">${bn(tot)} <small>কেজি</small>${it.z ? '<b class="zt">Z</b>' : ''}</span>`
                     + (mv.length ? `<button type="button" class="mvt" data-item="${it.id}" aria-expanded="${op}">${op ? '▾' : '▸'} আজ ${toBn(mv.length)}টা${x.now ? ` <i class="in">+${bn(x.now)}</i>` : ''}${x.sold ? ` <i class="out">−${bn(x.sold)}</i>` : ''}</button>` : '')
                     + (mv.length && op ? `<span class="mvl">${mv.map((m, k) => `<span class="mvr" role="button" tabindex="0" title="বিস্তারিত দেখুন" data-item="${it.id}" data-src="${m.src||''}" data-day="${m.day||''}" data-ref="${m.ref != null ? m.ref : ''}" data-acc="${m.acc||''}" data-ent="${m.ent||''}" data-k="${k+1}"><span class="mvn">${toBn(k+1)}.</span><span class="mvtm">${m.ts ? tmTxt(m.ts) : '—'}</span>${m.out ? `<em class="mv out">−${bn(m.kg)}</em>` : `<em class="mv in">+${bn(m.kg)}${m.b ? '<i>B</i>' : ''}</em>`}</span>`).join('')}</span>` : '');
                 })()}</span>
@@ -3496,6 +3503,7 @@ function getDB(){
         const h = parseNum($('eH').value), w = parseNum($('eW').value), k = parseNum($('eK').value);
         if(!(h > 0) || !(w > 0) || !f) return;
         f.it.h = h; f.it.w = w; f.it.open = k > 0 ? k : 0; delete f.it.chk;
+        if($('eZ') && $('eZ').getAttribute('aria-pressed') === 'true') f.it.z = true; else delete f.it.z;
         { const cst = parseNum($('eC') ? $('eC').value : ''); if(cst > 0) f.it.cost = cst; else delete f.it.cost; }
         saveCats(); tsEdit = null; again();
       };
@@ -3507,6 +3515,7 @@ function getDB(){
         f.c.items = f.c.items.filter(x => x.id !== tsEdit); saveCats(); tsEdit = null; again();
       };
       $('eNo').onclick = () => { tsEdit = null; again(); };
+      if($('eZ')) $('eZ').onclick = () => { const b = $('eZ'); b.setAttribute('aria-pressed', b.getAttribute('aria-pressed') !== 'true'); };
     }
     if($('ncOk')){
       const go = () => { const nm = $('ncName').value.trim(); if(!nm) return; const id = uidS(); cats.push({id, name:nm, tone:'', items:[]}); openCats.add(id); saveOpen(); saveCats(); tsNewCat = false; again(); };
