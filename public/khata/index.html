@@ -2820,6 +2820,20 @@ html body #stock .ssub .st[aria-selected="false"]:hover{filter:brightness(.97)}
 .mbtn.del{background:#fff!important;color:#B3122B!important;border:1.5px solid #E8A3AE}
 #ledger .acct .lbtn.ldel{color:#B3122B!important;border-color:#E8A3AE!important;background:#fff!important}
 .nz.np .np3.np2{grid-template-columns:repeat(2,minmax(0,1fr))}
+/* নতুন জমা: কার মাধ্যমে / রেফারেন্স */
+.aviarow{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px;margin-bottom:6px}
+.aviarow input{width:100%}
+#amdani .alist small.avia{display:block;margin:2px 0 0 34px;font-size:12.5px;color:#66728A}
+#ledger .tg.tg-via{display:block;color:#66728A}
+/* বিবিধ খরচ (খুচরা) card inside the খরচ column */
+#amdani .kmisc{margin-top:14px;padding:12px;border:1.5px dashed #E8A3AE;border-radius:12px;background:#FFF8F9}
+#amdani .kmisc .acol-h{margin-bottom:8px}
+#amdani .kmisc h3{margin:0;font-size:17px}
+#amdani .kmisc h3 small{font-size:12px;color:#66728A;font-weight:600}
+#amdani .abig.km{background:#fff!important;color:#C3122F!important;border:1.5px solid #C3122F!important}
+#amdani .kmiscsum .nm{color:#8A1C2C;font-weight:700}
+#amdani .kmiscsum .arow2{grid-template-columns:2em auto minmax(0,1fr)}
+#amdani .kmiscsum .arow2 .nm{white-space:normal;overflow:visible}
 </style>
 </head>
 <body>
@@ -4453,7 +4467,7 @@ function getDB(){
   // under each date: জমা (blue) or মাল কিনেছে (red), plus kg×rate if it was written
   function typeTag(e){
     const note = ((e.desc||'').match(/\([^)]*\)/)||[''])[0];
-    if(!(Number(e.credit) > 0)) return `<small class="tg tg-d">জমা${note?' '+esc(note):''}</small>`;
+    if(!(Number(e.credit) > 0)) return `<small class="tg tg-d">জমা${note?' '+esc(note):''}</small>${e.via || e.ref ? `<small class="tg tg-via">${e.via ? 'মাধ্যম: ' + esc(e.via) : ''}${e.via && e.ref ? ' · ' : ''}${e.ref ? 'রেফ: ' + esc(e.ref) : ''}</small>` : ''}`;
     const kg = entryKg(e);
     const st = !kg ? '' : (e.status === 'confirmed'
       ? `<small class="tg tg-ok">✓ স্টক থেকে বাদ · ${bn(kg)} কেজি</small>`
@@ -5195,7 +5209,7 @@ function getDB(){
      Every row here is a জমা entry inside that party's খতিয়ান,
      so the party's বাকি updates by itself. */
   const aroot = document.getElementById('amdani');
-  let aDate = todayId(), aEdit = null, aMsg = '', aOpen = null, aAddOpen = false, kAddOpen = false, aRename = null;
+  let aDate = todayId(), aEdit = null, aMsg = '', aOpen = null, aAddOpen = false, kAddOpen = false, aRename = null, kMisc = false;
   const BN_M = ['জানুয়ারি','ফেব্রুয়ারি','মার্চ','এপ্রিল','মে','জুন','জুলাই','আগস্ট','সেপ্টেম্বর','অক্টোবর','নভেম্বর','ডিসেম্বর'];
   const BN_W = ['রবিবার','সোমবার','মঙ্গলবার','বুধবার','বৃহস্পতিবার','শুক্রবার','শনিবার'];
   const dOf = id => { const [y,m,d] = id.split('-').map(Number); return new Date(y,m-1,d); };
@@ -5254,7 +5268,8 @@ function getDB(){
     const ds = daysWithAmdani();
     const prev = [...ds].reverse().find(d=>d<aDate), next = ds.find(d=>d>aDate);
     const sb = sabekInfo(aDate);
-    const kt = khTotal(aDate), krows = kh[aDate]||[];
+    const kt = khTotal(aDate), kall = kh[aDate]||[], krows = kall.filter(x => !x.misc), mrows = kall.filter(x => x.misc);
+    const mt = mrows.reduce((s, x) => s + (Number(x.amt)||0), 0);   // বিবিধ খরচ total → one line in the main খরচ
     // বিক্রয়: this day's মাল বিক্রি memos (ক্রমিক · কেজি · টাকা · পার্টি)
     const sales = [];
     accs.forEach(a => (a.entries||[]).forEach(e => { if(e.date === aDate && Number(e.credit) > 0 && entryKg(e) > 0) sales.push({a, e}); }));
@@ -5319,6 +5334,10 @@ function getDB(){
                 <select id="aeAcc">${[...accs].sort((x,y)=>x.name.localeCompare(y.name,'bn')).map(a=>`<option value="${a.id}" ${a.id===r.a.id?'selected':''}>${esc(pnm(a))}</option>`).join('')}</select>
                 <button class="lbtn" id="aeRen" type="button" title="নাম বদলান">✎ নাম</button>
               </div>`}
+              <div class="aviarow">
+                <div><label class="fl" for="aeVia">কার মাধ্যমে</label><input id="aeVia" value="${esc(r.e.via||'')}" autocomplete="off"></div>
+                <div><label class="fl" for="aeRef">রেফারেন্স</label><input id="aeRef" value="${esc(r.e.ref||'')}" autocomplete="off"></div>
+              </div>
               <label class="fl" for="aeAmt">টাকা</label>
               <input id="aeAmt" class="num" inputmode="decimal" value="${bn(r.e.debit)}">
               <div class="acts"><button class="save" id="aeSave" type="button">সেভ করুন</button><button class="cancel" id="aeCancel" type="button">বাতিল</button></div>
@@ -5332,11 +5351,12 @@ function getDB(){
                 <button class="ic edit" data-a="${r.a.id}" data-e="${r.e.id}" aria-label="বদলান">✎</button>
                 <button class="ic del" data-a="${r.a.id}" data-e="${r.e.id}" aria-label="মুছুন">🗑</button>
               </div>
+              ${r.e.via || r.e.ref ? `<small class="avia">${r.e.via ? 'মাধ্যম: ' + esc(r.e.via) : ''}${r.e.via && r.e.ref ? ' · ' : ''}${r.e.ref ? 'রেফ: ' + esc(r.e.ref) : ''}</small>` : ''}
             </li>`;}).join('') : `<li class="aempty">এই দিনে এখনো কোনো জমা নেই। উপরের "＋ নতুন জমা" থেকে যোগ করুন।</li>`}
         </ol>
         </section>
         <section class="acol kout">
-          <div class="acol-h"><h2>🧾 খরচ</h2><span class="cnt num">${bn(kt)} ৳ · ${toBn(krows.length)} টি</span></div>
+          <div class="acol-h"><h2>🧾 খরচ</h2><span class="cnt num">${bn(kt)} ৳ · ${toBn(krows.length + (mrows.length ? 1 : 0))} টি</span></div>
           <button type="button" class="abig k" id="kOpenM">＋ নতুন খরচ</button>
           ${kMsg ? `<p class="lmsg">${kMsg}</p>` : ''}
           <ol class="alist">
@@ -5359,8 +5379,35 @@ function getDB(){
                 <button class="ic kedit" data-k="${x.id}" aria-label="বদলান">✎</button>
                 <button class="ic kdel" data-k="${x.id}" aria-label="মুছুন">🗑</button>
               </div>
-            </li>`;}).join('') : `<li class="aempty">এই দিনে এখনো কোনো খরচ নেই।</li>`}
+            </li>`;}).join('') : (mrows.length ? '' : `<li class="aempty">এই দিনে এখনো কোনো খরচ নেই।</li>`)}
+          ${mrows.length ? `<li class="kmiscsum"><div class="arow2"><span class="no num">${toBn(krows.length + 1)}/</span><span class="amt num">${bn(mt)}/-</span><span class="nm" title="নিচের বিবিধ খরচ খাতা থেকে নিজে যোগ হয়">বিবিধ খরচ (খুচরা)</span></div></li>` : ''}
         </ol>
+        <div class="kmisc">
+          <div class="acol-h"><h3>🪙 বিবিধ খরচ <small>খুচরা খরচ</small></h3><span class="cnt num">${bn(mt)} ৳ · ${toBn(mrows.length)} টি</span></div>
+          <button type="button" class="abig km" id="mOpenM">＋ খুচরা খরচ</button>
+          <ol class="alist">
+          ${mrows.length ? mrows.map((x,i)=>{
+            if(kEdit===x.id) return `
+            <li class="aedit2">
+              <div class="eh"><span class="no num">${toBn(i+1)}/</span> খুচরা খরচ বদলান</div>
+              <label class="fl" for="keDesc">কিসের খরচ</label>
+              <input id="keDesc" value="${esc(x.desc||'')}">
+              <label class="fl" for="keAmt">টাকা</label>
+              <input id="keAmt" class="num" inputmode="decimal" value="${bn(x.amt)}">
+              <div class="acts"><button class="save" id="keSave" type="button">সেভ করুন</button><button class="cancel" id="keCancel" type="button">বাতিল</button></div>
+            </li>`;
+            return `
+            <li>
+              <div class="arow2">
+                <span class="no num">${toBn(i+1)}/</span>
+                <span class="amt num">${bn(x.amt)}/-</span>
+                <span class="nm">${esc(x.desc||'—')}</span>
+                <button class="ic kedit" data-k="${x.id}" aria-label="বদলান">✎</button>
+                <button class="ic kdel" data-k="${x.id}" aria-label="মুছুন">🗑</button>
+              </div>
+            </li>`;}).join('') : `<li class="aempty">খুচরা খরচ নেই। এখানে যা যোগ করবেন, তার মোট উপরের খরচে নিজে যোগ হবে।</li>`}
+          </ol>
+        </div>
         </section>
         <section class="acol asl">
         <div class="acol-h"><h2>🧾 বিক্রয় <small>মেমো থেকে</small></h2><span class="cnt num">${bn(saleTk)} ৳ · ${toBn(sales.length)}টা</span></div>
@@ -5396,6 +5443,10 @@ function getDB(){
             <button type="button" class="lbtn" id="aNewCancel">বাতিল</button>
           </div>
         </div>
+        <div class="aviarow">
+          <div><label for="aVia" class="fl">কার মাধ্যমে টাকা এসেছে</label><input id="aVia" autocomplete="off" autocorrect="off" spellcheck="false"></div>
+          <div><label for="aRef" class="fl">রেফারেন্স <small>(ঐচ্ছিক)</small></label><input id="aRef" autocomplete="off" autocorrect="off" spellcheck="false"></div>
+        </div>
         <div class="amtrow">
           <div><label for="aAmt" class="fl">টাকা</label><input id="aAmt" class="num" inputmode="decimal"></div>
           <button id="aAdd" type="button">যোগ করুন</button>
@@ -5405,7 +5456,7 @@ function getDB(){
       </div>
       <div class="am-bg" id="amK" ${kAddOpen ? '' : 'hidden'}>
         <div class="am-m k" role="dialog" aria-modal="true" aria-labelledby="amKT">
-          <div class="am-hd"><h3 id="amKT">＋ নতুন খরচ <small>কিসের খরচ আর টাকা লিখুন</small></h3><button type="button" class="am-x" data-close="k" aria-label="বন্ধ">×</button></div>
+          <div class="am-hd"><h3 id="amKT">${kMisc ? '＋ বিবিধ খরচ <small>খুচরা খরচ — মোট উপরের খরচে নিজে যোগ হবে</small>' : '＋ নতুন খরচ <small>কিসের খরচ আর টাকা লিখুন</small>'}</h3><button type="button" class="am-x" data-close="k" aria-label="বন্ধ">×</button></div>
           <label for="kDesc" class="fl">কিসের খরচ</label>
         <input id="kDesc" list="kDescs" autocomplete="off" autocorrect="off">
         <datalist id="kDescs">${[...new Set(Object.values(kh).flat().map(x=>x.desc).filter(Boolean))].map(d=>`<option value="${esc(d)}">`).join('')}</datalist>
@@ -5429,8 +5480,10 @@ function getDB(){
     const add = ()=>{
       const d = $('kDesc').value.trim(), v = parseNum($('kAmt').value), h = $('kHint');
       if(isNaN(v)||v<=0){ h.textContent='সঠিক টাকা লিখুন।'; h.className='hint err'; $('kAmt').focus(); return; }
-      list().push({id:uid(), ts:Date.now(), desc:d, amt:v}); saveKh(aDate);
-      kMsg = `✓ খরচ যোগ হয়েছে: ${bn(v)} টাকা${d?' ('+d+')':''}`;
+      const row = {id:uid(), ts:Date.now(), desc:d, amt:v}; if(kMisc) row.misc = true;
+      list().push(row); saveKh(aDate);
+      kMsg = `✓ ${kMisc ? 'খুচরা ' : ''}খরচ যোগ হয়েছে: ${bn(v)} টাকা${d?' ('+d+')':''}`;
+      kMisc = false;
       kAddOpen = false;
       renderAmdani();
       if(typeof kToast === 'function') kToast(`<b>✅ ${bn(v)} টাকা খরচ যোগ হয়েছে</b><span>${esc(d || 'খরচ')}</span>`);
@@ -5497,9 +5550,9 @@ function getDB(){
     if($('sNewMemo')) $('sNewMemo').onclick = () => { if(window.__ledger) window.__ledger.newMemo(); };
     document.querySelectorAll('#amdani .sale-t tbody tr').forEach(tr => { const go = () => { if(window.showMemo) window.showMemo(tr.dataset.a, tr.dataset.e); }; tr.onclick = go; tr.onkeydown = e => { if(e.key === 'Enter') go(); }; });
     // pop-ups: ＋ নতুন জমা / ＋ নতুন খরচ
-    const openM = w => { if(w === 'a'){ aAddOpen = true; $('amJ').hidden = false; setTimeout(() => $('aName').focus(), 30); } else { kAddOpen = true; $('amK').hidden = false; setTimeout(() => $('kDesc').focus(), 30); } };
+    const openM = w => { if(w === 'a'){ aAddOpen = true; $('amJ').hidden = false; setTimeout(() => $('aName').focus(), 30); } else { kMisc = w === 'm'; $('amKT').innerHTML = kMisc ? '＋ বিবিধ খরচ <small>খুচরা খরচ — মোট উপরের খরচে নিজে যোগ হবে</small>' : '＋ নতুন খরচ <small>কিসের খরচ আর টাকা লিখুন</small>'; $('amK').classList.toggle('misc', kMisc); kAddOpen = true; $('amK').hidden = false; setTimeout(() => $('kDesc').focus(), 30); } };
     const closeM = w => { if(w === 'a'){ aAddOpen = false; $('amJ').hidden = true; } else { kAddOpen = false; $('amK').hidden = true; } };
-    $('aOpenM').onclick = () => openM('a'); $('kOpenM').onclick = () => openM('k');
+    $('aOpenM').onclick = () => openM('a'); $('kOpenM').onclick = () => openM('k'); if($('mOpenM')) $('mOpenM').onclick = () => openM('m');
     document.querySelectorAll('#amdani .am-x').forEach(b => b.onclick = () => closeM(b.dataset.close));
     ['amJ','amK'].forEach(id => $(id).addEventListener('click', e => { if(e.target.id === id) closeM(id === 'amJ' ? 'a' : 'k'); }));
     if(!window.__amEsc){ window.__amEsc = true; document.addEventListener('keydown', e => { if(e.key !== 'Escape') return; const j = document.getElementById('amJ'), k = document.getElementById('amK'); if(j && !j.hidden){ aAddOpen = false; j.hidden = true; } if(k && !k.hidden){ kAddOpen = false; k.hidden = true; } }); }
@@ -5568,7 +5621,10 @@ function getDB(){
       if(!a){ a = {id:uid(), name:n, opening:0, openingNote:'', created:Date.now(), seq:0, entries:[]}; accs.push(a); }
       const before = balOf(a);
       a.seq = (a.seq||a.entries.length)+1;
-      a.entries.push({id:uid(), seq:a.seq, ts:Date.now(), date:aDate, debit:v, credit:0, desc:'আমদানি'});
+      const pe = {id:uid(), seq:a.seq, ts:Date.now(), date:aDate, debit:v, credit:0, desc:'আমদানি'};
+      const via = $('aVia') ? $('aVia').value.trim() : '', ref = $('aRef') ? $('aRef').value.trim() : '';
+      if(via) pe.via = via; if(ref) pe.ref = ref;
+      a.entries.push(pe);
       save(a);
       aMsg = `✓ ${a.name}: ${balTxt(before)} → ${balTxt(balOf(a))}`;
       aAddOpen = false;
@@ -5581,6 +5637,7 @@ function getDB(){
       if(e.key==='Escape') closeList();
     });
     amt.addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); add(); }});
+    if($('aVia')){ $('aVia').addEventListener('keydown', e => { if(e.key === 'Enter'){ e.preventDefault(); $('aRef').focus(); } }); $('aRef').addEventListener('keydown', e => { if(e.key === 'Enter'){ e.preventDefault(); amt.focus(); } }); if(typeof attachBanglish === 'function'){ attachBanglish($('aVia')); attachBanglish($('aRef')); } }
 
     document.querySelectorAll('#amdani .pname').forEach(b=>b.onclick=()=>{
       curId = b.dataset.acc; try{localStorage.setItem(LSCUR,curId);}catch(_){}
@@ -5596,6 +5653,7 @@ function getDB(){
         if($('arName')){ $('arName').classList.add('bad'); return; }   // finish rename first
         const toId = $('aeAcc') ? $('aeAcc').value : a.id;
         e.debit = v;
+        if($('aeVia')){ const v1 = $('aeVia').value.trim(), v2 = $('aeRef').value.trim(); if(v1) e.via = v1; else delete e.via; if(v2) e.ref = v2; else delete e.ref; }
         if(toId !== a.id){                                   // move this payment to another party
           const b2 = accs.find(x=>x.id===toId);
           a.entries = a.entries.filter(x=>x.id!==e.id);
