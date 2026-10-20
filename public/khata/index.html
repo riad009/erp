@@ -2798,6 +2798,12 @@ html body #stock .ssub .st[aria-selected="false"]:hover{filter:brightness(.97)}
 .cmform.cmd .cm-newname .nfb:focus-within{border-color:#1F4AA8;box-shadow:0 0 0 3px rgba(31,74,168,.12)}
 .cmform:not(.cmd) .cm-newname .nfl{background:none!important;color:var(--br)!important;padding:4px 0 0!important;min-width:0!important;font-size:12px!important}
 .cmform:not(.cmd) .cm-newname .nfb{background:none!important;color:inherit!important;padding:0!important;min-width:0!important;border-bottom:1.5px dotted var(--br)}
+/* ＋ নতুন পার্টি pop-up */
+.nz.np .npsub{margin:6px 0 6px;font-family:"Tiro Bangla",serif;font-weight:700;color:#1F4AA8;font-size:15px}
+.nz.np .npsub small{color:#66728A;font-weight:600;font-size:12px}
+.nz.np .np3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.nz.np .np3 input{padding-left:8px;padding-right:8px}
+#ledger .lform .g3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-bottom:8px}
 </style>
 </head>
 <body>
@@ -4548,10 +4554,12 @@ function getDB(){
       formHtml = `
       <div class="lform editing" id="lform">
         <p class="ft">আগের জের (শুরুর বাকি) বদলান</p>
-        <div class="g2">
-          <label>টাকা<input id="oAmt" class="num" inputmode="decimal" value="${acc.opening?bn(acc.opening):''}" placeholder="০"></label>
-          <label>নোট<input id="oNote" value="${esc(acc.openingNote||'')}"></label>
+        <div class="g3">
+          <label>জমা<input id="oJoma" class="num" inputmode="decimal" value="${acc.openJoma?bn(acc.openJoma):''}"></label>
+          <label>খরচ<input id="oKhoroch" class="num" inputmode="decimal" value="${acc.openKhoroch?bn(acc.openKhoroch):''}"></label>
+          <label>অবশিষ্ট<input id="oAmt" class="num" inputmode="decimal" value="${acc.opening?bn(acc.opening):''}"></label>
         </div>
+        <label class="full">নোট<input id="oNote" value="${esc(acc.openingNote||'')}"></label>
         <div class="lacts"><button class="lbtn solid" id="fSave">সেভ করুন</button><button class="lbtn" id="fCancel">বাতিল</button></div>
       </div>`;
     } else {
@@ -4606,8 +4614,8 @@ function getDB(){
 
     root.innerHTML = accBar + `
       <div class="tiles">
-        <div class="tile"><div class="k">মোট জমা (টাকা পেয়েছি)</div><div class="v num">${bn(c.tD)}</div></div>
-        <div class="tile"><div class="k">মোট খরচ (মাল দিয়েছি)</div><div class="v num">${bn(c.tC)}</div></div>
+        <div class="tile"><div class="k">মোট জমা (টাকা পেয়েছি)</div><div class="v num">${bn(c.tD + (Number(acc.openJoma)||0))}</div></div>
+        <div class="tile"><div class="k">মোট খরচ (মাল দিয়েছি)</div><div class="v num">${bn(c.tC + (Number(acc.openKhoroch)||0))}</div></div>
         ${(()=>{ let pk=0, pn=0; (acc.entries||[]).forEach(e=>{ const k=entryKg(e); if(k>0 && e.status!=='confirmed'){ pk+=k; pn++; } }); return pn ? `<div class="tile pend"><div class="k">⏳ স্টকে কম — মাল আসলে নিজে যাবে</div><div class="v num">${bn(pk)} কেজি · ${bn(pn)} টি</div></div>` : ''; })()}
         <div class="tile big ${c.bal<0?'adv':''}"><div class="k">${c.bal<0?'অগ্রিম জমা আছে':'অবশিষ্ট বাকি'}</div><div class="v num">${bn(Math.abs(c.bal))} ৳</div></div>
       </div>
@@ -4630,11 +4638,11 @@ function getDB(){
             </tr>`).join('')}
             <tr class="r open ${form.mode==='opening'?'sel':''}" data-open="1">
               <td class="dt"><b>আগের জের</b><small>${esc(acc.openingNote||'শুরুর বাকি')}</small></td>
-              <td class="n"></td><td class="n"></td>${balCell(Number(acc.opening)||0)}
+              <td class="n">${acc.openJoma ? bn(acc.openJoma) : ''}</td><td class="n">${acc.openKhoroch ? bn(acc.openKhoroch) : ''}</td>${balCell(Number(acc.opening)||0)}
             </tr>
           </tbody>
           <tfoot><tr>
-            <td>মোট</td><td class="n">${bn(c.tD)}</td><td class="n">${bn(c.tC)}</td>${balCell(c.bal)}
+            <td>মোট</td><td class="n">${bn(c.tD + (Number(acc.openJoma)||0))}</td><td class="n">${bn(c.tC + (Number(acc.openKhoroch)||0))}</td>${balCell(c.bal)}
           </tr></tfoot>
         </table>
       </div>
@@ -4663,7 +4671,7 @@ function getDB(){
     if($('goTodayL')) $('goTodayL').onclick = () => { lDate = null; render(); };
     if($('accSel')) $('accSel').onchange = e => { curId = e.target.value; try{localStorage.setItem(LSCUR,curId);}catch(_){}; form={mode:'new',type:'credit',editId:null}; render(); };
     if($('renBtn')) $('renBtn').onclick = ()=>{ accMode='rename'; render(); $('accName').focus(); };
-    $('newAccBtn').onclick = ()=>{ accMode='new'; render(); $('accName').focus(); };
+    $('newAccBtn').onclick = openNewParty;
     if($('accSave')){
       const doSave = ()=>{
         const name = $('accName').value.trim(); if(!name){ $('accName').classList.add('bad'); return; }
@@ -4678,6 +4686,60 @@ function getDB(){
       $('accName').addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); doSave(); }});
       $('accCancel').onclick = ()=>{ accMode=null; render(); };
     }
+  }
+
+  // অবশিষ্ট = খরচ − জমা, filled in by itself until it is typed by hand
+  function autoBaki(jEl, kEl, bEl){
+    let own = false;
+    const fill = () => { if(own) return; const j = parseNum(jEl.value), k = parseNum(kEl.value); if(isNaN(j) && isNaN(k)) return; bEl.value = bn((isNaN(k)?0:k) - (isNaN(j)?0:j)); };
+    jEl.addEventListener('input', fill); kEl.addEventListener('input', fill);
+    bEl.addEventListener('input', () => { own = bEl.value.trim() !== ''; });
+  }
+  // ＋ নতুন পার্টি: নাম → ঠিকানা → পুরনো খাতার জমা / খরচ / অবশিষ্ট (Enter goes to the next box)
+  function openNewParty(){
+    const old = document.getElementById('npBg'); if(old) old.remove();
+    const bg = document.createElement('div'); bg.className = 'nz-bg'; bg.id = 'npBg';
+    bg.innerHTML = `<div class="nz np" role="dialog" aria-modal="true" aria-labelledby="npT">
+      <h3 id="npT">＋ নতুন পার্টি</h3>
+      <label>নাম<input id="npName" autocomplete="off"></label>
+      <label>ঠিকানা<input id="npAddr" autocomplete="off"></label>
+      <p class="npsub">পুরনো খাতার হিসাব <small>(না থাকলে খালি রাখুন)</small></p>
+      <div class="np3">
+        <label>জমা<input id="npJoma" class="num" inputmode="decimal"></label>
+        <label>খরচ<input id="npKhoroch" class="num" inputmode="decimal"></label>
+        <label>অবশিষ্ট<input id="npBaki" class="num" inputmode="decimal"></label>
+      </div>
+      <p class="nzmsg" id="npMsg" role="status"></p>
+      <div class="nzacts"><button type="button" class="ghost" id="npNo">বাতিল</button><button type="button" id="npOk">সেভ করুন</button></div>
+    </div>`;
+    document.body.appendChild(bg);
+    const $ = id => document.getElementById(id);
+    const onKey = e => { if(e.key === 'Escape') close(); };
+    const close = () => { bg.remove(); document.removeEventListener('keydown', onKey); };
+    document.addEventListener('keydown', onKey);
+    bg.addEventListener('click', e => { if(e.target === bg) close(); });
+    $('npNo').onclick = close;
+    if(typeof attachBanglish === 'function'){ attachBanglish($('npName')); attachBanglish($('npAddr')); }
+    autoBaki($('npJoma'), $('npKhoroch'), $('npBaki'));
+    const msg = (t, el) => { $('npMsg').textContent = t; if(el) el.focus(); };
+    const save1 = () => {
+      const name = $('npName').value.trim(), addr = $('npAddr').value.trim();
+      if(!name) return msg('পার্টির নাম লিখুন।', $('npName'));
+      if(accs.some(a => a.name.trim() === name && (a.address||'').trim() === addr)) return msg('এই নামে পার্টি আগেই আছে।', $('npName'));
+      const j = parseNum($('npJoma').value), k = parseNum($('npKhoroch').value), b = parseNum($('npBaki').value);
+      const a = {id:uid(), name, opening:isNaN(b)?0:b, openingNote:'', created:Date.now(), seq:0, entries:[]};
+      if(addr) a.address = addr;
+      if(j > 0) a.openJoma = j;
+      if(k > 0) a.openKhoroch = k;
+      if(j > 0 || k > 0 || b) a.openingNote = 'পুরনো খাতা থেকে';
+      accs.push(a); curId = a.id; save(a);
+      try{ localStorage.setItem(LSCUR, curId); }catch(_){}
+      close(); accMode = null; render();
+    };
+    $('npOk').onclick = save1;
+    const order = ['npName','npAddr','npJoma','npKhoroch','npBaki'].map($);
+    order.forEach((el, i) => el.addEventListener('keydown', e => { if(e.key === 'Enter'){ e.preventDefault(); if(order[i+1]) order[i+1].focus(); else save1(); } }));
+    setTimeout(() => $('npName').focus(), 30);
   }
 
   function bindForm(acc){
@@ -4705,9 +4767,13 @@ function getDB(){
 
     if(form.mode==='opening'){
       $('fSave').onclick = ()=>{
-        const n = parseNum($('oAmt').value);
-        acc.opening = isNaN(n)?0:n; acc.openingNote = $('oNote').value.trim(); save(acc); reset();
+        const n = parseNum($('oAmt').value), j = parseNum($('oJoma').value), k = parseNum($('oKhoroch').value);
+        acc.opening = isNaN(n)?0:n; acc.openingNote = $('oNote').value.trim();
+        if(j > 0) acc.openJoma = j; else delete acc.openJoma;
+        if(k > 0) acc.openKhoroch = k; else delete acc.openKhoroch;
+        save(acc); reset();
       };
+      autoBaki($('oJoma'), $('oKhoroch'), $('oAmt'));
       $('fCancel').onclick = reset;
       return;
     }
