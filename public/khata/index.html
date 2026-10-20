@@ -3145,7 +3145,7 @@ function getDB(){
   function allItemOpts(D){
     const st = itemStats(D);
     return '<option value="">— মাল বাছাই করুন —</option>' + cats.map(c => {
-      const its = (c.items||[]).slice().sort((a,b) => (a.h-b.h)||(a.w-b.w));
+      const its = c.items||[];   // as entered
       return `<optgroup label="# ${esc(c.name)}">${its.length ? its.map(it => `<option value="${it.id}" ${it.id===lastItemId?'selected':''}>${dimTxt(it)} — ${bn(itemNow(it, st))} কেজি</option>`).join('') : '<option value="" disabled>এখনো কোনো সাইজ নেই</option>'}</optgroup>`;
     }).join('') + '<option value="__new">＋ নতুন সাইজ / মাল যোগ করুন</option>';
   }
@@ -3192,13 +3192,13 @@ function getDB(){
         const qq = en(q).replace(/\s+/g, '');
         const its = (c.items||[]).filter(it => !qq || (en(it.h) + 'x' + en(it.w)).includes(qq) || String(it.h).includes(qq) || String(it.w).includes(qq));
         const byW = {}; its.forEach(it => { (byW[it.w] = byW[it.w] || []).push(it); });
-        const ws = Object.keys(byW).map(Number).sort((a,b) => a - b);
+        const ws = [...new Set(its.map(it => it.w))];   // as entered
         bg.innerHTML = `<div class="pk" role="dialog" aria-modal="true" aria-label="সাইজ বাছাই করুন">
           <div class="pk-hd"><button type="button" class="pk-back" aria-label="ফিরে যান">‹</button><h3 class="pk-ct ${c.tone||''}"># ${esc(c.name)}</h3><button type="button" class="pk-x" aria-label="বন্ধ">×</button></div>
           <input class="pk-q" id="pkQ" inputmode="decimal" autocomplete="off" placeholder="🔍 খুঁজুন: যেমন ৪০ বা ৯১৪" value="${esc(q)}">
           <div class="pk-list">${ws.length ? ws.map(w => `
             <p class="pk-sub">লম্বা ${toBn(w)}</p>
-            <div class="pk-grid">${byW[w].sort((a,b) => a.h - b.h).map(it => `<button type="button" class="pk-it ${it.id===lastItemId?'on':''}" data-it="${it.id}"><b>${dimTxt(it)}</b><small>${bn(itemNow(it, st))} কেজি</small></button>`).join('')}</div>`).join('')
+            <div class="pk-grid">${byW[w].map(it => `<button type="button" class="pk-it ${it.id===lastItemId?'on':''}" data-it="${it.id}"><b>${dimTxt(it)}</b><small>${bn(itemNow(it, st))} কেজি</small></button>`).join('')}</div>`).join('')
             : `<p class="pk-none">${q ? 'এই সাইজ নেই।' : 'এই মার্কায় এখনো কোনো সাইজ নেই।'}</p>`}</div>
           <button type="button" class="pk-new" id="pkNewSize">＋ নতুন সাইজ (এই মার্কায়)</button>
         </div>`;
@@ -3297,7 +3297,7 @@ function getDB(){
     const c = catOf(catId); if(!c) return '<option value="">— আগে মার্কা বাছাই করুন —</option>';
     const st = itemStats(D);
     return '<option value="">— সাইজ বাছাই করুন —</option>' +
-      (c.items||[]).slice().sort((a,b) => (a.h-b.h)||(a.w-b.w)).map(it => `<option value="${it.id}">${dimTxt(it)} — ${bn(itemNow(it, st))} কেজি</option>`).join('') +
+      (c.items||[]).map(it => `<option value="${it.id}">${dimTxt(it)} — ${bn(itemNow(it, st))} কেজি</option>`).join('') +
       '<option value="__new">＋ নতুন সাইজ</option>';
   }
   let lastSize = 1250; try{ lastSize = Number(localStorage.getItem('kg-khata-lastsize')) || 1250; }catch(_){}
@@ -3346,7 +3346,7 @@ function getDB(){
       <p class="ts-date">${bnDate(D)} · <span class="red">সবুজ +</span> = এই দিনে এসেছে · <b style="color:#C0152F">লাল −</b> = মেমোতে গেছে · মার্কায় চাপ দিলে বন্ধ হবে</p>
       ${tsMsg ? `<p class="ts-msg">${esc(tsMsg)}</p>` : ''}
       <div class="ts-cats">${cats.map(c => {
-        const rows = (c.items||[]).slice().sort((x,y) => (x.h-y.h)||(x.w-y.w));
+        const rows = c.items||[];   // the order the sizes were added
         let base = 0, now = 0;
         let sold = 0;
         rows.forEach(it => { const x = st[it.id] || {prev:0, now:0, sold:0}; base += (Number(it.open)||0) + x.prev; now += x.now; sold += x.sold||0; });
