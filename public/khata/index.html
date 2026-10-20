@@ -870,7 +870,9 @@ body.memo-open{overflow:hidden}
 #lhost .cm-acts .lbtn:not(.solid),#ledger .cm-acts .lbtn:not(.solid){background:#FBF4DF!important;color:#7A4A1E!important;border-color:#7A4A1E!important}
 #lhost .cmform .lhint{color:#FBF4DF;text-align:center;margin-top:8px;font-size:13px}
 #lhost .cmform .lhint.err{color:#FFD1D1;font-weight:700}
-.cm-newname{display:flex;align-items:center;gap:6px;width:100%}
+.cm-newname{display:flex;align-items:center;gap:6px;width:100%;flex-wrap:wrap}
+.cm-newname #fNewParty{flex:1 1 0;min-width:0;width:auto}
+.cm-newname .cm-newloc{flex:1 1 100%;min-width:0}
 .cm-newname[hidden]{display:none!important}
 #lhost select#fParty[hidden]{display:none!important}
 .cm-back{flex:none;width:30px;height:30px;border-radius:50%;background:#7A4A1E;color:#fff;font-size:14px;padding:0;line-height:1}
@@ -4476,7 +4478,7 @@ function getDB(){
           </div>
           <div class="cm-field cm-name"><span>নাম</span><b class="cm-sel">
             <select id="fParty" aria-label="পার্টি"><option value="" ${form.preParty?'':'selected'} disabled>পার্টি বাছাই করুন</option>${[...accs].sort((x,y)=>x.name.localeCompare(y.name,'bn')).map(a=>`<option value="${a.id}" ${a.id===form.preParty?'selected':''}>${esc(pnm(a))}</option>`).join('')}<option value="__new">＋ নতুন পার্টি</option></select>
-            <span class="cm-newname" id="fNewWrap" hidden><input id="fNewParty" autocomplete="off" placeholder="নতুন পার্টির নাম লিখুন"><button type="button" class="cm-back" id="fBackList" title="তালিকা থেকে বাছুন">✕</button></span></b></div>
+            <span class="cm-newname" id="fNewWrap" hidden><input id="fNewParty" autocomplete="off" placeholder="নতুন পার্টির নাম লিখুন"><button type="button" class="cm-back" id="fBackList" title="তালিকা থেকে বাছুন">✕</button><input id="fNewLoc" class="cm-newloc" autocomplete="off" placeholder="📍 লোকেশন (যেমন: নবাবপুর)"></span></b></div>
           ${isD ? `<div class="cmd-pstep"><p>👆 আগে পার্টি বাছাই করুন — তারপর ঠিকানা, মাল আর দর দেওয়ার ঘর খুলবে।</p><button type="button" class="cmd-newp" id="cmdNewP">＋ নতুন পার্টি তৈরি করুন</button></div>` : ''}
           <div class="cm-field cm-addrf"><span>ঠিকানা</span><b class="cm-sel"><input id="fAddr" autocomplete="off" placeholder="ঠিকানা লিখুন" value="${esc((party&&party.address)||'')}"></b></div>
 
@@ -4540,7 +4542,8 @@ function getDB(){
         <p class="ft">${form.mode==='sale' ? '🧾 নতুন মেমো — মাল বিক্রি' : (editing ? 'লেনদেন বদলান' : 'টাকা জমা')}</p>
         ${form.mode==='sale' ? `<label class="full">পার্টি
             <select id="fParty" class="mtype"><option value="" ${form.preParty?'':'selected'} disabled>পার্টি বাছাই করুন</option>${[...accs].sort((x,y)=>x.name.localeCompare(y.name,'bn')).map(a=>`<option value="${a.id}" ${a.id===form.preParty?'selected':''}>${esc(pnm(a))}</option>`).join('')}<option value="__new">＋ নতুন পার্টি</option></select></label>
-          <label class="full" id="fNewWrap" hidden>নতুন পার্টির নাম<input id="fNewParty" autocomplete="off"></label>` : ''}
+          <label class="full" id="fNewWrap" hidden>নতুন পার্টির নাম<input id="fNewParty" autocomplete="off"></label>
+          <label class="full" id="fNewLocWrap" hidden>📍 লোকেশন<input id="fNewLoc" autocomplete="off" placeholder="যেমন: নবাবপুর"></label>` : ''}
         ${editing ? `<label class="full">তারিখ<input type="date" id="fEDate" value="${LD()}"></label>` : ''}
         ${ed && entryKg(ed) > 0 ? `<div class="stline ${ed.status==='confirmed'?'ok':''}">${ed.status==='confirmed'
             ? `<span>✓ স্টক থেকে বাদ হয়েছে (${bn(entryKg(ed))} কেজি)</span>`
@@ -4857,7 +4860,8 @@ function getDB(){
       $('cmWords').textContent = total > 0 && window.__inWords ? window.__inWords(total)+' টাকা মাত্র' : '';
     };
     // Banglish → বাংলা in the name / address / description boxes
-    ['fNewParty','fAddr','fItem','ds_soft','ds_hard'].forEach(id => attachBanglish($(id)));
+    ['fNewParty','fNewLoc','fAddr','fItem','ds_soft','ds_hard'].forEach(id => attachBanglish($(id)));
+    if($('fNewLoc') && $('fAddr')) $('fNewLoc').addEventListener('input', () => { $('fAddr').value = $('fNewLoc').value; });
     if($('bnKey')) $('bnKey').onclick = () => {
       BN_TYPE = !BN_TYPE; try{ localStorage.setItem('kg-khata-banglish', BN_TYPE ? '1' : '0'); }catch(_){}
       $('bnKey').setAttribute('aria-pressed', BN_TYPE);
@@ -4891,15 +4895,18 @@ function getDB(){
       let acc = accRef;
       if(wasSale){
         const pv = $('fParty').value;
+        let newLoc = '';
         if(pv === '__new'){
           const n = $('fNewParty').value.trim();
           if(!n){ hint.textContent='নতুন পার্টির নাম লিখুন।'; hint.className='lhint err'; $('fNewParty').focus(); return; }
-          acc = accs.find(a=>a.name.trim()===n);
-          if(!acc){ acc = {id:uid(), name:n, opening:0, openingNote:'', created:Date.now(), seq:0, entries:[]}; accs.push(acc); }
+          newLoc = $('fNewLoc') ? $('fNewLoc').value.trim() : '';
+          acc = accs.find(a=>a.name.trim()===n && (!newLoc || (a.address||'').trim()===newLoc));
+          if(!acc){ acc = {id:uid(), name:n, opening:0, openingNote:'', created:Date.now(), seq:0, entries:[]}; if(newLoc) acc.address = newLoc; accs.push(acc); }
         } else if(!pv){ hint.textContent='আগে পার্টি বাছাই করুন।'; hint.className='lhint err'; $('fParty').focus(); return; }
         else acc = accs.find(a=>a.id===pv) || accRef;
         curId = acc.id; try{ localStorage.setItem(LSCUR, curId); }catch(_){}
-        const ad = $('fAddr') ? $('fAddr').value.trim() : null;      // save the party's ঠিকানা
+        let ad = $('fAddr') ? $('fAddr').value.trim() : null;      // save the party's ঠিকানা
+        if(newLoc && !ad) ad = newLoc;                                   // new party: its লোকেশন is the ঠিকানা
         if(ad !== null && (acc.address||'') !== ad) acc.address = ad;
       }
       const isEditSale = wasSale && !!form.editId;
@@ -4971,16 +4978,17 @@ function getDB(){
         ? `<b>✅ মেমো সেভ হয়েছে · ⏳ মাল এখনো যায়নি</b><span>${esc(pnm(acc))} · মেমো #${toBn(target.memoNo||'')} · স্টকে মাল আসলে নিজে থেকে যাবে</span>`
         : `<b>✅ মেমো করা হয়ে গেছে · 🚚 মাল পাঠানো হয়েছে</b><span>${esc(pnm(acc))} · মেমো #${toBn(target.memoNo||'')} · ${bn(target.credit)} ৳ · স্টক থেকে বাদ হলো</span>`, 6000);
     };
-    if($('fParty')) $('fParty').addEventListener('change', ()=>{ const nw = $('fParty').value==='__new'; $('fNewWrap').hidden = !nw; if($('fParty').closest('.cm-sel')) $('fParty').hidden = nw; if(nw) $('fNewParty').focus(); });
-    if($('fBackList')) $('fBackList').onclick = ()=>{ const sel = $('fParty'); sel.value = curId || (sel.options[0]||{}).value; sel.hidden = false; $('fNewWrap').hidden = true; $('fNewParty').value = ''; sel.dispatchEvent(new Event('change')); };
+    if($('fParty')) $('fParty').addEventListener('change', ()=>{ const nw = $('fParty').value==='__new'; $('fNewWrap').hidden = !nw; if($('fNewLocWrap')) $('fNewLocWrap').hidden = !nw; if($('fParty').closest('.cm-sel')) $('fParty').hidden = nw; if(nw) $('fNewParty').focus(); });
+    if($('fBackList')) $('fBackList').onclick = ()=>{ const sel = $('fParty'); sel.value = curId || (sel.options[0]||{}).value; sel.hidden = false; $('fNewWrap').hidden = true; $('fNewParty').value = ''; if($('fNewLoc')) $('fNewLoc').value = ''; if($('fNewLocWrap')) $('fNewLocWrap').hidden = true; sel.dispatchEvent(new Event('change')); };
     if($('fToSale')) $('fToSale').onclick = ()=>window.__ledger.newMemo(accRef.id);
     if($('fEDate')) $('fEDate').addEventListener('change', ev=>{ if(ev.target.value) lDate = ev.target.value; });
     $('fSave').onclick = async () => {
       if(form.mode !== 'sale') return doSave();
       // নতুন মেমো: ask once before saving
       const hint = $('fHint'), pv = $('fParty').value;
-      const nm = pv === '__new' ? $('fNewParty').value.trim() : (pv ? $('fParty').selectedOptions[0].text : '');
+      let nm = pv === '__new' ? $('fNewParty').value.trim() : (pv ? $('fParty').selectedOptions[0].text : '');
       if(!nm){ hint.textContent = 'আগে পার্টি বাছাই করুন।'; hint.className = 'lhint err'; return; }
+      if(pv === '__new' && $('fNewLoc') && $('fNewLoc').value.trim()) nm += ' (' + $('fNewLoc').value.trim() + ')';
       const a0 = parseNum($('fAmt').value);
       if(isNaN(a0) || a0 <= 0){ hint.textContent = 'কেজি আর দর (বা টাকা) লিখুন।'; hint.className = 'lhint err'; return; }
       const tot = ($('cmTot') && $('cmTot').textContent) || ((document.querySelector('#labCalc .tot b')||{}).textContent) || bn(a0);

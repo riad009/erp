@@ -7,6 +7,7 @@ Tabs: স্টক · দৈনিক · মেমো · খতিয়ান �
 - Talk in **easy English**, short answers; the app UI is **Bangla** (Bangla digits ০-৯).
 - He sends a screenshot + a short request → make the change → **test on computer (1440) and phone (390)** → tell him in a few lines what changed.
 - After any change: `npm run dev`, open http://localhost:3000, check the page, no console errors.
+- **Always publish every change right away**: commit and `git push origin main` — Vercel auto-deploys `main` to the live site https://erp-psi-woad.vercel.app in ~1 min. Never leave a change only on this computer. Then tell him to refresh.
 
 ## Where the code is (step 1 of the move to Next.js)
 - The whole app is still **one file**: `public/khata/index.html` (~6,500 lines, plain HTML + CSS + JS, no build).
