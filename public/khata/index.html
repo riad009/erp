@@ -2805,6 +2805,15 @@ html body #stock .ssub .st[aria-selected="false"]:hover{filter:brightness(.97)}
 .nz.np .np3 input{padding-left:8px;padding-right:8px}
 #ledger .lform .g3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-bottom:8px}
 #ledger tr.open .dt small.od{display:block;margin-top:2px}
+/* মাল আসছে: ＋ আরো মাল lines for the same গাড়ি */
+#stock .add.add2 .xrows{grid-column:1 / -1;display:grid;grid-template-columns:subgrid;row-gap:8px}
+#stock .add.add2 .xrows:empty{display:none}
+#stock .add.add2 .xrow{grid-column:1 / -1;display:grid;grid-template-columns:subgrid;align-items:center}
+#stock .add.add2 .xrow .pkrow{grid-column:1 / 3}
+#stock .add.add2 .xrow .xkg{grid-column:3}
+#stock .add.add2 .xrow .xdel{grid-column:4;justify-self:start;width:46px!important;height:46px;border-radius:10px;background:#fff!important;color:#B3122B!important;border:1.5px solid #E8A3AE!important;font-size:20px;padding:0!important;box-shadow:none!important}
+#stock .add.add2 .xmore{grid-column:1 / -1;background:#fff!important;color:#2E7D4F!important;border:1.5px dashed #8CC59A!important;border-radius:10px;padding:10px;font-family:"Noto Sans Bengali",sans-serif;font-weight:700;font-size:15px;box-shadow:none!important}
+@media (max-width: 700px){ #stock .add.add2 .xrow{grid-template-columns:minmax(0,1fr) 46px;gap:8px} #stock .add.add2 .xrow .pkrow{grid-column:1 / -1} #stock .add.add2 .xrow .xkg{grid-column:1} #stock .add.add2 .xrow .xdel{grid-column:2} }
 </style>
 </head>
 <body>
@@ -3184,8 +3193,9 @@ function getDB(){
   }
   const toneOf = nm => /হার্ড|hard/i.test(nm) ? 'hard' : /নরম|সফট|soft/i.test(nm) ? 'soft' : '';
   // the picked size, shown on the form as one button
-  function pickHtml(D){
-    const f = lastItemId ? findItem(lastItemId) : null;
+  function pickHtml(D, id){
+    const iid = id === undefined ? lastItemId : id;
+    const f = iid ? findItem(iid) : null;
     if(!f) return '<span class="pk-ph">মাল বাছাই করুন</span><span class="pk-ch">›</span>';
     const st = itemStats(D);
     return `<span class="pk-mk ${f.c.tone||''}">${esc(f.c.name)}</span><b>${dimTxt(f.it)}</b><small>${bn(itemNow(f.it, st))} কেজি আছে</small><span class="pk-ch">বদলান ›</span>`;
@@ -3769,6 +3779,8 @@ function getDB(){
         </div>
         <div><label for="kg">কেজি</label><input id="kg" class="num" inputmode="decimal"></div>
         <div><label for="car">গাড়ি নং</label><input id="car" inputmode="numeric" autocomplete="off" value="${toBn(nextCar(cur))}"></div>
+        <div class="xrows" id="xRows"></div>
+        <button type="button" class="xmore" id="xMore">＋ আরো মাল (এই গাড়িতে)</button>
         <div class="cof"><label for="coRate">দর (প্রতি টন)</label><input id="coRate" class="num" inputmode="decimal" value="${lastCo && C ? (C.lastRate(lastCo) ? toBn(C.lastRate(lastCo)) : '') : ''}" placeholder="১,০১,০০০"></div>
         <div class="cof"><label for="coVno">চালান নং</label><input id="coVno" autocomplete="off" placeholder="যেমন ৮৪৯৮৭"></div>
         <p class="cocalc cof" id="coCalc"></p>
@@ -3911,10 +3923,24 @@ function getDB(){
       if(!lastItemId && clr) clr.remove();
     };
     $('pickBtn').onclick = () => openPicker(cur.id, id => { setPick(id); kg.focus(); });
+    // ＋ আরো মাল: more sizes on the same গাড়ি — each line = its own মাল + কেজি
+    const addXRow = () => {
+      const r = document.createElement('div'); r.className = 'xrow';
+      r.innerHTML = `<div class="pkrow"><button type="button" class="pkbtn xpk" data-item="">${pickHtml(cur.id, '')}</button></div><input class="num xkg" inputmode="decimal" aria-label="কেজি"><button type="button" class="xdel" aria-label="এই মাল বাদ দিন">×</button>`;
+      const pb = r.querySelector('.xpk'), kIn = r.querySelector('.xkg');
+      pb.onclick = () => openPicker(cur.id, id => { pb.dataset.item = id || ''; pb.innerHTML = pickHtml(cur.id, id || ''); kIn.focus(); });
+      r.querySelector('.xdel').onclick = () => r.remove();
+      kIn.addEventListener('input', paintCo);
+      kIn.addEventListener('keydown', e => { if(e.key === 'Enter'){ e.preventDefault(); $('xMore').focus(); } });
+      $('xRows').appendChild(r);
+      pb.click();
+    };
+    $('xMore').onclick = addXRow;
     if($('pickClr')) $('pickClr').onclick = () => setPick('');
     const paintCo = () => {
       const k = parseNum(kg.value), r = parseNum(coRate.value);
-      coCalc.textContent = box.classList.contains('withco') && k > 0 && r > 0 ? `${toBn((k/1000).toLocaleString('en-IN',{maximumFractionDigits:3}))} টন × ${bn(r)} = ${bn(Math.round(k/1000*r))} ৳ (কোম্পানির খতিয়ানে ডেবিট)` : '';
+      const xs = [...document.querySelectorAll('#xRows .xkg')].reduce((a, x) => a + (parseNum(x.value) > 0 ? parseNum(x.value) : 0), 0);
+      coCalc.textContent = box.classList.contains('withco') && k > 0 && r > 0 && !xs ? `${toBn((k/1000).toLocaleString('en-IN',{maximumFractionDigits:3}))} টন × ${bn(r)} = ${bn(Math.round(k/1000*r))} ৳ (কোম্পানির খতিয়ানে ডেবিট)` : '';
     };
     [kg, coRate].forEach(x => x.addEventListener('input', paintCo)); paintCo();
     if(coSel) coSel.onchange = () => {
@@ -3934,25 +3960,34 @@ function getDB(){
     const add = () => {
       const n = parseNum(kg.value);
       if(isNaN(n) || n<=0){ hint.textContent='সঠিক কেজি লিখুন।'; hint.className='hint err'; kg.focus(); return; }
-      cur.entries = cur.entries||[];
-      const row = {kg:n, car:car.value.trim(), ts:Date.now()};
-      let picked = null;
-      if(box.classList.contains('detopen') && itemSel.value && itemSel.value !== '__new'){
-        const itId = itemSel.value, f = findItem(itId), c = f ? f.c : null;
-        if(c){
-          row.cat = c.id; row.item = itId;
-          lastItemId = itId; try{ localStorage.setItem('kg-khata-lastitemid', lastItemId); }catch(_){}
-          picked = {c, it: (c.items||[]).find(x => x.id === itId) || null};
-        }
+      // the first line + every ＋ আরো মাল line (an empty extra line is skipped)
+      const lines = [{kg:n, itId: box.classList.contains('detopen') && itemSel.value && itemSel.value !== '__new' ? itemSel.value : ''}];
+      for(const x of document.querySelectorAll('#xRows .xrow')){
+        const xk = parseNum(x.querySelector('.xkg').value), xi = x.querySelector('.xpk').dataset.item || '';
+        if(!xi && !(xk > 0)) continue;
+        if(!(xk > 0)){ hint.textContent = 'প্রতিটা মালের কেজি লিখুন।'; hint.className = 'hint err'; x.querySelector('.xkg').focus(); return; }
+        lines.push({kg:xk, itId:xi});
       }
       const coId = coSel ? coSel.value : '';
-      if(coId && coId !== '__new' && C){
-        const r = parseNum(coRate.value);
-        if(!(r > 0)){ hint.textContent = 'কোম্পানির দর (প্রতি টন) লিখুন।'; hint.className = 'hint err'; coRate.focus(); return; }
-        row.co = coId;
-        row.ce = C.addInv({coId, date:cur.id, kg:n, mili:0, size:picked && picked.it ? picked.it.h : 0, len:picked && picked.it ? picked.it.w : 0, item:picked ? picked.c.name : '', mt:'', rate:r, vno:coVno.value.trim(), car:row.car});
-      }
-      cur.entries.push(row);
+      const withCo = coId && coId !== '__new' && C, rate = parseNum(coRate.value);
+      if(withCo && !(rate > 0)){ hint.textContent = 'কোম্পানির দর (প্রতি টন) লিখুন।'; hint.className = 'hint err'; coRate.focus(); return; }
+      cur.entries = cur.entries||[];
+      const ts = Date.now();
+      lines.forEach((ln, i) => {
+        const row = {kg:ln.kg, car:car.value.trim(), ts:ts + i};
+        let picked = null;
+        const f = ln.itId ? findItem(ln.itId) : null;
+        if(f){
+          row.cat = f.c.id; row.item = ln.itId;
+          if(i === 0){ lastItemId = ln.itId; try{ localStorage.setItem('kg-khata-lastitemid', lastItemId); }catch(_){} }
+          picked = {c:f.c, it:f.it};
+        }
+        if(withCo){
+          row.co = coId;
+          row.ce = C.addInv({coId, date:cur.id, kg:ln.kg, mili:0, size:picked && picked.it ? picked.it.h : 0, len:picked && picked.it ? picked.it.w : 0, item:picked ? picked.c.name : '', mt:'', rate, vno:coVno.value.trim(), car:row.car});
+        }
+        cur.entries.push(row);
+      });
       saveDay(cur,true); editIndex=-1; render();
       const r = $('lastRow'); if(r) r.classList.add('flash');
       $('kg').focus();
