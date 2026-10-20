@@ -2818,6 +2818,7 @@ html body #stock .ssub .st[aria-selected="false"]:hover{filter:brightness(.97)}
 .mrow.mrow2 .mst .mdel:hover{background:#FDE8EB}
 .m-acts:has(#mDel){grid-template-columns:repeat(4,minmax(0,1fr))}
 .mbtn.del{background:#fff!important;color:#B3122B!important;border:1.5px solid #E8A3AE}
+#ledger .acct .lbtn.ldel{color:#B3122B!important;border-color:#E8A3AE!important;background:#fff!important}
 </style>
 </head>
 <body>
@@ -4498,7 +4499,7 @@ function getDB(){
       <div class="acct">
         <span class="lab">হিসাব<small>Account of</small></span>
         ${accs.length ? `<select id="accSel" aria-label="হিসাব বাছাই">${accs.map(a=>`<option value="${a.id}" ${a.id===curId?'selected':''}>${esc(pnm(a))}</option>`).join('')}</select>
-        <button class="lbtn" id="renBtn" aria-label="নাম বদলান">✎</button>` : `<span style="flex:1"></span>`}
+        <button class="lbtn" id="renBtn" aria-label="নাম বদলান">✎</button><button class="lbtn ldel" id="delAccBtn" aria-label="পার্টি ডিলিট করুন" title="পার্টি ডিলিট করুন">🗑</button>` : `<span style="flex:1"></span>`}
         <button class="lbtn solid" id="newAccBtn">+ নতুন</button>
       </div>
       ${accMode ? `<div class="accform">
@@ -4712,6 +4713,22 @@ function getDB(){
     if($('accSel')) $('accSel').onchange = e => { curId = e.target.value; try{localStorage.setItem(LSCUR,curId);}catch(_){}; form={mode:'new',type:'credit',editId:null}; render(); };
     if($('renBtn')) $('renBtn').onclick = ()=>{ accMode='rename'; render(); $('accName').focus(); };
     $('newAccBtn').onclick = openNewParty;
+    if($('delAccBtn')) $('delAccBtn').onclick = async () => {
+      const a = cur(); if(!a) return;
+      const c = compute(a), memos = (a.entries||[]).filter(e => Number(e.credit) > 0).length, pays = (a.entries||[]).length - memos;
+      const ok = await kDialog({icon:'🗑', tone:'warn', title:`"${esc(pnm(a))}" ডিলিট করবেন?`,
+        html:`<p>${c.bal < 0 ? 'অগ্রিম' : 'বাকি'}: <b>${bn(Math.abs(c.bal))} ৳</b> · মেমো ${toBn(memos)}টা · টাকা জমা ${toBn(pays)}টা</p><p class="kd-note">এই পার্টির পুরো খতিয়ান মুছে যাবে — সব মেমো আর টাকা জমাসহ।${memos ? ' মেমোর মাল আবার স্টকে ফিরে যাবে।' : ''} পরে ফেরানো যাবে না।</p>`,
+        ok:'হ্যাঁ, ডিলিট করুন', cancel:'না'});
+      if(!ok) return;
+      accs = accs.filter(x => x.id !== a.id); lsSave();
+      if(db) db.doc('ledgers/'+a.id).delete().catch(()=>{});
+      curId = accs[0] ? accs[0].id : null; try{ localStorage.setItem(LSCUR, curId || ''); }catch(_){}
+      accMode = null; form = {mode:'new', type:'credit', editId:null}; render();
+      if(window.__stock) window.__stock.render();
+      if(window.__dashRender) window.__dashRender();
+      if(window.__extrasRefresh) window.__extrasRefresh();
+      if(typeof kToast === 'function') kToast(`<b>🗑 পার্টি ডিলিট হয়েছে</b><span>${esc(pnm(a))}</span>`, 5000);
+    };
     if($('accSave')){
       const doSave = ()=>{
         const name = $('accName').value.trim(); if(!name){ $('accName').classList.add('bad'); return; }
@@ -5626,7 +5643,7 @@ function getDB(){
     await loadRates();
     if(!accs.length){
       let seeded = false; try{ seeded = localStorage.getItem('kg-khata-ledger-seeded')==='1'; }catch(_){}
-      if(!seeded || db){ seed(); try{ localStorage.setItem('kg-khata-ledger-seeded','1'); }catch(_){} }
+      if(!seeded && !db){ seed(); try{ localStorage.setItem('kg-khata-ledger-seeded','1'); }catch(_){} }   // never bring the sample party back once parties live online (they may have been deleted)
     }
     let saved = null; try{ saved = localStorage.getItem(LSCUR); }catch(_){}
     curId = accs.find(a=>a.id===saved) ? saved : (accs[0] && accs[0].id);
