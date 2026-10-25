@@ -4025,7 +4025,7 @@ function getDB(){
       `}
 
       <div class="grand">
-        <div class="row"><span class="lbl">এই দিনের যোগ (${bn(entries.length)} গাড়ি)</span><span class="val num" id="sumVal">${bn(c.sum)} <small>কেজি</small></span></div>
+        <div class="row"><span class="lbl">এই দিনের যোগ (${bn(new Set(entries.map((e, i) => e.car ? 'c:' + e.car : 'i:' + i)).size)} গাড়ি · ${bn(entries.length)}টা মাল)</span><span class="val num" id="sumVal">${bn(c.sum)} <small>কেজি</small></span></div>
         <div class="total"><span class="lbl">সর্বমোট (T)</span><span class="val num" id="totVal">${bn(c.tot)}</span></div>
       </div>
 
@@ -6191,7 +6191,7 @@ document.addEventListener('input', e=>{
       if(cv){ sale += cv; bump(e.date,'sale',cv); }
     }));
     Object.keys(kh).forEach(d => { if(!inR(d)) return; (kh[d]||[]).forEach(x => { const v = Number(x.amt)||0; exp += v; bump(d,'exp',v); }); });
-    if(S) S.days().forEach(day => { if(!inR(day.id)) return; (day.entries||[]).forEach(e => { kg += Number(e.kg)||0; cars++; }); });
+    if(S) S.days().forEach(day => { if(!inR(day.id)) return; const seen = new Set(); (day.entries||[]).forEach((e, i) => { kg += Number(e.kg)||0; seen.add(e.car ? 'c:' + e.car : 'i:' + i); }); cars += seen.size; });   // one গাড়ি = one count, however many মাল it carried
 
     const topOwe = bal.filter(x=>x.b>0).sort((x,y)=>y.b-x.b).slice(0,5);
     const topPay = Object.entries(payers).map(([id,v])=>({a:accs.find(a=>a.id===id), v})).filter(x=>x.a).sort((x,y)=>y.v-x.v).slice(0,5);
