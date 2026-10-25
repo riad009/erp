@@ -2133,6 +2133,11 @@ body.theme-pro #stock ol.entries .spec,body.theme-pro #stock ol.entries .itm,bod
 .cm-meta:has(.cm-pno){grid-template-columns:auto auto 1fr auto!important}
 .cmform.cmd .cm-meta:has(.cm-pno){flex-wrap:wrap;row-gap:8px}
 @media (max-width: 600px){ .cmform.cmd .cm-meta .cm-pno{margin:0 0 0 auto!important} .cmform.cmd .cm-meta .cm-date{margin-left:auto} }
+.tstock .ts-search{position:relative;margin:10px 0}
+#stock .tstock .ts-search input{width:100%!important;box-sizing:border-box;min-height:46px!important;padding:8px 44px 8px 14px!important;border:1.5px solid #CDBFE6!important;border-radius:12px!important;background:#fff!important;font-family:"Noto Sans Bengali","Baloo Da 2",sans-serif!important;font-style:normal!important;font-size:16px!important;font-weight:600!important;color:#1B2347!important;box-shadow:none}
+.tstock .ts-search input:focus{outline:none;border-color:#6B3FA0;box-shadow:0 0 0 3px rgba(107,63,160,.15)}
+.tstock .ts-search button{position:absolute;right:8px;top:50%;transform:translateY(-50%);width:30px;height:30px;border-radius:50%;border:1px solid #DCD0EF;background:#fff;color:#6B3FA0;font-size:16px;cursor:pointer}
+.tstock .ts-none{padding:12px 4px;color:#6B7690}
 .mdrafts{margin:12px 0;padding:10px 12px;border-radius:12px;background:#FFFBEA;border:1.5px dashed #E2C15C}
 .mdrafts h3{margin:0 0 8px;font-size:16px;color:#7A5A00}
 .mdrafts h3 small{font-size:12.5px;font-weight:600;color:#9A7B20;margin-left:6px}
@@ -3112,8 +3117,9 @@ function uHead(title, sub){
 // tap anywhere on the date pill → the calendar opens (pick any day directly)
 document.addEventListener('click', e => {
   const l = e.target.closest && e.target.closest('.uhd label.udp'); if(!l) return;
-  const inp = l.querySelector('input[type="date"]'); if(!inp || typeof inp.showPicker !== 'function') return;
-  e.preventDefault(); try{ inp.showPicker(); }catch(_){ inp.focus(); }
+  const inp = l.querySelector('input[type="date"]'); if(!inp) return;
+  if(typeof inp.showPicker !== 'function') return;   // older browsers: the (invisible) date box on top opens by itself
+  e.preventDefault(); try{ inp.showPicker(); }catch(_){ try{ inp.focus(); inp.click(); }catch(__){} }
 });
 const goTodayBtn = id => `<button type="button" class="gotoday" id="${id}">↩ বর্তমান দিনে ফিরে যান</button>`;
 // calendar icon drawn in code (the 📅 emoji always shows "JUL 17" on iPhone)
@@ -3705,6 +3711,12 @@ function getDB(){
     return p.join(' × ');
   };
   // every goods line (খতিয়ানে মাল কিনেছে with kg), with the stock day it counts on
+  // 🔍 search sizes by মিলি (height) / লম্বা / "৬৫x৯১৪" (used by সর্বমোট মাল)
+  let tsQ = '';
+  const sizeMatch = (it, q) => { const BDs = '০১২৩৪৫৬৭৮৯', en = v => String(v).replace(/[০-৯]/g, c => BDs.indexOf(c));
+    const qq = en(q).toLowerCase().replace(/\s+/g, '').replace(/[×*]/g, 'x'), h = en(it.h), w = en(it.w); if(!qq) return true;
+    if(qq.includes('x')){ const [a, b] = qq.split('x'); return (!a || h.startsWith(a)) && (!b || w.startsWith(b)); }
+    return h.startsWith(qq) || w.startsWith(qq); };
   function typesHtml(cur){
     const D = cur.id, st = itemStats(D);
     const perCat = cats.map(c => ({c, t:(c.items||[]).reduce((sum, it) => sum + itemNow(it, st), 0)})), allKg = perCat.reduce((sum, x) => sum + x.t, 0);
@@ -3715,12 +3727,15 @@ function getDB(){
       </div>
       <p class="ts-date">${bnDate(D)} · <span class="red">সবুজ +</span> = এই দিনে এসেছে · <b style="color:#C0152F">লাল −</b> = মেমোতে গেছে · মার্কায় চাপ দিলে বন্ধ হবে</p>
       ${tsMsg ? `<p class="ts-msg">${esc(tsMsg)}</p>` : ''}
+      <div class="ts-search"><input id="tsQ" inputmode="decimal" autocomplete="off" placeholder="🔍 মিলি / সাইজ লিখে খুঁজুন: যেমন ৬৫ বা ১.২ বা ৬৫x৯১৪" value="${esc(tsQ)}">${tsQ ? `<button type="button" id="tsQx" aria-label="খোঁজা বন্ধ">×</button>` : ''}</div>
+      ${tsQ && !cats.some(c => (c.items||[]).some(it => sizeMatch(it, tsQ))) ? `<p class="ts-none">"${esc(tsQ)}" — এই মিলি / সাইজের কোনো মাল নেই।</p>` : ''}
       <div class="ts-cats">${cats.map(c => {
-        const rows = c.items||[];   // the order the sizes were added
+        const rows = tsQ ? (c.items||[]).filter(it => sizeMatch(it, tsQ)) : (c.items||[]);   // the order the sizes were added
+        if(tsQ && !rows.length) return '';
         let base = 0, now = 0;
         let sold = 0;
         rows.forEach(it => { const x = st[it.id] || {prev:0, now:0, sold:0}; base += (Number(it.open)||0) + x.prev; now += x.now; sold += x.sold||0; });
-        const open = !closedCats.has(c.id);
+        const open = !!tsQ || !closedCats.has(c.id);
         return `<div class="ts-g ${c.tone||''} ${open ? 'open' : ''}">
           <button type="button" class="ts-h" data-cat="${c.id}" aria-expanded="${open}">
             <span class="nm">${(() => { const m = String(c.name).match(/^(.*?)\s*(\(.*\))\s*$/); return m ? `<span class="mn"># ${esc(m[1])}</span><small>${esc(m[2])}</small>` : `<span class="mn"># ${esc(c.name)}</span>`; })()}</span>
@@ -3820,6 +3835,8 @@ function getDB(){
   function bindTypes(cur){
     const $ = id => document.getElementById(id);
     const again = () => { render(); };
+    if($('tsQ')) $('tsQ').oninput = () => { const q = $('tsQ'), pos = q.selectionStart; tsQ = q.value; again(); const n = $('tsQ'); if(n){ n.focus(); try{ n.setSelectionRange(pos, pos); }catch(_){} } };
+    if($('tsQx')) $('tsQx').onclick = () => { tsQ = ''; again(); };
     document.querySelectorAll('#stock .ts-h').forEach(b => b.onclick = () => { const id = b.dataset.cat; closedCats.has(id) ? closedCats.delete(id) : closedCats.add(id); tsMsg = ''; again(); });
     document.querySelectorAll('#stock .ts-plus').forEach(b => b.onclick = () => { tsAdd = b.dataset.item; tsEdit = null; tsNew = null; tsMsg = ''; again(); const k = $('tsKg'); if(k) k.focus(); });
     document.querySelectorAll('#stock .mvr').forEach(b => { b.onclick = () => openMove(b.dataset); b.onkeydown = e => { if(e.key === 'Enter') openMove(b.dataset); }; });
@@ -7096,7 +7113,7 @@ document.addEventListener('input', e=>{
     mroot.querySelectorAll('[data-ms]').forEach(b => b.onclick = () => { memoStyle = b.dataset.ms; try{ localStorage.setItem('kg-khata-memostyle', memoStyle); }catch(_){}; renderMemo(); });
     mroot.querySelectorAll('.mdr-open').forEach(b => b.onclick = () => L().openDraft(b.dataset.dr));
     mroot.querySelectorAll('.mdr-del').forEach(b => b.onclick = () => { if(!b.classList.contains('armed')){ b.classList.add('armed'); b.textContent = 'মুছবেন?'; setTimeout(() => { if(b.isConnected){ b.classList.remove('armed'); b.textContent = '×'; } }, 3500); return; } L().delDraft(b.dataset.drd); });
-    if(document.getElementById('mDay')) document.getElementById('mDay').onchange = e => { const v = e.target.value; if(!v) return; mst.p = 'custom'; mst.f = v; mst.t = v; try{ localStorage.setItem('kg-khata-memo', JSON.stringify(mst)); }catch(_){}; renderMemo(); };
+    if(document.getElementById('mDay')) document.getElementById('mDay').oninput = document.getElementById('mDay').onchange = e => { const v = e.target.value; if(!v) return; mst.p = 'custom'; mst.f = v; mst.t = v; try{ localStorage.setItem('kg-khata-memo', JSON.stringify(mst)); }catch(_){}; renderMemo(); };
     if(document.getElementById('mAllBtn')) document.getElementById('mAllBtn').onclick = () => { mst.p = 'month'; delete mst.f; delete mst.t; try{ localStorage.setItem('kg-khata-memo', JSON.stringify(mst)); }catch(_){}; renderMemo(); };
     document.getElementById('mFT').onclick = () => { mst.open = !mst.open; try{ localStorage.setItem('kg-khata-memo', JSON.stringify(mst)); }catch(_){}; renderMemo(); };
   }
