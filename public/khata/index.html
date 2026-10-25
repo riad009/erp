@@ -3971,6 +3971,12 @@ function getDB(){
     const c = m[cur.id];
     const entries = cur.entries||[];
     app.innerHTML = head + `
+      ${(()=>{ const p = pendingKg(); return `
+      <nav class="subtabs ssub" role="tablist">
+        <button role="tab" class="st ty" data-ssub="types" aria-selected="${sSub==='types'}">📊 সর্বমোট মাল <span class="num">${(() => { const st = itemStats(cur.id); let t = 0; cats.forEach(c => (c.items||[]).forEach(it => { t += itemNow(it, st); })); return bn(t) + ' কেজি'; })()}</span></button>
+        <button role="tab" class="st" data-ssub="delivery" aria-selected="${sSub==='delivery'}">🚚 মাল আসছে <span class="num">আজ ${bn(c.sum)} কেজি</span></button>
+        <button role="tab" class="st q" data-ssub="queue" aria-selected="${sSub==='queue'}">📦 মাল যাচ্ছে <span class="num">${p.n ? 'বাকি '+bn(p.kg)+' কেজি' : 'বাকি নেই'}</span></button>
+      </nav>`; })()}
       <div class="calc">
         <div class="row">
           <span class="lbl">আগের মোট (T) <small class="from">${(() => { if(isFirst) return 'শুরুর স্টক (হাতে লিখুন)'; const k = days.findIndex(d => d.id === cur.id), pv = k > 0 ? days[k-1] : null; return pv ? shortD(pv.id) + ' এর শেষে যা ছিল' : ''; })()}</small></span>
@@ -3990,12 +3996,6 @@ function getDB(){
         </div>
       </div>
 
-      ${(()=>{ const p = pendingKg(); return `
-      <nav class="subtabs ssub" role="tablist">
-        <button role="tab" class="st ty" data-ssub="types" aria-selected="${sSub==='types'}">📊 সর্বমোট মাল <span class="num">${(() => { const st = itemStats(cur.id); let t = 0; cats.forEach(c => (c.items||[]).forEach(it => { t += itemNow(it, st); })); return bn(t) + ' কেজি'; })()}</span></button>
-        <button role="tab" class="st" data-ssub="delivery" aria-selected="${sSub==='delivery'}">🚚 মাল আসছে <span class="num">আজ ${bn(c.sum)} কেজি</span></button>
-        <button role="tab" class="st q" data-ssub="queue" aria-selected="${sSub==='queue'}">📦 মাল যাচ্ছে <span class="num">${p.n ? 'বাকি '+bn(p.kg)+' কেজি' : 'বাকি নেই'}</span></button>
-      </nav>`; })()}
 
       ${sSub==='queue' ? queueHtml(cur, c) : sSub==='types' ? typesHtml(cur) : `
       ${(()=>{ const C = window.__company; const cos = C ? C.list() : []; if(lastCo && !cos.find(x=>x.id===lastCo)) lastCo = ''; return `
