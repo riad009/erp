@@ -2887,6 +2887,9 @@ html body #stock .ssub .st[aria-selected="false"]:hover{filter:brightness(.97)}
 #stock .addopen{width:100%;margin:12px 0;padding:14px;border-radius:12px;background:#1F7A3F;color:#fff;border:0;font-weight:800;font-size:17px}
 #stock .cedit,.hmd-h .cedit{margin-left:6px;padding:1px 7px;border-radius:6px;border:1px solid #C9D8EE;background:#fff;color:#1F4AA8;font-size:13px;font-weight:800;line-height:1.4;cursor:pointer}
 .kd-input{width:100%;box-sizing:border-box;margin-top:8px;padding:10px 12px;border:1.5px solid #B9C7DD;border-radius:10px;font-size:20px;font-family:"Baloo Da 2","Noto Sans Bengali",sans-serif;text-align:center}
+#stock .dcar .d-sl.dcarno{display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.1}
+#stock .dcar .dcarno small{font-size:11.5px;color:#2E7D4F;font-weight:600}
+#stock .dcar .dcarno b{font-family:"Baloo Da 2","Noto Sans Bengali",sans-serif;font-size:21px;font-weight:800;color:#1B2347}
 #stock .cardel{grid-column:1/-1;width:100%;margin-top:8px;padding:10px;border-radius:10px;border:1.5px solid #F2B8C0;background:#FFF5F6;color:#B42318;font-weight:700;font-size:14px}
 #stock .cardel.armed{background:#B42318;color:#fff;border-color:#B42318}
 #stock .addopen:hover{background:#19683A}
@@ -4047,7 +4050,7 @@ function getDB(){
       <p class="hint" id="hint">কেজি আর গাড়ি নং দিন। মাল বাছাই করতে ＋ চাপুন — "📊 সর্বমোট মাল" এ সবুজ রঙে যোগ হবে। মাল বাটনে চাপুন → আগে মার্কা, তারপর সাইজ বাছাই করুন।</p></div></div>`; })()}
 
       <ol class="entries dtab">
-        ${entries.length ? `<li class="dhead" aria-hidden="true"><span>ক্রমিক</span><span>কেজি ও সময়</span><span>মাল (মার্কা · সাইজ)</span><span>গাড়ি নং</span><span>কোম্পানি</span><span></span></li>` : ''}
+        ${entries.length ? `<li class="dhead" aria-hidden="true"><span>গাড়ি / ক্রমিক</span><span>কেজি ও সময়</span><span>মাল (মার্কা · সাইজ)</span><span>গাড়ি নং</span><span>কোম্পানি</span><span></span></li>` : ''}
         ${entries.length ? (() => {
           const rowOf = (e,i)=> i===editIndex ? `
           <li class="editing">
@@ -4080,10 +4083,10 @@ function getDB(){
             const cos = [...new Set(es.map(e => e.co && window.__company ? window.__company.name(e.co) : '').filter(Boolean))], vnos = [...new Set(es.map(e => e.vno).filter(Boolean))];
             const mk = [...new Set(es.map(e => { const f = e.item ? findItem(e.item) : null, c = e.cat ? catOf(e.cat) : (f ? f.c : null); return c ? c.name : ''; }).filter(Boolean))];
             return `<li class="drow dcar ${open ? 'open' : ''}" data-ckey="${esc(key)}" tabindex="0" title="গাড়ির মাল দেখুন">
-              <span class="d-sl">${toBn(n+1)}</span>
+              <span class="d-sl dcarno">${es[0].car ? `<small>গাড়ি</small><b>${esc(toBn(es[0].car))}</b>` : (es[0].b ? '<small>বেশি</small><b>B</b>' : '<b>—</b>')}</span>
               <span class="d-kg"><b class="kg num">${bn(kgT)} <small>কেজি</small></b><small class="when">${whenTxt(cur.id, es[0].ts)}</small></span>
               <span class="d-mal"><b class="citems">${toBn(es.length)}টা মাল</b><small class="cmk">${mk.map(esc).join(' · ')}</small></span>
-              <span class="d-car">${es[0].car ? `<b class="carno">${esc(toBn(es[0].car))}</b>` : (es[0].b ? '<span class="btag">বেশি (B)</span>' : '<i class="na">—</i>')}${es[0].b ? '' : `<button type="button" class="cedit" data-cday="${cur.id}" data-cidx="${g.idx.join(',')}" aria-label="গাড়ি নং বদলান" title="গাড়ি নং বদলান">✎</button>`}</span>
+              <span class="d-car">${es[0].b ? '' : `<button type="button" class="cedit" data-cday="${cur.id}" data-cidx="${g.idx.join(',')}" aria-label="গাড়ি নং বদলান" title="গাড়ি নং বদলান">✎</button>`}</span>
               <span class="d-co">${cos.length ? `<span class="coname">🏭 ${cos.map(esc).join(', ')}</span>` : (vnos.length ? '' : '<i class="na">—</i>')}${vnos.length ? `<span class="vno">চালান ${vnos.map(v => esc(toBn(v))).join(', ')}</span>` : ''}</span>
               <span class="d-act"><i class="cchev">${open ? '▾' : '▸'}</i></span>
             </li>` + (open ? g.idx.map(i => rowOf(entries[i], i)).join('') : '');
