@@ -2883,6 +2883,12 @@ html body #stock .ssub .st[aria-selected="false"]:hover{filter:brightness(.97)}
 .tstock .ts-total .tt-p{font-family:"Noto Sans Bengali",sans-serif;font-size:13px;font-weight:600;color:#475467;background:#fff;border:1px solid #DCD0EF;border-radius:999px;padding:3px 10px}
 .tstock .ts-total .tt-p b{font-family:"Baloo Da 2",sans-serif;font-weight:800;color:#1B2347;margin-left:2px}
 .tstock .ts-total .tt-p.hard{border-color:#C9B6EA}.tstock .ts-total .tt-p.soft{border-color:#A9D8B6}.tstock .ts-total .tt-p.soft2{border-color:#A6D3E3}
+/* 🚚 মাল আসছে: form hidden behind one button */
+#stock .addopen{width:100%;margin:12px 0;padding:14px;border-radius:12px;background:#1F7A3F;color:#fff;border:0;font-weight:800;font-size:17px}
+#stock .addopen:hover{background:#19683A}
+#stock #addBox{position:relative}
+#stock #addBox[hidden],#stock #hint[hidden],#stock .addopen[hidden]{display:none}
+#stock .addclose{position:absolute;top:4px;right:8px;width:26px;height:26px;line-height:1;padding:0;border-radius:50%;border:1px solid #CFE6D5;background:#fff;color:#475467;font-size:14px;z-index:2}
 /* 📜 মাল আসার ইতিহাস */
 #stock .mhist{margin:14px 0}
 #stock .hist-tg{width:100%;display:flex;align-items:center;gap:10px;justify-content:space-between;text-align:left;padding:12px 14px;border-radius:12px;background:#F2FAF3;border:1.5px solid #8CC59A;color:#17402A;font-family:"Tiro Bangla",serif;font-weight:700;font-size:17px}
@@ -3517,6 +3523,7 @@ function getDB(){
   let lastSize = 1250; try{ lastSize = Number(localStorage.getItem('kg-khata-lastsize')) || 1250; }catch(_){}
   let lastCo = ''; try{ lastCo = localStorage.getItem('kg-khata-lastco') || ''; }catch(_){}
   let coNew = false;   // typing a new company name in the stock form
+  let addOpen = false;   // 🚚 মাল আসছে form is hidden until "＋ মাল যোগ করুন" is tapped
   let lastItem = '', lastMt = '', lastLen = '';
   try{ lastItem = localStorage.getItem('kg-khata-lastitem') || ''; lastMt = localStorage.getItem('kg-khata-lastmt') || ''; lastLen = localStorage.getItem('kg-khata-lastlen') || ''; }catch(_){}
   const MTN = {soft:'সফট', hard:'হার্ড'};
@@ -3937,7 +3944,7 @@ function getDB(){
         <button class="second" id="backBtn" type="button">চলতি দিনে ফিরে যান</button>` + history;
       bindCommon();
       document.getElementById('createBtn').onclick = ()=>{   // open this date and go straight to the 🚚 মাল আসছে form
-        addDay(viewId); sSub = 'delivery'; try{ localStorage.setItem('kg-khata-ssub', sSub); }catch(_){}
+        addDay(viewId); sSub = 'delivery'; addOpen = true; try{ localStorage.setItem('kg-khata-ssub', sSub); }catch(_){}
         render(); const k = document.getElementById('kg'); if(k) k.focus();
       };
       document.getElementById('backBtn').onclick = ()=>go(last.id);
@@ -3975,7 +3982,9 @@ function getDB(){
 
       ${sSub==='queue' ? queueHtml(cur, c) : sSub==='types' ? typesHtml(cur) : `
       ${(()=>{ const C = window.__company; const cos = C ? C.list() : []; if(lastCo && !cos.find(x=>x.id===lastCo)) lastCo = ''; return `
-      <div class="add add2 ${lastCo ? 'withco' : ''} detopen" id="addBox">
+      <button type="button" class="addopen" id="addOpenBtn" ${addOpen || coNew ? 'hidden' : ''}>＋ মাল যোগ করুন</button>
+      <div class="add add2 ${lastCo ? 'withco' : ''} detopen" id="addBox" ${addOpen || coNew ? '' : 'hidden'}>
+        <button type="button" class="addclose" id="addCloseBtn" aria-label="বন্ধ করুন">✕</button>
         <div class="coline">
           <label for="coSel">কোম্পানি থেকে মাল এসেছে?</label>
           ${coNew
@@ -3996,7 +4005,7 @@ function getDB(){
         <p class="cocalc cof" id="coCalc"></p>
         <button id="addBtn" type="button">যোগ করুন</button>
       </div>
-      <p class="hint" id="hint">কেজি আর গাড়ি নং দিন। মাল বাছাই করতে ＋ চাপুন — "📊 সর্বমোট মাল" এ সবুজ রঙে যোগ হবে। মাল বাটনে চাপুন → আগে মার্কা, তারপর সাইজ বাছাই করুন।</p>`; })()}
+      <p class="hint" id="hint" ${addOpen || coNew ? '' : 'hidden'}>কেজি আর গাড়ি নং দিন। মাল বাছাই করতে ＋ চাপুন — "📊 সর্বমোট মাল" এ সবুজ রঙে যোগ হবে। মাল বাটনে চাপুন → আগে মার্কা, তারপর সাইজ বাছাই করুন।</p>`; })()}
 
       <ol class="entries dtab">
         ${entries.length ? `<li class="dhead" aria-hidden="true"><span>ক্রমিক</span><span>কেজি ও সময়</span><span>মাল (মার্কা · সাইজ)</span><span>গাড়ি নং</span><span>কোম্পানি</span><span></span></li>` : ''}
@@ -4226,6 +4235,9 @@ function getDB(){
       $('kg').focus();
     };
     $('addBtn').onclick = add;
+    const showAdd = on => { addOpen = on; $('addBox').hidden = !on; $('hint').hidden = !on; $('addOpenBtn').hidden = on; if(on) $('kg').focus(); };
+    $('addOpenBtn').onclick = () => showAdd(true);
+    $('addCloseBtn').onclick = () => showAdd(false);
     kg.addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); $('coilNo').focus(); }});
     $('coilNo').addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); car.focus(); }});
     car.addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); if(box.classList.contains('withco')) coRate.focus(); else add(); }});
