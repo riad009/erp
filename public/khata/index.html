@@ -2915,6 +2915,9 @@ html body #stock .ssub .st[aria-selected="false"]:hover{filter:brightness(.97)}
   #stock ol.entries.dtab > li.dfoot > .d-co,#stock ol.entries.dtab > li.dfoot > .d-act,#stock ol.entries.dtab > li.dfoot > .d-car{display:none}
   #stock ol.entries.dtab > li.dfoot > span{border-right:0;padding:8px 10px}
 }
+#stock .d-mal .ciname,#stock .hrows .ciname{display:block;font-family:"Courier New",monospace;font-size:12px;color:#475467;letter-spacing:.2px}
+#stock .hrows .ciname{display:inline}
+#stock .d-co .vno{display:block;font-size:12.5px;color:#475467;font-weight:600}
 </style>
 </head>
 <body>
@@ -3812,7 +3815,7 @@ function getDB(){
         return `<div class="hday">
           <button type="button" class="hday-h" data-hday="${d.id}" title="এই দিন খুলুন"><b>${bnDate(d.id)}</b><span>${bn(sumEntries(d))} কেজি · ${toBn((d.entries||[]).length)} লাইন${cars.length ? ' · গাড়ি ' + cars.map(c => esc(toBn(c))).join(', ') : ''}</span><i>›</i></button>
           <ol class="hrows">${(d.entries||[]).map((e, i) => { const f = e.item ? findItem(e.item) : null, c = e.cat ? catOf(e.cat) : (f ? f.c : null);
-            return `<li><span class="hn">${toBn(i+1)}</span><b class="hk">${bn(e.kg)} <small>কেজি</small></b><span class="hm">${c ? esc(c.name) : esc(e.item||'—')}${f ? ' · <b>' + dimTxt(f.it) + '</b>' : ''}${e.coil ? ' · কয়েল ' + esc(toBn(e.coil)) : ''}</span><span class="hc">${[e.car ? 'গাড়ি ' + esc(toBn(e.car)) : '', e.co && window.__company ? '🏭 ' + esc(window.__company.name(e.co)||'') : ''].filter(Boolean).join(' · ')}</span></li>`; }).join('')}</ol>
+            return `<li><span class="hn">${toBn(i+1)}</span><b class="hk">${bn(e.kg)} <small>কেজি</small></b><span class="hm">${c ? esc(c.name) : esc(e.item||'—')}${f ? ' · <b>' + dimTxt(f.it) + '</b>' : ''}${e.coil ? ' · কয়েল ' + esc(toBn(e.coil)) : ''}${e.ci ? ' · <small class="ciname">' + esc(e.ci) + '</small>' : ''}</span><span class="hc">${[e.car ? 'গাড়ি ' + esc(toBn(e.car)) : '', e.co && window.__company ? '🏭 ' + esc(window.__company.name(e.co)||'') : ''].filter(Boolean).join(' · ')}</span></li>`; }).join('')}</ol>
         </div>`; }).join('') : '<p class="hnone">এখনো কোনো মাল আসেনি।</p>') : ''}
     </section>`;
   }
@@ -3942,9 +3945,9 @@ function getDB(){
             <span class="d-kg"><b class="kg num">${bn(e.kg)} <small>কেজি</small></b><small class="when">${whenTxt(cur.id, e.ts)}</small></span>
             <span class="d-mal">${(() => { const f = e.item ? findItem(e.item) : null; const c = e.cat ? catOf(e.cat) : (f ? f.c : null);
                 if(c) return `<span class="itm mk ${c.tone||''}">${esc(c.name)}</span>${f ? `<span class="spec">${dimTxt(f.it)}</span>` : ''}`;
-                return e.item || e.mt ? `<span class="itm">${esc(e.item||'')}${e.mt ? ` <b class="mtb ${e.mt}">${MTN[e.mt]}</b>` : ''}</span>` : '<i class="na">—</i>'; })()}${e.mili || e.size || e.len ? `<span class="spec">${specTxt(e)}</span>` : ''}${e.coil ? `<span class="coilno">কয়েল নং ${esc(toBn(e.coil))}</span>` : ''}</span>
+                return e.item || e.mt ? `<span class="itm">${esc(e.item||'')}${e.mt ? ` <b class="mtb ${e.mt}">${MTN[e.mt]}</b>` : ''}</span>` : '<i class="na">—</i>'; })()}${e.mili || e.size || e.len ? `<span class="spec">${specTxt(e)}</span>` : ''}${e.coil ? `<span class="coilno">কয়েল নং ${esc(toBn(e.coil))}</span>` : ''}${e.ci ? `<span class="ciname">${esc(e.ci)}</span>` : ''}</span>
             <span class="d-car">${e.b ? '<span class="btag">বেশি (B)</span>' : (e.car ? `<b class="carno">${esc(toBn(e.car))}</b>` : '<i class="na">—</i>')}</span>
-            <span class="d-co">${e.co && window.__company ? `<span class="coname">🏭 ${esc(window.__company.name(e.co) || '')}</span>` : '<i class="na">—</i>'}</span>
+            <span class="d-co">${e.co && window.__company ? `<span class="coname">🏭 ${esc(window.__company.name(e.co) || '')}</span>` : (e.vno ? '' : '<i class="na">—</i>')}${e.vno ? `<span class="vno">চালান ${esc(toBn(e.vno))}</span>` : ''}</span>
             <span class="d-act"><button class="edit" data-i="${i}" aria-label="বদলান">✎</button><button class="del" data-i="${i}" aria-label="মুছুন">×</button></span>
           </li>`).join('') : `<li class="empty">এই দিনে এখনো কোনো গাড়ি যোগ হয়নি।</li>`}
         ${entries.length ? (() => { const cars = [...new Set(entries.map(e => e.car).filter(Boolean))];
@@ -4123,7 +4126,7 @@ function getDB(){
           picked = {c:f.c, it:f.it};
         }
         if(withCo){
-          row.co = coId;
+          row.co = coId; if(coVno.value.trim()) row.vno = coVno.value.trim();
           row.ce = C.addInv({coId, date:cur.id, kg:ln.kg, mili:0, size:picked && picked.it ? picked.it.h : 0, len:picked && picked.it ? picked.it.w : 0, item:picked ? picked.c.name : '', mt:'', rate, vno:coVno.value.trim(), car:row.car});
         }
         cur.entries.push(row);
