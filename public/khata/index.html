@@ -2149,6 +2149,16 @@ body.theme-pro #stock ol.entries .spec,body.theme-pro #stock ol.entries .itm,bod
 #fLabAdj .radj{margin-left:4px}
 .lab-auto{flex:none;width:28px;height:28px;border-radius:50%;border:1px solid #E2C9A0;background:#fff;color:#9A4A00;font-weight:800;cursor:pointer}
 .lab-auto[hidden]{display:none!important}
+.syncbar{position:fixed;left:12px;right:12px;bottom:12px;z-index:200;display:flex;flex-wrap:wrap;gap:10px 14px;align-items:center;justify-content:space-between;padding:12px 14px;border-radius:14px;background:#FFF4E5;border:2px solid #F0A93B;box-shadow:0 12px 34px rgba(12,24,48,.25);color:#5C3A00;font-size:14px}
+@media (min-width: 900px){ .syncbar{left:calc(var(--side, 224px) + 16px)} }
+.syncbar .sb-t{flex:1 1 300px;min-width:0}
+.syncbar ul{margin:6px 0 0;padding-left:18px;max-height:110px;overflow:auto;font-size:13.5px}
+.syncbar .sb-a{display:flex;gap:8px;flex-wrap:wrap}
+.syncbar button{padding:10px 16px;border-radius:10px;border:0;font-weight:800;font-size:14.5px;cursor:pointer}
+.syncbar #sbUp{background:#1F7A3F;color:#fff}
+.syncbar #sbNo{background:#fff;color:#B42318;border:1.5px solid #F2B8C0}
+.syncbar #sbNo.armed{background:#B42318;color:#fff}
+.syncbar.off{background:#FFF1F2;border-color:#F2B8C0;color:#8A1C1C;flex-direction:column;align-items:flex-start;gap:2px}
 .mdrafts{margin:12px 0;padding:10px 12px;border-radius:12px;background:#FFFBEA;border:1.5px dashed #E2C15C}
 .mdrafts h3{margin:0 0 8px;font-size:16px;color:#7A5A00}
 .mdrafts h3 small{font-size:12.5px;font-weight:600;color:#9A7B20;margin-left:6px}
@@ -4917,7 +4927,7 @@ function getDB(){
   /* storage */
   const lsSave = () => { try{ localStorage.setItem(LS, JSON.stringify(accs)); }catch(e){} };
   const lsLoad = () => { try{ return JSON.parse(localStorage.getItem(LS)||'[]'); }catch(e){ return []; } };
-  function save(acc){ if(acc && acc.name){ acc.name = capName(acc.name); if(acc.address) acc.address = capName(acc.address); } lsSave(); if(db) db.doc('ledgers/'+acc.id).set(clone(acc)).catch(()=>{}); if(window.__stock) setTimeout(()=>window.__stock.render(), 0); if(window.__extrasRefresh) setTimeout(()=>window.__extrasRefresh(), 0); }
+  function save(acc){ if(acc && acc.name){ acc.name = capName(acc.name); if(acc.address) acc.address = capName(acc.address); } lsSave(); if(db) db.doc('ledgers/'+acc.id).set(clone(acc)).catch(saveFailed); if(window.__stock) setTimeout(()=>window.__stock.render(), 0); if(window.__extrasRefresh) setTimeout(()=>window.__extrasRefresh(), 0); }
   /* রেট for each kind of goods: remembered from the last time it was used */
   const MT = {soft:'সফট', hard:'হার্ড'};
   let rates = {}; try{ rates = JSON.parse(localStorage.getItem('kg-khata-rates')||'{}'); }catch(_){ rates = {}; }
@@ -4946,12 +4956,59 @@ function getDB(){
     return p.length ? 'শেষ রেট — ' + p.join(' · ') : 'ধরন বাছাই করে রেট দিন। পরের বার রেট নিজে বসে যাবে।';
   }
   async function load(){
+    const local = lsLoad();   // this browser's copy, before the online one replaces it
     if(db){
       try{ const snap = await db.collection('ledgers').get(); accs = snap.docs.filter(s=>s.exists).map(s=>clone(s.data())); }
       catch(e){ db = null; accs = lsLoad(); }
     } else accs = lsLoad();
     accs.sort((a,b)=>(a.created||0)-(b.created||0));
     accs.forEach(a => { if(capName(a.name) !== a.name || (a.address && capName(a.address) !== a.address)) save(a); });   // old names → Capital first letters
+    if(db) findUnsynced(local);
+    setTimeout(paintSync, 50);
+  }
+  /* ⚠️ অনলাইনে সেভ হয়নি: memos / জমা that are in this browser but never reached the online database */
+  let unsynced = []; try{ unsynced = JSON.parse(localStorage.getItem('kg-khata-unsynced') || '[]'); }catch(_){}
+  const keepUnsynced = () => { try{ localStorage.setItem('kg-khata-unsynced', JSON.stringify(unsynced)); }catch(_){} };
+  function findUnsynced(local){
+    const byId = new Map(accs.map(a => [a.id, a])), have = new Set(unsynced.map(u => u.e ? u.e.id : u.party.id)), recent = Date.now() - 21 * 864e5;
+    local.forEach(la => {
+      const sa = byId.get(la.id);
+      if(!sa){ if((la.entries||[]).length && (la.created||0) > recent && !have.has(la.id)) unsynced.push({party: la}); return; }
+      const ids = new Set((sa.entries||[]).map(e => e.id));
+      (la.entries||[]).forEach(e => { if(!ids.has(e.id) && (e.ts||0) > recent && !have.has(e.id)) unsynced.push({accId: la.id, name: la.name, e}); });
+    });
+    // already online now (uploaded from another tab)? drop it
+    unsynced = unsynced.filter(u => u.e ? !((byId.get(u.accId)||{}).entries||[]).some(x => x.id === u.e.id) : !byId.has(u.party.id));
+    keepUnsynced();
+  }
+  let failToast = 0;
+  function saveFailed(){ if(Date.now() - failToast > 20000){ failToast = Date.now(); if(typeof kToast === 'function') kToast('<b>⚠️ অনলাইনে সেভ হয়নি</b><span>ইন্টারনেট দেখুন। এই ডিভাইসে রাখা আছে — পরে পাতা খুললে "অনলাইনে তুলুন" বোতাম আসবে।</span>', 8000); } }
+  function uploadUnsynced(){
+    const memoNos = new Set(); accs.forEach(a => (a.entries||[]).forEach(e => { if(e.memoNo) memoNos.add(e.memoNo); }));
+    const touched = new Set();
+    unsynced.forEach(u => {
+      if(u.party){ if(!accs.find(a => a.id === u.party.id)){ accs.push(clone(u.party)); touched.add(u.party.id); } return; }
+      const a = accs.find(x => x.id === u.accId); if(!a) return;
+      const e = clone(u.e); if(e.memoNo && memoNos.has(e.memoNo)) e.memoNo = Math.max(0, ...memoNos) + 1;
+      if(e.memoNo) memoNos.add(e.memoNo);
+      a.entries = a.entries || []; a.entries.push(e); touched.add(a.id);
+    });
+    touched.forEach(id => save(accs.find(a => a.id === id)));
+    const n = unsynced.length; unsynced = []; keepUnsynced(); render(); paintSync();
+    if(window.__ledger && window.__ledger.autoSend) window.__ledger.autoSend(true);
+    kToast(`<b>⬆ ${toBn(n)}টা লেনদেন অনলাইনে তোলা হয়েছে</b><span>এখন সব ডিভাইসে দেখা যাবে</span>`, 6000);
+  }
+  function paintSync(){
+    let bar = document.getElementById('syncBar');
+    if(!db && !bar && !document.getElementById('offBar')){ const o = document.createElement('div'); o.id = 'offBar'; o.className = 'syncbar off'; o.innerHTML = '<b>⚠️ অনলাইনে যুক্ত নেই</b><span>এখন শুধু এই ডিভাইসে সেভ হচ্ছে। ইন্টারনেট ঠিক হলে পাতা রিফ্রেশ করুন।</span>'; document.body.appendChild(o); }
+    if(!unsynced.length){ if(bar) bar.remove(); return; }
+    if(!bar){ bar = document.createElement('div'); bar.id = 'syncBar'; bar.className = 'syncbar'; document.body.appendChild(bar); }
+    const line = u => u.party ? `নতুন পার্টি ${esc(u.party.name)}` : `${esc(u.name)} · ${u.e.memoNo ? 'মেমো #' + toBn(u.e.memoNo) : (Number(u.e.debit) > 0 ? 'জমা' : 'লেনদেন')} · ${toBn((u.e.date||'').slice(8,10) + '/' + (u.e.date||'').slice(5,7))}${Number(u.e.credit) > 0 ? ' · ' + bn(u.e.credit) + ' ৳' : (Number(u.e.debit) > 0 ? ' · ' + bn(u.e.debit) + ' ৳' : '')}`;
+    bar.innerHTML = `<div class="sb-t"><b>⚠️ এই ডিভাইসে ${toBn(unsynced.length)}টা লেনদেন আছে যা অনলাইনে সেভ হয়নি</b><ul>${unsynced.map(u => `<li>${line(u)}</li>`).join('')}</ul></div>
+      <div class="sb-a"><button type="button" id="sbUp">⬆ অনলাইনে তুলুন</button><button type="button" id="sbNo">বাদ দিন</button></div>`;
+    bar.querySelector('#sbUp').onclick = uploadUnsynced;
+    const no = bar.querySelector('#sbNo');
+    no.onclick = () => { if(!no.classList.contains('armed')){ no.classList.add('armed'); no.textContent = 'নিশ্চিত? এগুলো মুছে যাবে'; setTimeout(() => { if(no.isConnected){ no.classList.remove('armed'); no.textContent = 'বাদ দিন'; } }, 4000); return; } unsynced = []; keepUnsynced(); paintSync(); };
   }
 
   /* starting data copied from the two ledger pages (566 + 567) */
