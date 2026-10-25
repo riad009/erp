@@ -5250,17 +5250,18 @@ function getDB(){
             <th>অবশিষ্ট<small>Balance</small></th>
           </tr></thead>
           <tbody>
-            ${[...c.rows].reverse().map(({e,bal})=>`
+            <!-- oldest on top (আগের জের first), newest at the bottom, then মোট -->
+            <tr class="r open ${form.mode==='opening'?'sel':''}" data-open="1">
+              <td class="dt"><b>আগের জের</b><small>${esc(acc.openingNote||'শুরুর বাকি')}</small>${acc.openDate ? `<small class="od">খাতার তারিখ: ${fmtDate(acc.openDate)}</small>` : ''}${acc.created ? `<small class="od">যোগ করা: ${fmtDate(isoOfL(new Date(acc.created)))}</small>` : ''}<span class="lrowacts"><button type="button" class="leditrow" aria-label="আগের জের বদলান" title="বদলান">✎</button></span></td>
+              <td class="n">${acc.openJoma ? bn(acc.openJoma) : ''}</td><td class="n">${acc.openKhoroch ? bn(acc.openKhoroch) : ''}</td>${balCell(Number(acc.opening)||0)}
+            </tr>
+            ${c.rows.map(({e,bal})=>`
             <tr class="r ${form.editId===e.id?'sel':''} ${flashId===e.id?'flash':''}" data-id="${e.id}" id="r-${e.id}">
               <td class="dt"><b>${fmtDate(e.date)}</b>${typeTag(e)}<span class="lrowacts"><button type="button" class="leditrow" aria-label="বদলান" title="বদলান">✎</button><button type="button" class="ldelrow" aria-label="মুছুন" title="মুছুন">🗑</button></span></td>
               <td class="n">${e.debit?bn(e.debit):''}</td>
               <td class="n">${e.credit?bn(e.credit):''}</td>
               ${balCell(bal)}
             </tr>`).join('')}
-            <tr class="r open ${form.mode==='opening'?'sel':''}" data-open="1">
-              <td class="dt"><b>আগের জের</b><small>${esc(acc.openingNote||'শুরুর বাকি')}</small>${acc.openDate ? `<small class="od">খাতার তারিখ: ${fmtDate(acc.openDate)}</small>` : ''}${acc.created ? `<small class="od">যোগ করা: ${fmtDate(isoOfL(new Date(acc.created)))}</small>` : ''}<span class="lrowacts"><button type="button" class="leditrow" aria-label="আগের জের বদলান" title="বদলান">✎</button></span></td>
-              <td class="n">${acc.openJoma ? bn(acc.openJoma) : ''}</td><td class="n">${acc.openKhoroch ? bn(acc.openKhoroch) : ''}</td>${balCell(Number(acc.opening)||0)}
-            </tr>
           </tbody>
           <tfoot><tr>
             <td>মোট</td><td class="n">${bn(c.tD + (Number(acc.openJoma)||0))}</td><td class="n">${bn(c.tC + (Number(acc.openKhoroch)||0))}</td>${balCell(c.bal)}
