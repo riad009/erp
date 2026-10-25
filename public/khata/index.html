@@ -5559,7 +5559,7 @@ function getDB(){
       const t = b.dataset.mt, on = b.getAttribute('aria-pressed') !== 'true';
       b.setAttribute('aria-pressed', on);
       $('row_'+t).hidden = !on;
-      if(on && !$('rt_'+t).value && rates[t]) $('rt_'+t).value = bn(rates[t]);
+      // দর is typed fresh for every memo (no earlier দর filled in — owner's wish)
       $('row_plain').hidden = selTypes().length > 0;
       calcKg();
     });
@@ -5653,8 +5653,7 @@ function getDB(){
         const inf = window.__marka.info(id); if(!inf) return;
         // the same size can be picked again (another coil) → its own line
         picks.push({item:id, cat:inf.catId, t:inf.t, tone:inf.tone, catName:inf.catName, dims:inf.dims, kg:0}); const i = picks.length - 1;
-        { const p = picks[i], same = picks.filter(x => x.t === p.t && x !== p && x.rate > 0).pop(), tr = parseNum(($('rt_'+p.t)||{}).value);   // new line's দর: last line of that type, else the type's দর
-          p.rate = same ? same.rate : (tr > 0 ? tr : (rates[p.t] || 0)); }
+        picks[i].rate = 0;   // new line: দর box starts empty (type it for this memo)
         drawPicks(); applySums(); syncTypeRate(picks[i].t);
         const inp = document.querySelector(`#lform tr.pkrow .cmp-kg[data-i="${i}"]`); if(inp) inp.focus();
       });
