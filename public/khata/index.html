@@ -2918,6 +2918,29 @@ html body #stock .ssub .st[aria-selected="false"]:hover{filter:brightness(.97)}
 #stock .d-mal .ciname,#stock .hrows .ciname{display:block;font-family:"Courier New",monospace;font-size:12px;color:#475467;letter-spacing:.2px}
 #stock .hrows .ciname{display:inline}
 #stock .d-co .vno{display:block;font-size:12.5px;color:#475467;font-weight:600}
+/* মাল আসছে: one line per গাড়ি */
+#stock ol.entries.dtab > li.dcar{cursor:pointer;background:#fff}
+#stock ol.entries.dtab > li.dcar:hover{background:#F6FBF7}
+#stock ol.entries.dtab > li.dcar.open{background:#EEF7F0}
+#stock ol.entries.dtab > li.dcar .d-mal{flex-direction:column;align-items:flex-start;gap:2px}
+#stock ol.entries.dtab > li.dcar .citems{font-size:15px;color:#17402A}
+#stock ol.entries.dtab > li.dcar .cmk{font-size:12.5px;color:#66728A}
+#stock ol.entries.dtab > li.dcar .d-co{flex-direction:column;align-items:flex-start}
+#stock ol.entries.dtab > li.dcar .cchev{font-style:normal;font-size:18px;color:#2E7D4F}
+#stock ol.entries.dtab > li.drow:not(.dcar){background:#FBFDFB}
+#stock ol.entries.dtab > li.drow:not(.dcar) > .d-sl{font-size:13px}
+#stock .hcars{list-style:none;margin:0;padding:0}
+#stock .hcars > li{border-bottom:1px dashed #E6EEE8}
+#stock .hcars > li:last-child{border-bottom:0}
+#stock .hcar{width:100%;display:grid;grid-template-columns:90px 130px minmax(0,1fr) auto;gap:4px 12px;align-items:baseline;text-align:left;padding:9px 14px;background:#fff;border:0;color:#17402A;font-size:14px}
+#stock .hcar.open{background:#F2FAF3}
+#stock .hcar .hcn{font-weight:800}
+#stock .hcar .hk{font-family:"Baloo Da 2",sans-serif;font-size:16px;color:#17603A}
+#stock .hcar .hk small{font-size:11.5px;color:#66728A}
+#stock .hcar .hco{color:#475467;font-size:13px}
+#stock .hcar .hcnt{color:#2E7D4F;font-weight:700;font-size:13px;white-space:nowrap}
+#stock .hcars .hrows{background:#FBFDFB}
+@media (max-width: 700px){ #stock .hcar{grid-template-columns:auto minmax(0,1fr) auto} #stock .hcar .hco{grid-column:1 / -1;grid-row:2} }
 </style>
 </head>
 <body>
@@ -3804,6 +3827,7 @@ function getDB(){
 
   function go(id){ viewId = id; editIndex = -1; render(); window.scrollTo({top:0,behavior:'smooth'}); }
   // 📜 মাল আসার ইতিহাস: every day's incoming মাল, newest date first (tap a date to open that day)
+  const openCars = new Set();   // which গাড়ি lines are open (day list + history)
   let histOpen = false; try{ histOpen = localStorage.getItem('kg-khata-hist') === '1'; }catch(_){}
   function histHtml(){
     const withRows = [...days].filter(d => (d.entries||[]).length).reverse();
@@ -3812,10 +3836,14 @@ function getDB(){
       <button type="button" class="hist-tg" id="histTg" aria-expanded="${histOpen}">📜 মাল আসার ইতিহাস <small>তারিখ অনুযায়ী · ${toBn(withRows.length)} দিন · ${bn(allKg)} কেজি</small><span>${histOpen ? '▴' : '▾'}</span></button>
       ${histOpen ? (withRows.length ? withRows.map(d => {
         const cars = [...new Set((d.entries||[]).map(e => e.car).filter(Boolean))];
+        const groups = []; (d.entries||[]).forEach((e, i) => { const k = e.car ? 'c:' + e.car : 'i:' + i; let g = groups.find(x => x.k === k); if(!g){ g = {k, es:[]}; groups.push(g); } g.es.push(e); });
         return `<div class="hday">
-          <button type="button" class="hday-h" data-hday="${d.id}" title="এই দিন খুলুন"><b>${bnDate(d.id)}</b><span>${bn(sumEntries(d))} কেজি · ${toBn((d.entries||[]).length)} লাইন${cars.length ? ' · গাড়ি ' + cars.map(c => esc(toBn(c))).join(', ') : ''}</span><i>›</i></button>
-          <ol class="hrows">${(d.entries||[]).map((e, i) => { const f = e.item ? findItem(e.item) : null, c = e.cat ? catOf(e.cat) : (f ? f.c : null);
-            return `<li><span class="hn">${toBn(i+1)}</span><b class="hk">${bn(e.kg)} <small>কেজি</small></b><span class="hm">${c ? esc(c.name) : esc(e.item||'—')}${f ? ' · <b>' + dimTxt(f.it) + '</b>' : ''}${e.coil ? ' · কয়েল ' + esc(toBn(e.coil)) : ''}${e.ci ? ' · <small class="ciname">' + esc(e.ci) + '</small>' : ''}</span><span class="hc">${[e.car ? 'গাড়ি ' + esc(toBn(e.car)) : '', e.co && window.__company ? '🏭 ' + esc(window.__company.name(e.co)||'') : ''].filter(Boolean).join(' · ')}</span></li>`; }).join('')}</ol>
+          <button type="button" class="hday-h" data-hday="${d.id}" title="এই দিন খুলুন"><b>${bnDate(d.id)}</b><span>${bn(sumEntries(d))} কেজি · ${toBn(groups.length)} গাড়ি</span><i>›</i></button>
+          <ol class="hcars">${groups.map(g => { const key = 'h|' + d.id + '|' + g.k, op = openCars.has(key), es = g.es;
+            const cos = [...new Set(es.map(e => e.co && window.__company ? window.__company.name(e.co) : '').filter(Boolean))];
+            return `<li><button type="button" class="hcar ${op ? 'open' : ''}" data-hkey="${esc(key)}"><span class="hcn">${es[0].car ? 'গাড়ি ' + esc(toBn(es[0].car)) : '—'}</span><b class="hk">${bn(es.reduce((t, e) => t + (Number(e.kg)||0), 0))} <small>কেজি</small></b><span class="hco">${cos.map(c => '🏭 ' + esc(c)).join(', ')}</span><span class="hcnt">${toBn(es.length)}টা মাল ${op ? '▾' : '▸'}</span></button>
+              ${op ? `<ol class="hrows">${es.map((e, i) => { const f = e.item ? findItem(e.item) : null, c = e.cat ? catOf(e.cat) : (f ? f.c : null);
+                return `<li><span class="hn">${toBn(i+1)}</span><b class="hk">${bn(e.kg)} <small>কেজি</small></b><span class="hm">${c ? esc(c.name) : esc(e.item||'—')}${f ? ' · <b>' + dimTxt(f.it) + '</b>' : ''}${e.coil ? ' · কয়েল ' + esc(toBn(e.coil)) : ''}${e.ci ? ' · <small class="ciname">' + esc(e.ci) + '</small>' : ''}</span><span class="hc">${e.vno ? 'চালান ' + esc(toBn(e.vno)) : ''}</span></li>`; }).join('')}</ol>` : ''}</li>`; }).join('')}</ol>
         </div>`; }).join('') : '<p class="hnone">এখনো কোনো মাল আসেনি।</p>') : ''}
     </section>`;
   }
@@ -3927,7 +3955,8 @@ function getDB(){
 
       <ol class="entries dtab">
         ${entries.length ? `<li class="dhead" aria-hidden="true"><span>ক্রমিক</span><span>কেজি ও সময়</span><span>মাল (মার্কা · সাইজ)</span><span>গাড়ি নং</span><span>কোম্পানি</span><span></span></li>` : ''}
-        ${entries.length ? entries.map((e,i)=> i===editIndex ? `
+        ${entries.length ? (() => {
+          const rowOf = (e,i)=> i===editIndex ? `
           <li class="editing">
             ${e.cat ? `<p class="w2 edmk">${esc((catOf(e.cat)||{}).name||'')}${e.item && findItem(e.item) ? ' · ' + dimTxt(findItem(e.item).it) : ''}</p>` : `
             <input id="eitm" class="w2" value="${esc(e.item||'')}" placeholder="মালের নাম" aria-label="মালের নাম">
@@ -3949,9 +3978,26 @@ function getDB(){
             <span class="d-car">${e.b ? '<span class="btag">বেশি (B)</span>' : (e.car ? `<b class="carno">${esc(toBn(e.car))}</b>` : '<i class="na">—</i>')}</span>
             <span class="d-co">${e.co && window.__company ? `<span class="coname">🏭 ${esc(window.__company.name(e.co) || '')}</span>` : (e.vno ? '' : '<i class="na">—</i>')}${e.vno ? `<span class="vno">চালান ${esc(toBn(e.vno))}</span>` : ''}</span>
             <span class="d-act"><button class="edit" data-i="${i}" aria-label="বদলান">✎</button><button class="del" data-i="${i}" aria-label="মুছুন">×</button></span>
-          </li>`).join('') : `<li class="empty">এই দিনে এখনো কোনো গাড়ি যোগ হয়নি।</li>`}
+          </li>`;
+          // one line per গাড়ি (tap to see its মাল); a line without গাড়ি নং stands alone
+          const groups = []; entries.forEach((e, i) => { const k = e.car ? 'c:' + e.car : 'i:' + i; let g = groups.find(x => x.k === k); if(!g){ g = {k, idx:[]}; groups.push(g); } g.idx.push(i); });
+          return groups.map((g, n) => {
+            const es = g.idx.map(i => entries[i]), key = cur.id + '|' + g.k, open = openCars.has(key) || g.idx.includes(editIndex);
+            const kgT = es.reduce((t, e) => t + (Number(e.kg)||0), 0);
+            const cos = [...new Set(es.map(e => e.co && window.__company ? window.__company.name(e.co) : '').filter(Boolean))], vnos = [...new Set(es.map(e => e.vno).filter(Boolean))];
+            const mk = [...new Set(es.map(e => { const f = e.item ? findItem(e.item) : null, c = e.cat ? catOf(e.cat) : (f ? f.c : null); return c ? c.name : ''; }).filter(Boolean))];
+            return `<li class="drow dcar ${open ? 'open' : ''}" data-ckey="${esc(key)}" tabindex="0" title="গাড়ির মাল দেখুন">
+              <span class="d-sl">${toBn(n+1)}</span>
+              <span class="d-kg"><b class="kg num">${bn(kgT)} <small>কেজি</small></b><small class="when">${whenTxt(cur.id, es[0].ts)}</small></span>
+              <span class="d-mal"><b class="citems">${toBn(es.length)}টা মাল</b><small class="cmk">${mk.map(esc).join(' · ')}</small></span>
+              <span class="d-car">${es[0].car ? `<b class="carno">${esc(toBn(es[0].car))}</b>` : (es[0].b ? '<span class="btag">বেশি (B)</span>' : '<i class="na">—</i>')}</span>
+              <span class="d-co">${cos.length ? `<span class="coname">🏭 ${cos.map(esc).join(', ')}</span>` : (vnos.length ? '' : '<i class="na">—</i>')}${vnos.length ? `<span class="vno">চালান ${vnos.map(v => esc(toBn(v))).join(', ')}</span>` : ''}</span>
+              <span class="d-act"><i class="cchev">${open ? '▾' : '▸'}</i></span>
+            </li>` + (open ? g.idx.map(i => rowOf(entries[i], i)).join('') : '');
+          }).join('');
+        })() : `<li class="empty">এই দিনে এখনো কোনো গাড়ি যোগ হয়নি।</li>`}
         ${entries.length ? (() => { const cars = [...new Set(entries.map(e => e.car).filter(Boolean))];
-          return `<li class="dfoot"><span class="d-sl">মোট</span><span class="d-kg"><b class="kg num">${bn(entries.reduce((t, e) => t + (Number(e.kg)||0), 0))} <small>কেজি</small></b></span><span class="d-mal">${toBn(entries.length)} লাইন</span><span class="d-car">${cars.length ? cars.map(c => esc(toBn(c))).join(', ') : ''}</span><span class="d-co"></span><span class="d-act"></span></li>`; })() : ''}
+          return `<li class="dfoot"><span class="d-sl">মোট</span><span class="d-kg"><b class="kg num">${bn(entries.reduce((t, e) => t + (Number(e.kg)||0), 0))} <small>কেজি</small></b></span><span class="d-mal">${toBn(new Set(entries.map((e, i) => e.car ? 'c:' + e.car : 'i:' + i)).size)} গাড়ি · ${toBn(entries.length)}টা মাল</span><span class="d-car">${cars.length ? cars.map(c => esc(toBn(c))).join(', ') : ''}</span><span class="d-co"></span><span class="d-act"></span></li>`; })() : ''}
       </ol>
       ${histHtml()}
       `}
@@ -4144,6 +4190,8 @@ function getDB(){
 
     if($('histTg')) $('histTg').onclick = () => { histOpen = !histOpen; try{ localStorage.setItem('kg-khata-hist', histOpen ? '1' : '0'); }catch(_){}; render(); };
     document.querySelectorAll('#stock [data-hday]').forEach(b => b.onclick = () => go(b.dataset.hday));
+    document.querySelectorAll('#stock [data-hkey]').forEach(b => b.onclick = () => { const k = b.dataset.hkey; if(openCars.has(k)) openCars.delete(k); else openCars.add(k); render(); });
+    document.querySelectorAll('#stock [data-ckey]').forEach(li => li.onclick = () => { const k = li.dataset.ckey; if(openCars.has(k)) openCars.delete(k); else openCars.add(k); render(); });
     document.querySelectorAll('#stock .edit').forEach(b=>b.onclick=()=>{ editIndex=+b.dataset.i; render(); const ek=$('ek'); if(ek){ ek.focus(); ek.select(); } });
     if($('saveEdit')){
       const doSave = ()=>{
