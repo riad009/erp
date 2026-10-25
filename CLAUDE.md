@@ -34,6 +34,8 @@ Tabs: স্টক · দৈনিক · মেমো · খতিয়ান �
 - স্টক sub-tabs: 📊 সর্বমোট মাল (purple) | 🚚 মাল আসছে (green) | 📦 মাল যাচ্ছে (red). Tables with box lines + ক্রমিক. 🚚 মাল আসছে day list: one line per গাড়ি (total কেজি, কতটা মাল, company, চালান নং) — tap to open its মাল lines (in the order entered, same as the challan, with ✎ ×); মোট row at the bottom. 📜 ইতিহাস is also per date → per গাড়ি.
   - 📊 সর্বমোট মাল: each size has a red 🕘 "…বার এসেছে +কেজি" button → every arrival (date · গাড়ি · +কেজি in red), শুরুর কেজি and মোট এসেছে.
   - 🚚 মাল আসছে has a 📜 মাল আসার ইতিহাস (date-wise list of every day's incoming মাল, tap a date to open it). On an old date with no record, "＋ এই তারিখে মাল যোগ করুন" opens that day straight into this form.
+  - 📜 মাল আসার ইতিহাস (under মাল আসছে) shows only the day on screen (গাড়ি → মাল); "📅 এই মাসের সব হিসাব" opens a date-wise month pop-up (tap a date → that day). গাড়ি count = unique গাড়ি নং, not lines.
+  - Size row 🕘 "N বার এসেছে" = arrivals of the last 24 hours only (old date: that day only); no kg on the closed button.
   - 🚚 মাল আসছে form: one গাড়ি can carry several মাল lines (＋ আরো মাল); each line = মাল + কেজি + কয়েল নং (`coil` on the stock entry); গাড়ি নং / দর / চালান নং are shared and saved on every line.
 - মাল is picked with the pop-up **মার্কা → সাইজ**. Printed memo shows only **সফট / হার্ড + কেজি** (no sizes).
 - Memo form: কাগজ or ডিজিটাল (setting). Digital = step by step: party first → মাল; one কেজি box per size; লেবার hidden until মাল picked; full summary pop-up before saving.
