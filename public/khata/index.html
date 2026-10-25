@@ -1990,7 +1990,7 @@ body.theme-pro #stock ol.entries .spec,body.theme-pro #stock ol.entries .itm,bod
 #lhost .cm-tbl tr.pkrow .cmp-n,#ledger .cm-tbl tr.pkrow .cmp-n{font-size:11.5px;padding:0 6px;vertical-align:middle}
 #lhost .cm-tbl tr.pkrow .cmp-d,#ledger .cm-tbl tr.pkrow .cmp-d{font-family:"Baloo Da 2","Noto Sans Bengali",sans-serif;font-size:15px;color:#3D2A14;vertical-align:middle}
 #lhost .cm-tbl tr.pkrow .cmp-x,#ledger .cm-tbl tr.pkrow .cmp-x{width:24px!important;height:24px!important;font-size:14px!important;border-radius:6px;vertical-align:middle;margin-left:2px;background:#fff;color:#8A6A44;border:1px solid #C9A97C;padding:0}
-#lhost .cm-tbl tr.pkrow .cmp-kg,#ledger .cm-tbl tr.pkrow .cmp-kg{width:100%;text-align:center;font-size:16px;font-weight:700;border:0;border-bottom:1.5px dotted #8A6A44;border-radius:0;background:#FFFDF6;padding:4px}
+#lhost .cm-tbl tr.pkrow .cmp-kg,#ledger .cm-tbl tr.pkrow .cmp-kg,#lhost .cm-tbl tr.pkrow .cmp-rt,#ledger .cm-tbl tr.pkrow .cmp-rt{width:100%;text-align:center;font-size:16px;font-weight:700;border:0;border-bottom:1.5px dotted #8A6A44;border-radius:0;background:#FFFDF6;padding:4px}
 #lhost .cm-tbl tr.pkrow + tr[id^="row_"] td,#ledger .cm-tbl tr.pkrow + tr[id^="row_"] td{border-top:1px dashed #C9A97C}
 .cm-picks{display:none!important}
 /* দৈনিক: সাবেক জমা and হাতে নগদ as colored badges */
@@ -2470,7 +2470,10 @@ html body #stock .ssub .st[aria-selected="false"]:hover{filter:brightness(.97)}
 .cmform.cmd .cm-tbl tr.pkrow.soft{border-left-color:#1F7A3D}
 .cmform.cmd .cm-tbl tr.pkrow td.d{grid-column:1;flex-wrap:wrap;gap:6px}
 .cmform.cmd .cm-tbl tr.pkrow td:nth-child(3){grid-column:2}
-.cmform.cmd .cm-tbl tr.pkrow td:nth-child(4),.cmform.cmd .cm-tbl tr.pkrow td:nth-child(5){display:none!important}
+.cmform.cmd .cm-tbl tr.pkrow{grid-template-columns:repeat(3,minmax(0,1fr))!important}
+.cmform.cmd .cm-tbl tr.pkrow td.d{grid-column:1 / -1!important}
+.cmform.cmd .cm-tbl tr.pkrow td:nth-child(3){grid-column:auto!important}
+.cmform.cmd .cm-tbl tr.pkrow td.cmp-amt{align-self:center;font-family:"Baloo Da 2","Noto Sans Bengali",sans-serif;font-size:15px;color:#1B2347}
 .cmform.cmd .cm-tbl tr.pkrow .cmp-x{margin-left:auto!important}
 .cmform.cmd .cm-tbl tr.pkrow + tr[id^="row_"]{border-top:1px solid #DCE3EF}
 .cmform.cmd .cm-tbl tr[id^="row_"] td.d .mt{font-size:13px;padding:2px 8px;border-radius:6px}
@@ -5331,7 +5334,13 @@ function getDB(){
       const ts = selTypes(); let total = 0, any = false; const parts = [];
       if(ts.length){
         ts.forEach(t=>{
-          const k = parseNum($('kg_'+t).value), r = parseNum($('rt_'+t).value), sub = $('sub_'+t);
+          const mine = picks.filter(p => p.t === t && p.kg > 0), sub = $('sub_'+t);
+          if(mine.length){   // each size line has its own দর
+            const ok = mine.filter(p => p.rate > 0), v = ok.reduce((a, p) => a + Math.round(p.kg * p.rate), 0);
+            if(ok.length){ total += v; any = true; ok.forEach(p => parts.push(`${MT[t]} ${bn(p.kg)}×${toBn(String(p.rate))}`)); sub.textContent = '= '+bn(v)+' ৳'; } else sub.textContent = '';
+            return;
+          }
+          const k = parseNum($('kg_'+t).value), r = parseNum($('rt_'+t).value);
           if(!isNaN(k) && !isNaN(r)){ const v = Math.round(k*r); total += v; any = true; parts.push(`${MT[t]} ${raw($('kg_'+t))}×${raw($('rt_'+t))}`); sub.textContent = '= '+bn(v)+' ৳'; }
           else sub.textContent = '';
         });
@@ -5386,7 +5395,7 @@ function getDB(){
           $('kg_'+t).readOnly = on;
           $('kg_'+t).placeholder = on ? 'সাইজের কেজি যোগ হবে' : '';
           $('kg_'+t).title = on ? 'এই কেজি উপরের সাইজগুলোর কেজি থেকে নিজে যোগ হয় — কেজি সাইজের ঘরে লিখুন' : '';
-          if(on){ $('kg_'+t).value = sum ? bn(sum) : ''; if(!$('rt_'+t).value && rates[t]) $('rt_'+t).value = bn(rates[t]); }
+          if(on){ $('kg_'+t).value = sum ? bn(sum) : ''; syncTypeRate(t); }
           else $('kg_'+t).value = '';
           if(on && $('ds_'+t) && !$('ds_'+t).value) $('ds_'+t).placeholder = MT[t] + ' মাল';
         });
@@ -5396,6 +5405,9 @@ function getDB(){
       };
       // tapping the সফট / হার্ড মোট কেজি box (it is the sum) jumps to the size's কেজি box where you type
       ['soft','hard'].forEach(t => { const k = $('kg_'+t); if(k) k.addEventListener('focus', () => { if(!k.readOnly) return; const f = [...document.querySelectorAll('#lform tr.pkrow.'+t+' .cmp-kg')].find(x => !x.value) || document.querySelector('#lform tr.pkrow.'+t+' .cmp-kg'); if(f){ f.focus(); try{ f.select(); }catch(_){} f.classList.add('flash'); setTimeout(() => f.classList.remove('flash'), 900); } }); });
+      // the সফট / হার্ড দর box = the lines' common দর (empty when they differ); typing there sets every line of that type
+      const syncTypeRate = t => { const r = $('rt_'+t); if(!r || document.activeElement === r) return; const mine = picks.filter(p => p.t === t); if(!mine.length) return; const rs = [...new Set(mine.map(p => p.rate || 0))]; r.value = rs.length === 1 && rs[0] ? toBn(String(rs[0])) : ''; r.placeholder = rs.length > 1 ? 'আলাদা আলাদা দর' : ''; };
+      ['soft','hard'].forEach(t => { const r = $('rt_'+t); if(r) r.addEventListener('input', () => { const n = parseNum(r.value); if(!(n > 0)) return; let ch = false; picks.forEach((p, i) => { if(p.t === t){ p.rate = n; ch = true; const x = document.querySelector(`#lform .cmp-rt[data-i="${i}"]`); if(x) x.value = toBn(String(n)); const c = document.querySelector(`#lform .cmp-amt[data-i="${i}"]`); if(c) c.textContent = p.kg > 0 ? '= ' + bn(Math.round(p.kg * n)) + ' ৳' : ''; } }); if(ch) calcKg(); }); });
       // each picked size = one line inside the memo table (মালের বিবরণ · পরিমাণ), just above its সফট / হার্ড total line
       const drawPicks = () => {
         document.querySelectorAll('#lform tr.pkrow').forEach(r => r.remove());
@@ -5407,17 +5419,20 @@ function getDB(){
           tr.innerHTML = `<td></td>
             <td class="d"><span class="cmp-sl"></span><span class="cmp-n ${p.tone}">${esc(short)}</span> <b class="cmp-d">${p.dims}</b> <button type="button" class="cmp-x" data-i="${i}" aria-label="বাদ দিন">×</button></td>
             <td><input class="num cmp-kg" data-i="${i}" inputmode="decimal" placeholder="কেজি" value="${p.kg ? bn(p.kg) : ''}" aria-label="${esc(p.dims)} কেজি"></td>
-            <td></td><td class="v"></td>${firstOf[p.t] === i ? `<td class="pk-grp"><span class="pk-gbadge">${p.t === 'hard' ? 'হার্ড মাল' : 'সফট মাল'}<button type="button" class="pk-rmall" data-t="${p.t}" title="${p.t === 'hard' ? 'হার্ড' : 'সফট'} মাল পুরোটা বাদ দিন" aria-label="${p.t === 'hard' ? 'হার্ড' : 'সফট'} মাল পুরোটা বাদ দিন">×</button></span><span class="pk-gsub">সাইজ ও কেজি</span></td>` : ''}`;
+            <td><input class="num cmp-rt" data-i="${i}" inputmode="decimal" placeholder="দর" value="${p.rate ? toBn(String(p.rate)) : ''}" aria-label="${esc(p.dims)} দর"></td><td class="v cmp-amt" data-i="${i}">${p.kg > 0 && p.rate > 0 ? '= ' + bn(Math.round(p.kg * p.rate)) + ' ৳' : ''}</td>${firstOf[p.t] === i ? `<td class="pk-grp"><span class="pk-gbadge">${p.t === 'hard' ? 'হার্ড মাল' : 'সফট মাল'}<button type="button" class="pk-rmall" data-t="${p.t}" title="${p.t === 'hard' ? 'হার্ড' : 'সফট'} মাল পুরোটা বাদ দিন" aria-label="${p.t === 'hard' ? 'হার্ড' : 'সফট'} মাল পুরোটা বাদ দিন">×</button></span><span class="pk-gsub">সাইজ ও কেজি</span></td>` : ''}`;
           const anchor = $('row_' + p.t); anchor.parentNode.insertBefore(tr, anchor);
         });
         // ক্রমিক in the order shown, and "＋ আরো মাল যোগ করুন" after the last মাল group
         document.querySelectorAll('#lform tr.pkrow .cmp-sl').forEach((x, k) => x.textContent = toBn(k + 1) + '.');
         document.querySelectorAll('#lform tr.pkmore').forEach(r => r.remove());
+        $('cmPick').style.display = picks.length ? 'none' : '';   // after the first মাল only "＋ আরো মাল যোগ করুন" (at the end) is shown
         if(picks.length){
           const last = ['soft','hard'].map(t => $('row_' + t)).filter(r => r && picks.some(p => r.id === 'row_' + p.t)).sort((a2, b2) => a2.compareDocumentPosition(b2) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1).pop();
           if(last){ const mr = document.createElement('tr'); mr.className = 'pkmore'; mr.innerHTML = `<td></td><td colspan="5" class="pkm"><button type="button" class="cm-morebtn">＋ আরো মাল যোগ করুন</button></td>`; last.after(mr); mr.querySelector('button').onclick = () => $('cmPick').click(); }
         }
-        document.querySelectorAll('#lform tr.pkrow .cmp-kg').forEach(inp => inp.addEventListener('input', () => { const n = parseNum(inp.value); picks[+inp.dataset.i].kg = n > 0 ? n : 0; applySums(); }));
+        const paintAmt = i => { const p = picks[i], c = document.querySelector(`#lform .cmp-amt[data-i="${i}"]`); if(c) c.textContent = p.kg > 0 && p.rate > 0 ? '= ' + bn(Math.round(p.kg * p.rate)) + ' ৳' : ''; };
+        document.querySelectorAll('#lform tr.pkrow .cmp-kg').forEach(inp => inp.addEventListener('input', () => { const n = parseNum(inp.value); picks[+inp.dataset.i].kg = n > 0 ? n : 0; paintAmt(+inp.dataset.i); applySums(); }));
+        document.querySelectorAll('#lform tr.pkrow .cmp-rt').forEach(inp => inp.addEventListener('input', () => { const n = parseNum(inp.value), p = picks[+inp.dataset.i]; p.rate = n > 0 ? n : 0; paintAmt(+inp.dataset.i); syncTypeRate(p.t); applySums(); }));
         document.querySelectorAll('#lform tr.pkrow .cmp-x').forEach(b => b.onclick = () => { picks.splice(+b.dataset.i, 1); drawPicks(); applySums(); });
         // × বাদ দিন on the group: removes that whole মাল type (all its sizes) — tap twice
         document.querySelectorAll('#lform tr.pkrow .pk-rmall').forEach(b => b.onclick = () => {
@@ -5432,13 +5447,15 @@ function getDB(){
         const inf = window.__marka.info(id); if(!inf) return;
         // the same size can be picked again (another coil) → its own line
         picks.push({item:id, cat:inf.catId, t:inf.t, tone:inf.tone, catName:inf.catName, dims:inf.dims, kg:0}); const i = picks.length - 1;
-        drawPicks(); applySums();
+        { const p = picks[i], same = picks.filter(x => x.t === p.t && x !== p && x.rate > 0).pop(), tr = parseNum(($('rt_'+p.t)||{}).value);   // new line's দর: last line of that type, else the type's দর
+          p.rate = same ? same.rate : (tr > 0 ? tr : (rates[p.t] || 0)); }
+        drawPicks(); applySums(); syncTypeRate(picks[i].t);
         const inp = document.querySelector(`#lform tr.pkrow .cmp-kg[data-i="${i}"]`); if(inp) inp.focus();
       });
       if(form.editId){
         let E = null; for(const a of accs){ const x = (a.entries||[]).find(y => y.id === form.editId); if(x){ E = x; break; } }
         if(E){
-          (E.picks||[]).forEach(pk => { const inf = window.__marka.info(pk.item); if(inf) picks.push({item:pk.item, cat:inf.catId, t:pk.t || inf.t, tone:inf.tone, catName:inf.catName, dims:inf.dims, kg:Number(pk.kg)||0}); });
+          (E.picks||[]).forEach(pk => { const inf = window.__marka.info(pk.item); if(!inf) return; const t = pk.t || inf.t, it = (E.items||[]).find(x => x.t === t); picks.push({item:pk.item, cat:inf.catId, t, tone:inf.tone, catName:inf.catName, dims:inf.dims, kg:Number(pk.kg)||0, rate:Number(pk.rate) || (it ? Number(it.rate)||0 : 0)}); });
           (E.items||[]).forEach(it => {
             if($('rt_'+it.t) && it.rate) $('rt_'+it.t).value = bn(it.rate);
             if($('ds_'+it.t) && it.desc) $('ds_'+it.t).value = it.desc;
@@ -5551,7 +5568,11 @@ function getDB(){
       }
       if(form.type==='credit'){
         const ts = selTypes();
-        const items = ts.map(t=>({t, kg:parseNum($('kg_'+t).value), rate:parseNum($('rt_'+t).value), desc: ($('ds_'+t) ? $('ds_'+t).value.trim() : '')})).filter(x=>x.kg > 0);
+        const items = [];
+        ts.forEach(t => { const desc = $('ds_'+t) ? $('ds_'+t).value.trim() : '', mine = picks.filter(p => p.t === t && p.kg > 0);
+          if(mine.length){ const by = new Map(); mine.forEach(p => { const r = p.rate || 0; by.set(r, (by.get(r)||0) + p.kg); }); by.forEach((kg, rate) => items.push({t, kg, rate, desc})); }
+          else items.push({t, kg:parseNum($('kg_'+t).value), rate:parseNum($('rt_'+t).value), desc}); });
+        for(let k = items.length - 1; k >= 0; k--) if(!(items[k].kg > 0)) items.splice(k, 1);
         if($('fItem')){ const nm = $('fItem').value.trim(); if(nm && nm !== 'মাল') target.itemName = nm; else delete target.itemName; }
         if(items.length){
           target.items = items.map(x=>{ const o = {t:x.t, kg:x.kg, rate:isNaN(x.rate)?0:x.rate}; if(x.desc && x.desc !== 'মাল') o.desc = x.desc; return o; });
@@ -5565,7 +5586,7 @@ function getDB(){
         if(form.mode === 'sale'){
           const oldPk = Array.isArray(old.picks) ? old.picks : [];
           const pk = picks.filter(p => p.kg > 0).map(p => {
-            const o = {item:p.item, cat:p.cat, t:p.t, kg:p.kg};
+            const o = {item:p.item, cat:p.cat, t:p.t, kg:p.kg}; if(p.rate > 0) o.rate = p.rate;
             const was = oldPk.find(x => x.item === p.item && x.cost > 0);
             const c = was ? was.cost : (window.__marka && window.__marka.costOf ? window.__marka.costOf(p.item) : null);
             if(c > 0) o.cost = c;
@@ -5632,7 +5653,9 @@ function getDB(){
       // full summary of the memo before saving
       const tsC = selTypes();
       const kgOfT = t => { const pk = picks.filter(p => p.t === t); if(pk.length) return pk.reduce((a, p) => a + (p.kg||0), 0); const v = parseNum($('kg_'+t).value); return isNaN(v) ? 0 : v; };
-      const typeLines = tsC.map(t => ({t, lab: MT[t] + ' মাল', kg: kgOfT(t), r: parseNum($('rt_'+t).value)})).filter(x => x.kg > 0);
+      const typeLines = tsC.map(t => { const mine = picks.filter(p => p.t === t && p.kg > 0);
+        if(mine.length){ const rs = [...new Set(mine.map(p => p.rate || 0))]; return {t, lab: MT[t] + ' মাল', kg: kgOfT(t), r: rs.length === 1 ? rs[0] : 0, amt: mine.reduce((a, p) => a + Math.round(p.kg * (p.rate||0)), 0)}; }
+        return {t, lab: MT[t] + ' মাল', kg: kgOfT(t), r: parseNum($('rt_'+t).value)}; }).filter(x => x.kg > 0);
       const plainKg = parseNum(($('fKg')||{}).value), plainR = parseNum(($('fRate')||{}).value);
       const kgAll = typeLines.length ? typeLines.reduce((a, x) => a + x.kg, 0) : (plainKg > 0 ? plainKg : totalKgIn());
       const goodsAmt = parseNum($('fAmt').value);
@@ -5641,9 +5664,9 @@ function getDB(){
       const memoNo = (document.querySelector('#lform .cm-no b') || {}).textContent || '';
       const dIso = LD(), dTxt = toBn(dIso.slice(8,10) + '/' + dIso.slice(5,7) + '/' + dIso.slice(2,4));
       const pickRows = picks.filter(p => p.kg > 0).map(p => { const short = String(p.catName).replace(/^.*?\((.*)\)\s*$/, '$1') || p.catName;
-        return `<div class="kd-row sm"><span><i class="kd-chip ${p.t}">${esc(short)}</i> ${p.dims}</span><b>${bn(p.kg)} কেজি</b></div>`; }).join('');
+        return `<div class="kd-row sm"><span><i class="kd-chip ${p.t}">${esc(short)}</i> ${p.dims} <small>${bn(p.kg)} কেজি${p.rate > 0 ? ' × ' + toBn(String(p.rate)) : ''}</small></span><b>${p.rate > 0 ? bn(Math.round(p.kg * p.rate)) + ' ৳' : bn(p.kg) + ' কেজি'}</b></div>`; }).join('');
       const tRows = typeLines.length
-        ? typeLines.map(x => `<div class="kd-row"><span>${esc(x.lab)} <small>${bn(x.kg)} কেজি${x.r > 0 ? ' × ' + bn(x.r) : ''}</small></span><b>${x.r > 0 ? bn(Math.round(x.kg * x.r)) + ' ৳' : '—'}</b></div>`).join('')
+        ? typeLines.map(x => { const a = x.amt != null ? x.amt : (x.r > 0 ? Math.round(x.kg * x.r) : 0); return `<div class="kd-row"><span>${esc(x.lab)} <small>${bn(x.kg)} কেজি${x.r > 0 ? ' × ' + bn(x.r) : (x.amt ? ' · আলাদা দর' : '')}</small></span><b>${a > 0 ? bn(a) + ' ৳' : '—'}</b></div>`; }).join('')
         : (plainKg > 0 ? `<div class="kd-row"><span>${esc(($('fItem') && $('fItem').value.trim()) || 'মাল')} <small>${bn(plainKg)} কেজি${plainR > 0 ? ' × ' + bn(plainR) : ''}</small></span><b>${goodsAmt > 0 ? bn(goodsAmt) + ' ৳' : '—'}</b></div>` : '');
       const ok = await kDialog({icon:'🧾', title: form.editId ? 'মেমো বদলাবেন?' : 'মেমো সেভ করবেন?',
         html:`<div class="kd-sum">
@@ -6748,7 +6771,7 @@ document.addEventListener('input', e=>{
     const rateOf = t => { const it = (e.items||[]).find(x => x.t === t); return it ? Number(it.rate)||0 : 0; };
     let kgK = 0, cSum = 0, sSumK = 0, sSum = 0, kgAll = 0, missing = 0;
     e.picks.forEach(p => {
-      const kg = Number(p.kg)||0, r = rateOf(p.t); kgAll += kg; sSum += r * kg;
+      const kg = Number(p.kg)||0, r = Number(p.rate) > 0 ? Number(p.rate) : rateOf(p.t); kgAll += kg; sSum += r * kg;
       const c = Number(p.cost) > 0 ? Number(p.cost) : (window.__marka && window.__marka.costOf ? window.__marka.costOf(p.item) : null);
       if(c > 0){ kgK += kg; cSum += c * kg; sSumK += r * kg; } else missing += kg;
     });
