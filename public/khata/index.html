@@ -3909,8 +3909,7 @@ function getDB(){
       return `<tr class="hmon-r" data-mrow="${i}"><td class="n">${toBn(i+1)}</td><td><i class="hmon-ar">▸</i> ${bnDate(x.id)}</td><td class="n">${toBn(c)}</td><td class="n">${toBn(n)}</td><td class="n k">${bn(k)}</td></tr>
         <tr class="hmon-d" data-mdet="${i}" hidden><td colspan="5">${det}</td></tr>`; }).join('');
     kDialog({icon:'📅', title:'মাল আসার হিসাব · ' + name, ok:'বন্ধ করুন',
-      html: list.length ? `<div class="hmon-wrap"><table class="hmon-t"><thead><tr><th>ক্রমিক</th><th>তারিখ</th><th>গাড়ি</th><th>মাল</th><th>কেজি</th></tr></thead><tbody>${rows}</tbody>
-        <tfoot><tr><td></td><td>মোট ${toBn(list.length)} দিন</td><td class="n">${toBn(tc)}</td><td class="n">${toBn(tn)}</td><td class="n k">${bn(tk)}</td></tr></tfoot></table></div><p class="kd-note">কোনো তারিখে চাপলে সেই দিনের সব মাল দেখাবে।</p>`
+      html: list.length ? `<div class="hmon-wrap"><table class="hmon-t"><thead><tr><th>ক্রমিক</th><th>তারিখ</th><th>গাড়ি</th><th>মাল</th><th>কেজি</th></tr></thead><tbody>${rows}</tbody></table></div><p class="kd-note">কোনো তারিখে চাপলে সেই দিনের সব মাল দেখাবে।</p>`
         : '<p>এই মাসে এখনো কোনো মাল আসেনি।</p>'});
     document.querySelectorAll('.kdlg .cedit').forEach(b => b.onclick = async ev => { ev.stopPropagation(); const row = b.closest('.hmon-d').dataset.mdet; b.closest('.kdlg-bg').querySelector('.kd-ok').click();
       await editCar(b.dataset.cday, b.dataset.cidx.split(',').map(Number)); openMonth(); const tr = document.querySelector(`.kdlg [data-mrow="${row}"]`); if(tr) tr.click(); });
