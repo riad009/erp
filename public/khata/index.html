@@ -2138,6 +2138,17 @@ body.theme-pro #stock ol.entries .spec,body.theme-pro #stock ol.entries .itm,bod
 .tstock .ts-search input:focus{outline:none;border-color:#6B3FA0;box-shadow:0 0 0 3px rgba(107,63,160,.15)}
 .tstock .ts-search button{position:absolute;right:8px;top:50%;transform:translateY(-50%);width:30px;height:30px;border-radius:50%;border:1px solid #DCD0EF;background:#fff;color:#6B3FA0;font-size:16px;cursor:pointer}
 .tstock .ts-none{padding:12px 4px;color:#6B7690}
+.sheet-top{position:sticky;top:0;height:0;z-index:30}
+.sheet-top .sheet-x{position:absolute;top:10px;right:10px;padding:7px 14px;border-radius:999px;border:1.5px solid rgba(255,255,255,.7);background:rgba(255,255,255,.95);color:#B42318;font-weight:800;font-size:14px;cursor:pointer;box-shadow:0 4px 14px rgba(12,24,48,.18)}
+.sheet-top .sheet-x:hover{background:#FFF1F2}
+.cm-acts #fCancel{display:none!important}
+#cmLabV{display:flex!important;align-items:center;justify-content:flex-end;gap:6px}
+#cmLabV .lab-in{flex:1 1 auto;min-width:0;max-width:170px}
+.lab-in{width:110px!important;min-height:34px!important;padding:4px 8px!important;border:1.5px solid #E2C9A0!important;border-radius:8px!important;background:#fff!important;font-size:16px!important;font-weight:800!important;color:#9A4A00!important;text-align:right!important}
+.lab-in[hidden]{display:none!important}
+#fLabAdj .radj{margin-left:4px}
+.lab-auto{flex:none;width:28px;height:28px;border-radius:50%;border:1px solid #E2C9A0;background:#fff;color:#9A4A00;font-weight:800;cursor:pointer}
+.lab-auto[hidden]{display:none!important}
 .mdrafts{margin:12px 0;padding:10px 12px;border-radius:12px;background:#FFFBEA;border:1.5px dashed #E2C15C}
 .mdrafts h3{margin:0 0 8px;font-size:16px;color:#7A5A00}
 .mdrafts h3 small{font-size:12.5px;font-weight:600;color:#9A7B20;margin-left:6px}
@@ -5067,7 +5078,7 @@ function getDB(){
                 <td><input id="fRate" class="num" inputmode="decimal" aria-label="দর"></td>
                 <td class="v"><input id="fAmt" class="num" inputmode="decimal" aria-label="টাকা"></td></tr>
               <tr class="lab" id="cmLabRow"><td></td><td class="d"><label class="cm-labtog"><input type="checkbox" id="fLab" checked> লেবার খরচ</label></td>
-                <td id="cmLabQ"></td><td id="cmLabR">${bn((window.__labourRate ? window.__labourRate() : 200)/1000)}</td><td class="v" id="cmLabV"></td></tr>
+                <td id="cmLabQ"></td><td id="cmLabR">${bn((window.__labourRate ? window.__labourRate() : 200)/1000)}</td><td class="v" id="cmLabV"><input id="fLabAmt" class="num lab-in" inputmode="decimal" autocomplete="off" aria-label="লেবার টাকা" title="লেবার টাকা বদলাতে লিখুন"><small id="fLabAdj"></small><button type="button" id="fLabAuto" class="lab-auto" hidden title="কেজি অনুযায়ী আবার হিসাব">↺</button></td></tr>
               <tr class="prev"><td></td><td class="d">আগের বাকি</td><td></td><td></td><td class="v" id="cmPrev">${party ? (compute(party).bal<0 ? 'অগ্রিম '+bn(-compute(party).bal) : bn(compute(party).bal)+'/-') : ''}</td></tr>
               <tr class="blank"><td></td><td></td><td></td><td></td><td></td></tr>
             </tbody>
@@ -5189,7 +5200,7 @@ function getDB(){
         </table>
       </div>
       <p class="tnote">যেকোনো লাইনে চাপ দিলে বদলাতে বা মুছতে পারবেন। অবশিষ্ট = আগের বাকি + খরচ − জমা।</p>
-      ${editing ? `<div class="sheet-bg" id="sheetBg"><div class="sheet" role="dialog" aria-modal="true" aria-label="${form.mode==='sale'?'নতুন মেমো':'লেনদেন বদলান'}">${formHtml}</div></div>` : ''}`;
+      ${editing ? `<div class="sheet-bg" id="sheetBg"><div class="sheet" role="dialog" aria-modal="true" aria-label="${form.mode==='sale'?'নতুন মেমো':'লেনদেন বদলান'}">${form.mode==='sale' ? '<div class="sheet-top"><button type="button" class="sheet-x" id="fCancelTop" aria-label="বাতিল">✕ বাতিল</button></div>' : ''}${formHtml}</div></div>` : ''}`;
 
     bindAcc(); bindForm(acc); renderAmdani();
     if(keepY!==null){ window.scrollTo(0, keepY); keepY = null; }
@@ -5453,6 +5464,7 @@ function getDB(){
 
     let kgNote = '';   // "(কেজি×রেট)" saved with a খরচ line
     let picks = [];    // মেমো: sizes picked from the মার্কা list (only the shop sees these, not the customer)
+    let labMan = null; // লেবার টাকা typed by hand (null = worked out from কেজি × দর)
     const selTypes = () => [...document.querySelectorAll('#lform .mtc')].filter(b=>b.getAttribute('aria-pressed')==='true').map(b=>b.dataset.mt);
     const raw = el => toBn(toEn(el.value));
     const calcKg = ()=>{
@@ -5488,6 +5500,7 @@ function getDB(){
     const labourCalc = (goods, kg) => {
       const lr = window.__labourRate ? window.__labourRate() : 200;
       const raw = Math.round(kg * lr / 1000 * 100) / 100;
+      if(labMan != null) return {raw, total: Math.round((goods + labMan) * 100) / 100, labour: labMan, adj: Math.round((labMan - raw) * 100) / 100, lr, manual: true};
       const total = Math.round((goods + raw) / 10) * 10;
       const labour = Math.round((total - goods) * 100) / 100;
       return {raw, total, labour, adj: Math.round((labour - raw) * 100) / 100, lr};
@@ -5596,6 +5609,7 @@ function getDB(){
             if($('fAmt')) $('fAmt').value = bn(E.goods != null ? E.goods : E.credit);
           }
           if($('fLab')) $('fLab').checked = !E.labourOff;
+          if(E.labourManual && E.labour != null) labMan = Number(E.labour);
           drawPicks(); applySums();
         }
       }
@@ -5605,6 +5619,7 @@ function getDB(){
           (D.picks||[]).forEach(pk => { const inf = window.__marka.info(pk.item); if(inf) picks.push({item:pk.item, cat:inf.catId, t:inf.t, tone:inf.tone, catName:inf.catName, dims:inf.dims, kg:Number(pk.kg)||0, rate:Number(pk.rate)||0}); });
           if($('fAddr') && D.addr) $('fAddr').value = D.addr;
           if($('fLab') && D.lab === false) $('fLab').checked = false;
+          if(D.labMan != null) labMan = Number(D.labMan);
           if(D.party === '__new' && $('fNewParty')){ $('fParty').value = '__new'; $('fParty').dispatchEvent(new Event('change')); $('fNewParty').value = D.newName || ''; if($('fNewLoc')) $('fNewLoc').value = D.newLoc || ''; }
           drawPicks(); applySums();
         }
@@ -5622,11 +5637,14 @@ function getDB(){
       let total = isNaN(goods) ? 0 : goods;
       $('cmLabQ').textContent = kg && $('fLab').checked ? bn(kg) : '';
       $('cmLabR').style.visibility = $('fLab').checked ? '' : 'hidden';   // লেবার off → row stays empty
+      const li = $('fLabAmt'), la = $('fLabAdj'), lb = $('fLabAuto');
       if($('fLab').checked && kg > 0 && goods > 0){
         const c = labourCalc(goods, kg);
         total = c.total;
-        $('cmLabV').innerHTML = bn(c.labour)+'/-' + (c.adj ? ` <small class="radj ${c.adj>0?'p':'m'}">${c.adj>0?'+':'−'}${bn(Math.abs(c.adj))}</small>` : '');
-      } else $('cmLabV').innerHTML = '';
+        li.hidden = false; if(document.activeElement !== li) li.value = toBn(String(c.labour));
+        la.innerHTML = c.adj && !c.manual ? `<span class="radj ${c.adj>0?'p':'m'}">${c.adj>0?'+':'−'}${bn(Math.abs(c.adj))}</span>` : '';
+        lb.hidden = !c.manual;
+      } else { li.hidden = true; la.innerHTML = ''; lb.hidden = true; }
       $('cmLabRow').classList.toggle('off', !$('fLab').checked);
       $('cmPrev').textContent = before < 0 ? 'অগ্রিম '+bn(-before) : bn(before)+'/-';
       $('cmTot').textContent = bn(total)+'/-';
@@ -5635,6 +5653,11 @@ function getDB(){
       $('cmDue').textContent = after < 0 ? 'অগ্রিম '+bn(-after) : bn(after)+'/-';
       $('cmWords').textContent = total > 0 && window.__inWords ? window.__inWords(total)+' টাকা মাত্র' : '';
     };
+    if($('fLabAmt')){
+      $('fLabAmt').addEventListener('input', () => { const v = parseNum($('fLabAmt').value); labMan = isNaN(v) || $('fLabAmt').value.trim() === '' ? null : v; calcLab(); paintCm(); });
+      $('fLabAmt').addEventListener('blur', () => paintCm());
+      $('fLabAuto').onclick = () => { labMan = null; calcLab(); paintCm(); };
+    }
     // Banglish → বাংলা in the name / address / description boxes
     ['fNewParty','fNewLoc','fAddr','fItem','ds_soft','ds_hard'].forEach(id => attachBanglish($(id)));
     if($('fNewLoc') && $('fAddr')) $('fNewLoc').addEventListener('input', () => { $('fAddr').value = $('fNewLoc').value; });
@@ -5745,6 +5768,7 @@ function getDB(){
         if($('fLab') && $('fLab').checked && kgT > 0){
           const c = labourCalc(amt, kgT);
           target.goods = amt; target.labourRaw = c.raw; target.labour = c.labour; target.roundAdj = c.adj; target.labourRate = c.lr;
+          if(c.manual) target.labourManual = true; else delete target.labourManual;
           target.credit = c.total;
           delete target.labourOff;
         } else { delete target.goods; delete target.labour; delete target.labourRaw; delete target.roundAdj; delete target.labourRate; target.credit = amt; if(kgT > 0) target.labourOff = true; }
@@ -5766,7 +5790,7 @@ function getDB(){
       const pk = picks.filter(p => p.item).map(p => ({item:p.item, kg:p.kg||0, rate:p.rate||0}));
       if(!pv && !pk.length){ const h = $('fHint'); if(h){ h.textContent = 'খসড়া সেভ করতে অন্তত পার্টি বা মাল দিন।'; h.className = 'lhint err'; } return; }
       const D = {id: form.draftId || uid(), ts: Date.now(), date: LD(), party: pv, newName: $('fNewParty') ? $('fNewParty').value.trim() : '', newLoc: $('fNewLoc') ? $('fNewLoc').value.trim() : '',
-        addr: $('fAddr') ? $('fAddr').value.trim() : '', paperNo: $('fPaperNo') ? $('fPaperNo').value.trim() : '', lab: $('fLab') ? $('fLab').checked : true, picks: pk};
+        addr: $('fAddr') ? $('fAddr').value.trim() : '', paperNo: $('fPaperNo') ? $('fPaperNo').value.trim() : '', lab: $('fLab') ? $('fLab').checked : true, labMan, picks: pk};
       const a = accs.find(x => x.id === pv); D.name = pv === '__new' ? D.newName : (a ? pnm(a) : '');
       D.kg = pk.reduce((t, p) => t + (p.kg||0), 0); D.amt = pk.reduce((t, p) => t + Math.round((p.kg||0) * (p.rate||0)), 0);
       const k = drafts.findIndex(x => x.id === D.id); if(k >= 0) drafts[k] = D; else drafts.unshift(D);
@@ -5837,6 +5861,7 @@ function getDB(){
     ['fAmt'].forEach(id=>$(id).addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); $('fSave').click(); }}));
     if(form.mode !== 'sale') attachWords($('fAmt'));
     if($('fCancel')) $('fCancel').onclick = reset;
+    if($('fCancelTop')) $('fCancelTop').onclick = () => { const c = $('fCancel'); if(c) c.click(); else reset(); };
     if($('fDel')){
       const b = $('fDel');
       b.onclick = ()=>{
