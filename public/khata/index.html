@@ -2883,6 +2883,25 @@ html body #stock .ssub .st[aria-selected="false"]:hover{filter:brightness(.97)}
 .tstock .ts-total .tt-p{font-family:"Noto Sans Bengali",sans-serif;font-size:13px;font-weight:600;color:#475467;background:#fff;border:1px solid #DCD0EF;border-radius:999px;padding:3px 10px}
 .tstock .ts-total .tt-p b{font-family:"Baloo Da 2",sans-serif;font-weight:800;color:#1B2347;margin-left:2px}
 .tstock .ts-total .tt-p.hard{border-color:#C9B6EA}.tstock .ts-total .tt-p.soft{border-color:#A9D8B6}.tstock .ts-total .tt-p.soft2{border-color:#A6D3E3}
+/* 📜 মাল আসার ইতিহাস */
+#stock .mhist{margin:14px 0}
+#stock .hist-tg{width:100%;display:flex;align-items:center;gap:10px;justify-content:space-between;text-align:left;padding:12px 14px;border-radius:12px;background:#F2FAF3;border:1.5px solid #8CC59A;color:#17402A;font-family:"Tiro Bangla",serif;font-weight:700;font-size:17px}
+#stock .hist-tg small{flex:1;font-family:"Noto Sans Bengali",sans-serif;font-size:13px;color:#2E7D4F;font-weight:600}
+#stock .hday{margin-top:10px;background:#fff;border:1px solid #CFE6D5;border-radius:12px;overflow:hidden}
+#stock .hday-h{width:100%;display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 12px;text-align:left;padding:10px 14px;background:#F7FBF8;border:0;border-bottom:1px solid #E1EFE5;color:#17402A}
+#stock .hday-h b{font-family:"Tiro Bangla",serif;font-size:16px}
+#stock .hday-h span{flex:1;font-size:13.5px;color:#2E7D4F;font-weight:600}
+#stock .hday-h i{font-style:normal;color:#8CA596}
+#stock .hrows{list-style:none;margin:0;padding:0}
+#stock .hrows li{display:grid;grid-template-columns:28px minmax(90px,auto) minmax(0,1fr) auto;gap:4px 10px;align-items:baseline;padding:8px 14px;border-bottom:1px dashed #E6EEE8;font-size:14px}
+#stock .hrows li:last-child{border-bottom:0}
+#stock .hrows .hn{color:#8CA596;font-family:"Baloo Da 2",sans-serif}
+#stock .hrows .hk{font-family:"Baloo Da 2",sans-serif;font-size:16px;color:#17603A}
+#stock .hrows .hk small{font-size:11.5px;color:#66728A}
+#stock .hrows .hm{color:#344054}
+#stock .hrows .hc{color:#66728A;font-size:13px;white-space:nowrap}
+#stock .hnone{color:#66728A;padding:8px 2px}
+@media (max-width: 700px){ #stock .hrows li{grid-template-columns:24px minmax(0,1fr)} #stock .hrows .hm,#stock .hrows .hc{grid-column:2} }
 </style>
 </head>
 <body>
@@ -3768,6 +3787,22 @@ function getDB(){
   }
 
   function go(id){ viewId = id; editIndex = -1; render(); window.scrollTo({top:0,behavior:'smooth'}); }
+  // 📜 মাল আসার ইতিহাস: every day's incoming মাল, newest date first (tap a date to open that day)
+  let histOpen = false; try{ histOpen = localStorage.getItem('kg-khata-hist') === '1'; }catch(_){}
+  function histHtml(){
+    const withRows = [...days].filter(d => (d.entries||[]).length).reverse();
+    const allKg = withRows.reduce((t, d) => t + sumEntries(d), 0);
+    return `<section class="mhist">
+      <button type="button" class="hist-tg" id="histTg" aria-expanded="${histOpen}">📜 মাল আসার ইতিহাস <small>তারিখ অনুযায়ী · ${toBn(withRows.length)} দিন · ${bn(allKg)} কেজি</small><span>${histOpen ? '▴' : '▾'}</span></button>
+      ${histOpen ? (withRows.length ? withRows.map(d => {
+        const cars = [...new Set((d.entries||[]).map(e => e.car).filter(Boolean))];
+        return `<div class="hday">
+          <button type="button" class="hday-h" data-hday="${d.id}" title="এই দিন খুলুন"><b>${bnDate(d.id)}</b><span>${bn(sumEntries(d))} কেজি · ${toBn((d.entries||[]).length)} লাইন${cars.length ? ' · গাড়ি ' + cars.map(c => esc(toBn(c))).join(', ') : ''}</span><i>›</i></button>
+          <ol class="hrows">${(d.entries||[]).map((e, i) => { const f = e.item ? findItem(e.item) : null, c = e.cat ? catOf(e.cat) : (f ? f.c : null);
+            return `<li><span class="hn">${toBn(i+1)}</span><b class="hk">${bn(e.kg)} <small>কেজি</small></b><span class="hm">${c ? esc(c.name) : esc(e.item||'—')}${f ? ' · <b>' + dimTxt(f.it) + '</b>' : ''}${e.coil ? ' · কয়েল ' + esc(toBn(e.coil)) : ''}</span><span class="hc">${[e.car ? 'গাড়ি ' + esc(toBn(e.car)) : '', e.co && window.__company ? '🏭 ' + esc(window.__company.name(e.co)||'') : ''].filter(Boolean).join(' · ')}</span></li>`; }).join('')}</ol>
+        </div>`; }).join('') : '<p class="hnone">এখনো কোনো মাল আসেনি।</p>') : ''}
+    </section>`;
+  }
 
   /* ---------- render ---------- */
   function render(){
@@ -3900,6 +3935,7 @@ function getDB(){
             <span class="d-act"><button class="edit" data-i="${i}" aria-label="বদলান">✎</button><button class="del" data-i="${i}" aria-label="মুছুন">×</button></span>
           </li>`).reverse().join('') : `<li class="empty">এই দিনে এখনো কোনো গাড়ি যোগ হয়নি।</li>`}
       </ol>
+      ${histHtml()}
       `}
 
       <div class="grand">
@@ -4088,6 +4124,8 @@ function getDB(){
     coRate.addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); coVno.focus(); }});
     coVno.addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); add(); }});
 
+    if($('histTg')) $('histTg').onclick = () => { histOpen = !histOpen; try{ localStorage.setItem('kg-khata-hist', histOpen ? '1' : '0'); }catch(_){}; render(); };
+    document.querySelectorAll('#stock [data-hday]').forEach(b => b.onclick = () => go(b.dataset.hday));
     document.querySelectorAll('#stock .edit').forEach(b=>b.onclick=()=>{ editIndex=+b.dataset.i; render(); const ek=$('ek'); if(ek){ ek.focus(); ek.select(); } });
     if($('saveEdit')){
       const doSave = ()=>{
