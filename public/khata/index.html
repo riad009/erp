@@ -2887,6 +2887,8 @@ html body #stock .ssub .st[aria-selected="false"]:hover{filter:brightness(.97)}
 #stock .addopen{width:100%;margin:12px 0;padding:14px;border-radius:12px;background:#1F7A3F;color:#fff;border:0;font-weight:800;font-size:17px}
 #stock .cedit,.hmd-h .cedit{margin-left:6px;padding:1px 7px;border-radius:6px;border:1px solid #C9D8EE;background:#fff;color:#1F4AA8;font-size:13px;font-weight:800;line-height:1.4;cursor:pointer}
 .kd-input{width:100%;box-sizing:border-box;margin-top:8px;padding:10px 12px;border:1.5px solid #B9C7DD;border-radius:10px;font-size:20px;font-family:"Baloo Da 2","Noto Sans Bengali",sans-serif;text-align:center}
+#stock .cardel{grid-column:1/-1;width:100%;margin-top:8px;padding:10px;border-radius:10px;border:1.5px solid #F2B8C0;background:#FFF5F6;color:#B42318;font-weight:700;font-size:14px}
+#stock .cardel.armed{background:#B42318;color:#fff;border-color:#B42318}
 #stock .addopen:hover{background:#19683A}
 #stock .addmodal{position:fixed;inset:0;z-index:110;background:rgba(12,24,48,.55);display:flex;align-items:center;justify-content:center;padding:16px;overflow-y:auto}
 @media (min-width: 900px){ #stock .addmodal{padding-left:calc(var(--side, 224px) + 16px)} }
@@ -3534,6 +3536,7 @@ function getDB(){
   let lastSize = 1250; try{ lastSize = Number(localStorage.getItem('kg-khata-lastsize')) || 1250; }catch(_){}
   let lastCo = ''; try{ lastCo = localStorage.getItem('kg-khata-lastco') || ''; }catch(_){}
   let coNew = false;   // typing a new company name in the stock form
+  let carEdit = null;   // ✎ on a গাড়ি: indexes of its lines in the day → the same pop-up opens filled, to change everything
   let addOpen = false;   // 🚚 মাল আসছে form is hidden until "＋ মাল যোগ করুন" is tapped
   let lastItem = '', lastMt = '', lastLen = '';
   try{ lastItem = localStorage.getItem('kg-khata-lastitem') || ''; lastMt = localStorage.getItem('kg-khata-lastmt') || ''; lastLen = localStorage.getItem('kg-khata-lastlen') || ''; }catch(_){}
@@ -3888,18 +3891,11 @@ function getDB(){
   const openCars = new Set();   // which গাড়ি lines are open (day list + history)
   let histOpen = false; try{ histOpen = localStorage.getItem('kg-khata-hist') === '1'; }catch(_){}
   const carGroups = d => { const groups = []; (d.entries||[]).forEach((e, i) => { const k = e.car ? 'c:' + e.car : 'i:' + i; let g = groups.find(x => x.k === k); if(!g){ g = {k, es:[], is:[]}; groups.push(g); } g.es.push(e); g.is.push(i); }); return groups; };
-  // ✎ গাড়ি নং: change it on every মাল line of that গাড়ি (and on its কোম্পানি চালান lines)
-  async function editCar(dayId, idx){
-    const d = findDay(dayId); if(!d) return false; const es = idx.map(i => (d.entries||[])[i]).filter(Boolean); if(!es.length) return false;
-    let val = es[0].car || '';
-    const p = kDialog({icon:'🚚', title:'গাড়ি নং বদলান', ok:'সেভ করুন', cancel:'বাতিল',
-      html:`<p class="kd-note">${bnDate(dayId)} · ${toBn(es.length)}টা মাল</p><input id="carEdIn" class="kd-input" inputmode="numeric" autocomplete="off" value="${esc(toBn(val))}">`});
-    const inp = document.getElementById('carEdIn');
-    if(inp){ inp.oninput = () => { val = inp.value; }; inp.onkeydown = e => { if(e.key === 'Enter'){ e.preventDefault(); inp.closest('.kdlg').querySelector('.kd-ok').click(); } }; setTimeout(() => { inp.focus(); inp.select(); }, 60); }
-    if(!(await p)) return false;
-    const car = toBn(String(val).trim()); if(!car) return false;
-    es.forEach(e => { e.car = car; if(e.co && e.ce && window.__company) window.__company.updateInv(e.co, e.ce, {car}); });
-    saveDay(d, true); render(); kToast && kToast('গাড়ি নং বদলানো হয়েছে'); return true;
+  // ✎ on a গাড়ি (day list or month pop-up): open that day with the মাল pop-up filled — change মাল, কেজি, কয়েল, গাড়ি নং, কোম্পানি, দর, চালান
+  function startCarEdit(dayId, idx){
+    if(!findDay(dayId)) return;
+    viewId = dayId; sSub = 'delivery'; try{ localStorage.setItem('kg-khata-ssub', sSub); }catch(_){}
+    editIndex = -1; coNew = false; carEdit = idx; addOpen = true; render();
   }
   function histHtml(){   // the day's গাড়ি are already in the table above — here only the month button
     const mon = viewId.slice(0, 7), monDays = days.filter(x => x.id.slice(0, 7) === mon && (x.entries||[]).length);
@@ -3920,8 +3916,7 @@ function getDB(){
     kDialog({icon:'📅', title:'মাল আসার হিসাব · ' + name, ok:'বন্ধ করুন',
       html: list.length ? `<div class="hmon-wrap"><table class="hmon-t"><thead><tr><th>ক্রমিক</th><th>তারিখ</th><th>গাড়ি</th><th>মাল</th><th>কেজি</th></tr></thead><tbody>${rows}</tbody></table></div><p class="kd-note">কোনো তারিখে চাপলে সেই দিনের সব মাল দেখাবে।</p>`
         : '<p>এই মাসে এখনো কোনো মাল আসেনি।</p>'});
-    document.querySelectorAll('.kdlg .cedit').forEach(b => b.onclick = async ev => { ev.stopPropagation(); const row = b.closest('.hmon-d').dataset.mdet; b.closest('.kdlg-bg').querySelector('.kd-ok').click();
-      await editCar(b.dataset.cday, b.dataset.cidx.split(',').map(Number)); openMonth(); const tr = document.querySelector(`.kdlg [data-mrow="${row}"]`); if(tr) tr.click(); });
+    document.querySelectorAll('.kdlg .cedit').forEach(b => b.onclick = ev => { ev.stopPropagation(); b.closest('.kdlg-bg').querySelector('.kd-ok').click(); startCarEdit(b.dataset.cday, b.dataset.cidx.split(',').map(Number)); });
     document.querySelectorAll('.kdlg [data-mrow]').forEach(tr => tr.onclick = () => { const d = document.querySelector(`.kdlg [data-mdet="${tr.dataset.mrow}"]`), op = d.hidden; d.hidden = !op; tr.classList.toggle('open', op); tr.querySelector('.hmon-ar').textContent = op ? '▾' : '▸'; });
   }
 
@@ -4009,7 +4004,7 @@ function getDB(){
       ${(()=>{ const C = window.__company; const cos = C ? C.list() : []; if(lastCo && !cos.find(x=>x.id===lastCo)) lastCo = ''; return `
       <button type="button" class="addopen" id="addOpenBtn" ${addOpen || coNew ? 'hidden' : ''}>＋ মাল যোগ করুন</button>
       <div class="addmodal" id="addWrap" ${addOpen || coNew ? '' : 'hidden'}><div class="addcard" role="dialog" aria-modal="true" aria-label="মাল যোগ করুন">
-      <h3 class="addttl">🚚 মাল যোগ করুন <small>${bnDate(cur.id)}</small></h3>
+      <h3 class="addttl">${carEdit ? '✎ গাড়ির মাল বদলান' : '🚚 মাল যোগ করুন'} <small>${bnDate(cur.id)}</small></h3>
       <div class="add add2 ${lastCo ? 'withco' : ''} detopen" id="addBox">
         <button type="button" class="addclose" id="addCloseBtn" aria-label="বন্ধ করুন">✕</button>
         <div class="coline">
@@ -4030,7 +4025,8 @@ function getDB(){
         <div class="cof"><label for="coRate">দর (প্রতি টন)</label><input id="coRate" class="num" inputmode="decimal" value="${lastCo && C ? (C.lastRate(lastCo) ? toBn(C.lastRate(lastCo)) : '') : ''}" placeholder="১,০১,০০০"></div>
         <div class="cof"><label for="coVno">চালান নং</label><input id="coVno" autocomplete="off" placeholder="যেমন ৮৪৯৮৭"></div>
         <p class="cocalc cof" id="coCalc"></p>
-        <button id="addBtn" type="button">যোগ করুন</button>
+        <button id="addBtn" type="button">${carEdit ? '✓ সেভ করুন' : 'যোগ করুন'}</button>
+        ${carEdit ? '<button id="carDelBtn" type="button" class="cardel">🗑 এই গাড়ির সব মাল মুছুন</button>' : ''}
       </div>
       <p class="hint" id="hint">কেজি আর গাড়ি নং দিন। মাল বাছাই করতে ＋ চাপুন — "📊 সর্বমোট মাল" এ সবুজ রঙে যোগ হবে। মাল বাটনে চাপুন → আগে মার্কা, তারপর সাইজ বাছাই করুন।</p></div></div>`; })()}
 
@@ -4191,7 +4187,7 @@ function getDB(){
     };
     $('pickBtn').onclick = () => openPicker(cur.id, id => { setPick(id); kg.focus(); });
     // ＋ আরো মাল: more sizes on the same গাড়ি — each line = its own মাল + কেজি
-    const addXRow = () => {
+    const addXRow = pre => {
       const r = document.createElement('div'); r.className = 'xrow';
       r.innerHTML = `<div class="pkrow"><button type="button" class="pkbtn xpk" data-item="">${pickHtml(cur.id, '')}</button></div><input class="num xkg" inputmode="decimal" aria-label="কেজি"><span class="xcw"><input class="xcoil" aria-label="কয়েল নং" placeholder="কয়েল নং" autocomplete="off"><button type="button" class="xdel" aria-label="এই মাল বাদ দিন">×</button></span>`;
       const pb = r.querySelector('.xpk'), kIn = r.querySelector('.xkg');
@@ -4201,9 +4197,10 @@ function getDB(){
       kIn.addEventListener('keydown', e => { if(e.key === 'Enter'){ e.preventDefault(); r.querySelector('.xcoil').focus(); } });
       r.querySelector('.xcoil').addEventListener('keydown', e => { if(e.key === 'Enter'){ e.preventDefault(); $('xMore').focus(); } });
       $('xRows').appendChild(r);
-      pb.click();
+      if(pre && pre.kg != null){ pb.dataset.item = pre.item || ''; pb.innerHTML = pickHtml(cur.id, pre.item || ''); kIn.value = toBn(pre.kg); r.querySelector('.xcoil').value = pre.coil || ''; }
+      else pb.click();
     };
-    $('xMore').onclick = addXRow;
+    $('xMore').onclick = () => addXRow();
     if($('pickClr')) $('pickClr').onclick = () => setPick('');
     const paintCo = () => {
       const k = parseNum(kg.value), r = parseNum(coRate.value);
@@ -4238,11 +4235,13 @@ function getDB(){
       }
       const coId = coSel ? coSel.value : '';
       const withCo = coId && coId !== '__new' && C, rate = parseNum(coRate.value);
-      if(withCo && !(rate > 0)){ hint.textContent = 'কোম্পানির দর (প্রতি টন) লিখুন।'; hint.className = 'hint err'; coRate.focus(); return; }
+      if(withCo && !(rate > 0) && !carEdit){ hint.textContent = 'কোম্পানির দর (প্রতি টন) লিখুন।'; hint.className = 'hint err'; coRate.focus(); return; }
       cur.entries = cur.entries||[];
-      const ts = Date.now();
+      const ts = Date.now(), olds = carEdit ? carEdit.map(i => cur.entries[i]).filter(Boolean) : [], rows = [];
+      if(carEdit) olds.forEach(o => { if(o.co && o.ce && C) C.remove(o.co, o.ce); });   // old চালান lines go, new ones are written below
       lines.forEach((ln, i) => {
-        const row = {kg:ln.kg, car:car.value.trim(), ts:ts + i};
+        const row = {kg:ln.kg, car:toBn(car.value.trim()), ts:olds[i] && olds[i].ts ? olds[i].ts : (olds.length ? olds[olds.length-1].ts + i : ts + i)};
+        if(olds[i] && olds[i].ci) row.ci = olds[i].ci;
         if(ln.coil) row.coil = ln.coil;
         let picked = null;
         const f = ln.itId ? findItem(ln.itId) : null;
@@ -4253,16 +4252,38 @@ function getDB(){
         }
         if(withCo){
           row.co = coId; if(coVno.value.trim()) row.vno = coVno.value.trim();
-          row.ce = C.addInv({coId, date:cur.id, kg:ln.kg, mili:0, size:picked && picked.it ? picked.it.h : 0, len:picked && picked.it ? picked.it.w : 0, item:picked ? picked.c.name : '', mt:'', rate, vno:coVno.value.trim(), car:row.car});
+          row.ce = C.addInv({coId, date:cur.id, kg:ln.kg, mili:0, size:picked && picked.it ? picked.it.h : 0, len:picked && picked.it ? picked.it.w : 0, item:picked ? picked.c.name : '', mt:'', rate:rate > 0 ? rate : 0, vno:coVno.value.trim(), car:row.car});
         }
-        cur.entries.push(row);
+        rows.push(row);
       });
+      if(carEdit){ const at = Math.min(...carEdit); cur.entries = cur.entries.filter((e, i) => !carEdit.includes(i)); cur.entries.splice(Math.min(at, cur.entries.length), 0, ...rows); }
+      else cur.entries.push(...rows);
+      const was = carEdit; carEdit = null;
       addOpen = false; saveDay(cur,true); editIndex=-1; render();   // saved → pop-up closes, the new গাড়ি shows in the list
-      const r = $('lastRow'); if(r) r.classList.add('flash');
-      kToast('✓ মাল যোগ হয়েছে');
+      const r = $('lastRow'); if(r && !was) r.classList.add('flash');
+      kToast(was ? '✓ গাড়ির মাল বদলানো হয়েছে' : '✓ মাল যোগ হয়েছে');
     };
     $('addBtn').onclick = add;
-    const showAdd = on => { addOpen = on; $('addWrap').hidden = !on; document.body.classList.toggle('addmodal-on', on); if(on) setTimeout(() => $('kg').focus(), 30); };
+    const showAdd = on => { addOpen = on; $('addWrap').hidden = !on; document.body.classList.toggle('addmodal-on', on); if(on) setTimeout(() => $('kg').focus(), 30); if(!on && carEdit){ carEdit = null; render(); } };
+    // ✎ গাড়ি: fill the pop-up with that গাড়ি's lines
+    if(carEdit && addOpen){
+      const es = carEdit.map(i => cur.entries[i]).filter(Boolean);
+      if(!es.length){ carEdit = null; addOpen = false; render(); return; }
+      const e0 = es[0], co = es.find(e => e.co) || null;
+      if(coSel){ coSel.value = co && C && C.list().find(x => x.id === co.co) ? co.co : ''; box.classList.toggle('withco', !!coSel.value); }
+      const inv = co && C && C.inv ? C.inv(co.co, co.ce) : null;
+      coRate.value = inv && Number(inv.rate) ? toBn(inv.rate) : '';
+      coVno.value = (es.find(e => e.vno) || {}).vno || '';
+      setPick(e0.item && findItem(e0.item) ? e0.item : '');
+      kg.value = toBn(e0.kg); $('coilNo').value = e0.coil || ''; car.value = e0.car ? toBn(e0.car) : '';
+      es.slice(1).forEach(e => addXRow({item: e.item && findItem(e.item) ? e.item : '', kg: e.kg, coil: e.coil || ''}));
+      paintCo();
+      if($('carDelBtn')) twoTap($('carDelBtn'), 'নিশ্চিত? আবার চাপুন', 4000, () => {
+        es.forEach(o => { if(o.co && o.ce && C) C.remove(o.co, o.ce); });
+        const idx = carEdit; cur.entries = cur.entries.filter((e, i) => !idx.includes(i));
+        carEdit = null; addOpen = false; saveDay(cur, true); render(); kToast('🗑 গাড়ির মাল মুছে ফেলা হয়েছে');
+      });
+    }
     $('addOpenBtn').onclick = () => showAdd(true);
     $('addCloseBtn').onclick = () => showAdd(false);
     $('addWrap').onclick = e => { if(e.target === $('addWrap')) showAdd(false); };
@@ -4279,7 +4300,7 @@ function getDB(){
     document.querySelectorAll('#stock [data-hday]').forEach(b => b.onclick = () => go(b.dataset.hday));
     document.querySelectorAll('#stock [data-hdt]').forEach(b => b.onclick = () => { const k = 'd|' + b.dataset.hdt; if(openCars.has(k)) openCars.delete(k); else openCars.add(k); render(); });
     document.querySelectorAll('#stock [data-hkey]').forEach(b => b.onclick = () => { const k = b.dataset.hkey; if(openCars.has(k)) openCars.delete(k); else openCars.add(k); render(); });
-    document.querySelectorAll('#stock .cedit').forEach(b => b.onclick = ev => { ev.stopPropagation(); editCar(b.dataset.cday, b.dataset.cidx.split(',').map(Number)); });
+    document.querySelectorAll('#stock .cedit').forEach(b => b.onclick = ev => { ev.stopPropagation(); startCarEdit(b.dataset.cday, b.dataset.cidx.split(',').map(Number)); });
     document.querySelectorAll('#stock [data-ckey]').forEach(li => li.onclick = () => { const k = li.dataset.ckey; if(openCars.has(k)) openCars.delete(k); else openCars.add(k); render(); });
     document.querySelectorAll('#stock .edit').forEach(b=>b.onclick=()=>{ editIndex=+b.dataset.i; render(); const ek=$('ek'); if(ek){ ek.focus(); ek.select(); } });
     if($('saveEdit')){
@@ -4641,7 +4662,7 @@ function getDB(){
     Object.assign(e, p); if(e.rate) e.amount = Math.round(e.kg/1000*e.rate); save(c); render();
   }
   function remove(coId, eid){ const c = findCo(coId); if(!c) return; c.entries = (c.entries||[]).filter(x => x.id !== eid); save(c); render(); }
-  window.__company = {html, bind, badge, list: () => cos, create, addInv, updateInv, remove, lastRate, name: id => (findCo(id)||{}).name};
+  window.__company = {html, bind, badge, list: () => cos, create, addInv, updateInv, remove, lastRate, name: id => (findCo(id)||{}).name, inv: (coId, eid) => ((findCo(coId)||{}).entries||[]).find(x => x.id === eid) || null};
   window.__companyRender = render;
 })();
 

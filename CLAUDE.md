@@ -37,7 +37,7 @@ Tabs: স্টক · দৈনিক · মেমো · খতিয়ান �
   - Under the 🚚 মাল আসছে table: only a "📅 এই মাসের সব হিসাব" button (no separate ইতিহাস list — the day's গাড়ি are already in the table) → pop-up with every date of the month (গাড়ি · মাল · কেজি, no মোট row); tap a date row to open its গাড়ি → মাল details inside the pop-up. গাড়ি count = unique গাড়ি নং, not lines.
   - Size row 🕘 "N বার এসেছে" = arrivals of the last 24 hours only (old date: that day only); no kg on the closed button.
   - 🚚 মাল আসছে form is a pop-up: only a green "＋ মাল যোগ করুন" button on the page; tap → pop-up form (✕ / outside / Esc closes; closes by itself after যোগ করুন).
-  - ✎ next to গাড়ি নং (day list গাড়ি line + month pop-up) → `editCar()` changes it on every মাল line of that গাড়ি and on its কোম্পানি চালান lines.
+  - ✎ next to গাড়ি নং (day list গাড়ি line + month pop-up) → `startCarEdit()` opens the same মাল pop-up filled with that গাড়ি (কোম্পানি, every মাল line + কেজি + কয়েল, গাড়ি নং, দর, চালান) → ✓ সেভ করুন replaces those lines (and their কোম্পানি চালান lines); 🗑 removes the whole গাড়ি. গাড়ি নং is saved in Bangla digits.
   - 🚚 মাল আসছে form: one গাড়ি can carry several মাল lines (＋ আরো মাল); each line = মাল + কেজি + কয়েল নং (`coil` on the stock entry); গাড়ি নং / দর / চালান নং are shared and saved on every line.
 - মাল is picked with the pop-up **মার্কা → সাইজ**. Printed memo shows only **সফট / হার্ড + কেজি** (no sizes).
 - Memo form: কাগজ or ডিজিটাল (setting). Digital = step by step: party first → মাল; one কেজি box per size; লেবার hidden until মাল picked; full summary pop-up before saving.
