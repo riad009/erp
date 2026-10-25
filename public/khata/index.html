@@ -2127,6 +2127,9 @@ body.theme-pro #stock ol.entries .spec,body.theme-pro #stock ol.entries .itm,bod
 .uhd .uhd-r .navbtn{width:38px!important;height:38px!important;min-width:38px;border-radius:10px!important;font-size:20px!important;padding:0!important}
 .uhd .udp{position:relative;display:inline-flex!important;align-items:center;gap:8px;flex:none!important;min-height:38px;padding:6px 14px;border-radius:12px;background:#fff;border:1.5px solid #C7D6EB;color:#1F3A6E;font-family:"Noto Sans Bengali","Hind Siliguri",sans-serif!important;font-size:16px;font-weight:700;white-space:nowrap;cursor:default;box-shadow:0 1px 2px rgba(16,24,40,.05)}
 .uhd label.udp{cursor:pointer}
+.uhd label.udp{position:relative}
+.mday-bar{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;margin:10px 0;padding:10px 14px;border-radius:12px;background:#EEF3FB;border:1px solid #C9D8EE;color:#1B2347;font-size:14.5px}
+.mday-bar b{color:#1F4AA8}
 .uhd label.udp:hover{border-color:#1F4AA8;background:#F5F8FE}
 .uhd .udp .ud-ic{display:inline-flex;color:#1F4AA8;font-size:17px}
 .uhd .udp .ud-ic .calsvg{opacity:1}
@@ -6919,8 +6922,13 @@ document.addEventListener('input', e=>{
     const kgSum = lines.reduce((s,x)=>s+kgOf(x.e),0);
     const groups = []; lines.forEach(x => { const g = groups[groups.length-1]; if(g && g.d===x.e.date) g.l.push(x); else groups.push({d:x.e.date, l:[x]}); });
     const focusQ = document.activeElement && document.activeElement.id === 'mQ';
+    // date pill: pick a day → only that day's memos
+    const oneDay = mst.p === 'today' ? today() : (mst.p === 'custom' && f === t ? f : '');
+    const mHead = uHead('🧾 মেমো তালিকা', oneDay ? 'এই দিনের মেমো' : 'সব মেমো').replace(/<span class="udp">[\s\S]*?<\/span><\/span>/,
+      `<label class="udp" title="তারিখ বাছাই করুন — সেই দিনের মেমো দেখাবে"><span class="ud-ic">${calSvg()}</span><span class="ud-t">${bnLongDate(oneDay || today())}</span><input type="date" id="mDay" value="${oneDay || today()}" aria-label="তারিখ বাছাই করুন"></label>`);
     mroot.innerHTML = `
-      ${uHead('🧾 মেমো তালিকা', 'সব মেমো')}
+      ${mHead}
+      ${oneDay ? `<div class="mday-bar"><span>📅 শুধু <b>${bnLongDate(oneDay)}</b> এর মেমো দেখানো হচ্ছে</span><button type="button" class="gotoday" id="mAllBtn">↩ এই মাসের সব মেমো</button></div>` : ''}
       <div class="mstyle"><span>মেমোর ধরন</span>
         <div class="sw" role="group" aria-label="মেমোর ধরন">
           <button type="button" data-ms="paper" aria-pressed="${memoStyle==='paper'}">📜 কাগজ</button>
@@ -7012,6 +7020,8 @@ document.addEventListener('input', e=>{
     mroot.querySelectorAll('.msend').forEach(x => x.addEventListener('keydown', e => { if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); x.click(); } }));
     document.getElementById('mNew').onclick = () => L().newMemo();
     mroot.querySelectorAll('[data-ms]').forEach(b => b.onclick = () => { memoStyle = b.dataset.ms; try{ localStorage.setItem('kg-khata-memostyle', memoStyle); }catch(_){}; renderMemo(); });
+    if(document.getElementById('mDay')) document.getElementById('mDay').onchange = e => { const v = e.target.value; if(!v) return; mst.p = 'custom'; mst.f = v; mst.t = v; try{ localStorage.setItem('kg-khata-memo', JSON.stringify(mst)); }catch(_){}; renderMemo(); };
+    if(document.getElementById('mAllBtn')) document.getElementById('mAllBtn').onclick = () => { mst.p = 'month'; delete mst.f; delete mst.t; try{ localStorage.setItem('kg-khata-memo', JSON.stringify(mst)); }catch(_){}; renderMemo(); };
     document.getElementById('mFT').onclick = () => { mst.open = !mst.open; try{ localStorage.setItem('kg-khata-memo', JSON.stringify(mst)); }catch(_){}; renderMemo(); };
   }
 
