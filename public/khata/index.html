@@ -2543,6 +2543,12 @@ html body #stock .ssub .st[aria-selected="false"]:hover{filter:brightness(.97)}
 /* first size of a group = top of the box, with the group name */
 .cmform.cmd .cm-tbl tr:not(.pkrow) + tr.pkrow,.cmform.cmd .cm-tbl tbody > tr.pkrow:first-child,.cmform.cmd .cm-tbl tr.pkrow.soft + tr.pkrow.hard{border-top:1px solid #DCE3EF!important;border-radius:12px 12px 0 0!important;margin-top:10px!important}
 .cmform.cmd .cm-tbl tr:not(.pkrow) + tr.pkrow::before,.cmform.cmd .cm-tbl tbody > tr.pkrow:first-child::before,.cmform.cmd .cm-tbl tr.pkrow.soft + tr.pkrow.hard::before{grid-column:1 / -1;display:block;margin:-8px -12px 6px;padding:7px 12px;border-radius:9px 9px 0 0;background:var(--gl);color:var(--g);font-weight:800;font-size:14px}
+.cmform .cm-tbl tr.pkmore td{padding:8px 0 4px!important;border:0!important;background:transparent!important}
+.cmform.cmd .cm-tbl tr.pkmore{display:block!important;padding:0 10px}
+.cmform.cmd .cm-tbl tr.pkmore td.pkm{display:block!important}
+.cmform .cm-morebtn{width:100%;padding:11px;border-radius:10px;border:1.5px dashed #6B8FD6;background:#F4F7FD;color:#1F4AA8;font-weight:800;font-size:15px;cursor:pointer}
+.cmform .cm-morebtn:hover{background:#E8EFFB}
+.cmform .cm-tbl tr.pkrow .cmp-sl{display:inline-block;min-width:22px;margin-right:4px;font-family:"Baloo Da 2","Noto Sans Bengali",sans-serif;font-weight:800;color:#1F4AA8}
 .cmform.cmd .cm-tbl tr.pkrow.hard::before{content:"হার্ড মাল — সাইজ ও কেজি"}
 .cmform.cmd .cm-tbl tr.pkrow.soft::before{content:"সফট মাল — সাইজ ও কেজি"}
 /* the সফট / হার্ড line right under its sizes = bottom of the same box */
@@ -5399,11 +5405,18 @@ function getDB(){
           tr.className = 'pkrow ' + p.t + (firstOf[p.t] === i ? ' pkfirst' : '');
           const short = String(p.catName).replace(/^.*?\((.*)\)\s*$/, '$1') || p.catName;
           tr.innerHTML = `<td></td>
-            <td class="d"><span class="cmp-n ${p.tone}">${esc(short)}</span> <b class="cmp-d">${p.dims}</b> <button type="button" class="cmp-x" data-i="${i}" aria-label="বাদ দিন">×</button></td>
+            <td class="d"><span class="cmp-sl"></span><span class="cmp-n ${p.tone}">${esc(short)}</span> <b class="cmp-d">${p.dims}</b> <button type="button" class="cmp-x" data-i="${i}" aria-label="বাদ দিন">×</button></td>
             <td><input class="num cmp-kg" data-i="${i}" inputmode="decimal" placeholder="কেজি" value="${p.kg ? bn(p.kg) : ''}" aria-label="${esc(p.dims)} কেজি"></td>
             <td></td><td class="v"></td>${firstOf[p.t] === i ? `<td class="pk-grp"><span class="pk-gbadge">${p.t === 'hard' ? 'হার্ড মাল' : 'সফট মাল'}<button type="button" class="pk-rmall" data-t="${p.t}" title="${p.t === 'hard' ? 'হার্ড' : 'সফট'} মাল পুরোটা বাদ দিন" aria-label="${p.t === 'hard' ? 'হার্ড' : 'সফট'} মাল পুরোটা বাদ দিন">×</button></span><span class="pk-gsub">সাইজ ও কেজি</span></td>` : ''}`;
           const anchor = $('row_' + p.t); anchor.parentNode.insertBefore(tr, anchor);
         });
+        // ক্রমিক in the order shown, and "＋ আরো মাল যোগ করুন" after the last মাল group
+        document.querySelectorAll('#lform tr.pkrow .cmp-sl').forEach((x, k) => x.textContent = toBn(k + 1) + '.');
+        document.querySelectorAll('#lform tr.pkmore').forEach(r => r.remove());
+        if(picks.length){
+          const last = ['soft','hard'].map(t => $('row_' + t)).filter(r => r && picks.some(p => r.id === 'row_' + p.t)).sort((a2, b2) => a2.compareDocumentPosition(b2) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1).pop();
+          if(last){ const mr = document.createElement('tr'); mr.className = 'pkmore'; mr.innerHTML = `<td></td><td colspan="5" class="pkm"><button type="button" class="cm-morebtn">＋ আরো মাল যোগ করুন</button></td>`; last.after(mr); mr.querySelector('button').onclick = () => $('cmPick').click(); }
+        }
         document.querySelectorAll('#lform tr.pkrow .cmp-kg').forEach(inp => inp.addEventListener('input', () => { const n = parseNum(inp.value); picks[+inp.dataset.i].kg = n > 0 ? n : 0; applySums(); }));
         document.querySelectorAll('#lform tr.pkrow .cmp-x').forEach(b => b.onclick = () => { picks.splice(+b.dataset.i, 1); drawPicks(); applySums(); });
         // × বাদ দিন on the group: removes that whole মাল type (all its sizes) — tap twice
@@ -5417,8 +5430,8 @@ function getDB(){
       };
       $('cmPick').onclick = () => window.__marka.pick(id => {
         const inf = window.__marka.info(id); if(!inf) return;
-        let i = picks.findIndex(p => p.item === id);
-        if(i < 0){ picks.push({item:id, cat:inf.catId, t:inf.t, tone:inf.tone, catName:inf.catName, dims:inf.dims, kg:0}); i = picks.length - 1; }
+        // the same size can be picked again (another coil) → its own line
+        picks.push({item:id, cat:inf.catId, t:inf.t, tone:inf.tone, catName:inf.catName, dims:inf.dims, kg:0}); const i = picks.length - 1;
         drawPicks(); applySums();
         const inp = document.querySelector(`#lform tr.pkrow .cmp-kg[data-i="${i}"]`); if(inp) inp.focus();
       });
