@@ -2932,9 +2932,8 @@ body.addmodal-on{overflow:hidden}
 .hmon-t th{background:#F2FAF3;color:#17402A;position:sticky;top:0}
 .hmon-t td.n{text-align:right;font-family:"Baloo Da 2","Noto Sans Bengali",sans-serif;white-space:nowrap}
 .hmon-t td.k{font-weight:800;color:#17603A}
-.hmon-t tbody tr{cursor:pointer}.hmon-t tbody tr:hover{background:#F7FBF8}
+.hmon-t tbody tr{cursor:pointer;transition:background .12s}.hmon-t tbody tr:hover td{background:#E3F4E8}.hmon-t tbody tr:hover td:nth-child(2){color:#17603A;font-weight:700;text-decoration:underline}
 .hmon-t tfoot td{font-weight:800;background:#F2FAF3}
-.hmon-t td.hmon-ar{color:#2E7D4F;font-weight:800;font-size:18px;text-align:center;width:24px;padding:4px}
 .hmd-car{border:1px solid #D6E4DA;border-radius:8px;background:#fff;margin-top:6px;overflow:hidden}
 .hmd-h{display:flex;flex-wrap:wrap;gap:4px 10px;align-items:baseline;padding:6px 10px;background:#F2FAF3;color:#17402A}
 .hmd-h span{flex:1;font-size:12.5px;color:#475467}
@@ -3906,12 +3905,16 @@ function getDB(){
   function openMonth(){
     const mon = viewId.slice(0, 7), list = days.filter(x => x.id.slice(0, 7) === mon && (x.entries||[]).length);
     const name = bnDate(mon + '-01').replace(/^.*?,\s*[০-৯]+\s*/, '');   // "অক্টোবর ২০২৬"
-    const rows = list.map((x, i) => `<tr class="hmon-r" data-mrow="${i}"><td class="n">${toBn(i+1)}</td><td>${bnDate(x.id)}</td><td class="n">${toBn(carGroups(x).length)}</td><td class="n">${toBn((x.entries||[]).length)}</td><td class="n k">${bn(sumEntries(x))}</td><td class="hmon-ar">›</td></tr>`).join('');
+    const rows = list.map((x, i) => `<tr class="hmon-r" data-mrow="${i}"><td class="n">${toBn(i+1)}</td><td>${bnDate(x.id)}</td><td class="n">${toBn(carGroups(x).length)}</td><td class="n">${toBn((x.entries||[]).length)}</td><td class="n k">${bn(sumEntries(x))}</td></tr>`).join('');
     kDialog({icon:'📅', title:'মাল আসার হিসাব · ' + name, ok:'বন্ধ করুন',
-      html: list.length ? `<div class="hmon-wrap"><table class="hmon-t"><thead><tr><th>ক্রমিক</th><th>তারিখ</th><th>গাড়ি</th><th>মাল</th><th>কেজি</th><th></th></tr></thead><tbody>${rows}</tbody></table></div><p class="kd-note">কোনো তারিখে চাপলে সেই দিনের পাতা খুলবে।</p>`
+      html: list.length ? `<div class="hmon-wrap"><table class="hmon-t"><thead><tr><th>ক্রমিক</th><th>তারিখ</th><th>গাড়ি</th><th>মাল</th><th>কেজি</th></tr></thead><tbody>${rows}</tbody></table></div><p class="kd-note">কোনো তারিখে চাপলে সেই দিনের পাতা খুলবে।</p>`
         : '<p>এই মাসে এখনো কোনো মাল আসেনি।</p>'});
     const dlg = document.querySelector('.kdlg-bg:last-child .kdlg') || document.querySelector('.kdlg'); if(!dlg) return;
-    dlg.querySelectorAll('[data-mrow]').forEach(tr => tr.onclick = () => { const x = list[+tr.dataset.mrow]; dlg.querySelector('.kd-ok').click(); sSub = 'delivery'; try{ localStorage.setItem('kg-khata-ssub', sSub); }catch(_){}; go(x.id); });   // a date → that day's page
+    dlg.querySelectorAll('[data-mrow]').forEach(tr => tr.onclick = () => { const x = list[+tr.dataset.mrow]; dlg.querySelector('.kd-ok').click(); sSub = 'delivery'; try{ localStorage.setItem('kg-khata-ssub', sSub); }catch(_){}; viewId = x.id; editIndex = -1; render();
+      // land on that day's গাড়ি table (not the top of the page)
+      requestAnimationFrame(() => { const c = document.querySelector('#stock .dcar'), t = c && c.closest('ol'); if(!t) return;
+        let off = 12; document.querySelectorAll('header, nav, #stock > *').forEach(el => { const cs = getComputedStyle(el), r = el.getBoundingClientRect(); if((cs.position === 'sticky' || cs.position === 'fixed') && r.height && r.height < 300 && r.top <= 4) off = Math.max(off, r.bottom + 12); });
+        window.scrollTo({top: window.scrollY + t.getBoundingClientRect().top - off, behavior:'smooth'}); }); });   // a date → that day's page
   }
 
   /* ---------- render ---------- */
