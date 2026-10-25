@@ -2941,6 +2941,9 @@ html body #stock .ssub .st[aria-selected="false"]:hover{filter:brightness(.97)}
 #stock .hcar .hcnt{color:#2E7D4F;font-weight:700;font-size:13px;white-space:nowrap}
 #stock .hcars .hrows{background:#FBFDFB}
 @media (max-width: 700px){ #stock .hcar{grid-template-columns:auto minmax(0,1fr) auto} #stock .hcar .hco{grid-column:1 / -1;grid-row:2} }
+#stock .hday:not(.open) .hday-h{border-bottom:0}
+#stock .hday{margin-top:8px}
+#stock .hgo{display:block;margin:6px 14px;padding:0;background:none;border:0;color:#1F4AA8;font-weight:700;font-size:13px;text-decoration:underline}
 </style>
 </head>
 <body>
@@ -3837,13 +3840,15 @@ function getDB(){
       ${histOpen ? (withRows.length ? withRows.map(d => {
         const cars = [...new Set((d.entries||[]).map(e => e.car).filter(Boolean))];
         const groups = []; (d.entries||[]).forEach((e, i) => { const k = e.car ? 'c:' + e.car : 'i:' + i; let g = groups.find(x => x.k === k); if(!g){ g = {k, es:[]}; groups.push(g); } g.es.push(e); });
-        return `<div class="hday">
-          <button type="button" class="hday-h" data-hday="${d.id}" title="এই দিন খুলুন"><b>${bnDate(d.id)}</b><span>${bn(sumEntries(d))} কেজি · ${toBn(groups.length)} গাড়ি</span><i>›</i></button>
-          <ol class="hcars">${groups.map(g => { const key = 'h|' + d.id + '|' + g.k, op = openCars.has(key), es = g.es;
+        const dop = openCars.has('d|' + d.id);   // only the date shows; tap it to see its গাড়ি
+        return `<div class="hday ${dop ? 'open' : ''}">
+          <button type="button" class="hday-h" data-hdt="${d.id}" aria-expanded="${dop}"><b>${bnDate(d.id)}</b><span>${bn(sumEntries(d))} কেজি · ${toBn(groups.length)} গাড়ি</span><i>${dop ? '▾' : '▸'}</i></button>
+          ${dop ? `<button type="button" class="hgo" data-hday="${d.id}">এই দিনের পাতা খুলুন ›</button>` : ''}
+          ${!dop ? '' : `<ol class="hcars">${groups.map(g => { const key = 'h|' + d.id + '|' + g.k, op = openCars.has(key), es = g.es;
             const cos = [...new Set(es.map(e => e.co && window.__company ? window.__company.name(e.co) : '').filter(Boolean))];
             return `<li><button type="button" class="hcar ${op ? 'open' : ''}" data-hkey="${esc(key)}"><span class="hcn">${es[0].car ? 'গাড়ি ' + esc(toBn(es[0].car)) : '—'}</span><b class="hk">${bn(es.reduce((t, e) => t + (Number(e.kg)||0), 0))} <small>কেজি</small></b><span class="hco">${cos.map(c => '🏭 ' + esc(c)).join(', ')}</span><span class="hcnt">${toBn(es.length)}টা মাল ${op ? '▾' : '▸'}</span></button>
               ${op ? `<ol class="hrows">${es.map((e, i) => { const f = e.item ? findItem(e.item) : null, c = e.cat ? catOf(e.cat) : (f ? f.c : null);
-                return `<li><span class="hn">${toBn(i+1)}</span><b class="hk">${bn(e.kg)} <small>কেজি</small></b><span class="hm">${c ? esc(c.name) : esc(e.item||'—')}${f ? ' · <b>' + dimTxt(f.it) + '</b>' : ''}${e.coil ? ' · কয়েল ' + esc(toBn(e.coil)) : ''}${e.ci ? ' · <small class="ciname">' + esc(e.ci) + '</small>' : ''}</span><span class="hc">${e.vno ? 'চালান ' + esc(toBn(e.vno)) : ''}</span></li>`; }).join('')}</ol>` : ''}</li>`; }).join('')}</ol>
+                return `<li><span class="hn">${toBn(i+1)}</span><b class="hk">${bn(e.kg)} <small>কেজি</small></b><span class="hm">${c ? esc(c.name) : esc(e.item||'—')}${f ? ' · <b>' + dimTxt(f.it) + '</b>' : ''}${e.coil ? ' · কয়েল ' + esc(toBn(e.coil)) : ''}${e.ci ? ' · <small class="ciname">' + esc(e.ci) + '</small>' : ''}</span><span class="hc">${e.vno ? 'চালান ' + esc(toBn(e.vno)) : ''}</span></li>`; }).join('')}</ol>` : ''}</li>`; }).join('')}</ol>`}
         </div>`; }).join('') : '<p class="hnone">এখনো কোনো মাল আসেনি।</p>') : ''}
     </section>`;
   }
@@ -4190,6 +4195,7 @@ function getDB(){
 
     if($('histTg')) $('histTg').onclick = () => { histOpen = !histOpen; try{ localStorage.setItem('kg-khata-hist', histOpen ? '1' : '0'); }catch(_){}; render(); };
     document.querySelectorAll('#stock [data-hday]').forEach(b => b.onclick = () => go(b.dataset.hday));
+    document.querySelectorAll('#stock [data-hdt]').forEach(b => b.onclick = () => { const k = 'd|' + b.dataset.hdt; if(openCars.has(k)) openCars.delete(k); else openCars.add(k); render(); });
     document.querySelectorAll('#stock [data-hkey]').forEach(b => b.onclick = () => { const k = b.dataset.hkey; if(openCars.has(k)) openCars.delete(k); else openCars.add(k); render(); });
     document.querySelectorAll('#stock [data-ckey]').forEach(li => li.onclick = () => { const k = li.dataset.ckey; if(openCars.has(k)) openCars.delete(k); else openCars.add(k); render(); });
     document.querySelectorAll('#stock .edit').forEach(b=>b.onclick=()=>{ editIndex=+b.dataset.i; render(); const ek=$('ek'); if(ek){ ek.focus(); ek.select(); } });
