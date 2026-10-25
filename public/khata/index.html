@@ -2887,6 +2887,9 @@ html body #stock .ssub .st[aria-selected="false"]:hover{filter:brightness(.97)}
 #stock .addopen{width:100%;margin:12px 0;padding:14px;border-radius:12px;background:#1F7A3F;color:#fff;border:0;font-weight:800;font-size:17px}
 #stock .cedit,.hmd-h .cedit{margin-left:6px;padding:1px 7px;border-radius:6px;border:1px solid #C9D8EE;background:#fff;color:#1F4AA8;font-size:13px;font-weight:800;line-height:1.4;cursor:pointer}
 .kd-input{width:100%;box-sizing:border-box;margin-top:8px;padding:10px 12px;border:1.5px solid #B9C7DD;border-radius:10px;font-size:20px;font-family:"Baloo Da 2","Noto Sans Bengali",sans-serif;text-align:center}
+#stock .calc .row.plus .val.in{color:#17803D}
+#stock .calc .row.stot .lbl{font-weight:800;color:#3B1F63}
+#stock .calc .row.stot .val{font-weight:800;color:#3B1F63}
 #stock .dcar .d-kg .ktot{display:block;font-size:11.5px;font-weight:700;color:#2E7D4F;letter-spacing:.2px;margin-bottom:1px}
 #stock .dcar .d-sl.dcarno{display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.1}
 #stock .dcar .dcarno small{font-size:11.5px;color:#2E7D4F;font-weight:600}
@@ -3970,6 +3973,7 @@ function getDB(){
 
     const c = m[cur.id];
     const entries = cur.entries||[];
+    let sk;   // stock from the মার্কা sizes: আগের মোট + এসেছে − গেছে = মোট স্টক (same as the 📦 মোট স্টক box)
     app.innerHTML = head + `
       ${(()=>{ const p = pendingKg(); return `
       <nav class="subtabs ssub" role="tablist">
@@ -3977,23 +3981,27 @@ function getDB(){
         <button role="tab" class="st" data-ssub="delivery" aria-selected="${sSub==='delivery'}">🚚 মাল আসছে <span class="num">আজ ${bn(c.sum)} কেজি</span></button>
         <button role="tab" class="st q" data-ssub="queue" aria-selected="${sSub==='queue'}">📦 মাল যাচ্ছে <span class="num">${p.n ? 'বাকি '+bn(p.kg)+' কেজি' : 'বাকি নেই'}</span></button>
       </nav>`; })()}
+      ${(() => { const st = itemStats(cur.id); sk = {prev:0, now:0, sold:0}; cats.forEach(cc => (cc.items||[]).forEach(it => { const x = st[it.id] || {prev:0, now:0, sold:0}; sk.prev += (Number(it.open)||0) + x.prev; sk.now += x.now; sk.sold += x.sold||0; })); sk.tot = sk.prev + sk.now - sk.sold; return ''; })()}
       <div class="calc">
         <div class="row">
-          <span class="lbl">আগের মোট (T) <small class="from">${(() => { if(isFirst) return 'শুরুর স্টক (হাতে লিখুন)'; const k = days.findIndex(d => d.id === cur.id), pv = k > 0 ? days[k-1] : null; return pv ? shortD(pv.id) + ' এর শেষে যা ছিল' : ''; })()}</small></span>
-          ${isFirst
-            ? `<input id="opening" class="num" inputmode="decimal" value="${cur.opening?bn(cur.opening):''}" placeholder="০" aria-label="আগের মোট কেজি">`
-            : `<span class="val num">${bn(c.open)} <small>কেজি</small></span>`}
+          <span class="lbl">আগের মোট (T) <small class="from">${(() => { const k = days.findIndex(d => d.id === cur.id), pv = k > 0 ? days[k-1] : null; return pv ? shortD(pv.id) + ' এর শেষে স্টকে যা ছিল' : 'শুরুর স্টক (সাইজের শুরুর কেজি)'; })()}</small></span>
+          <span class="val num">${bn(sk.prev)} <small>কেজি</small></span>
+        </div>
+        <div class="row plus">
+          <span class="lbl">${cur.id === todayId() ? 'আজ মাল এসেছে' : 'এই দিনে মাল এসেছে'} (+) <small class="from">${(() => { const n = new Set(entries.map((e, i) => e.car ? 'c:' + e.car : 'i:' + i)).size; return n ? toBn(n) + ' গাড়ি · ' + toBn(entries.length) + 'টা মাল' : 'এখনো কোনো মাল আসেনি'; })()}</small></span>
+          <span class="val num in">+ ${bn(sk.now)} <small>কেজি</small></span>
         </div>
         <div class="row minus">
-          <span class="lbl">মাল যাচ্ছে (D) <small class="from">${(() => { const n = goodsLines().filter(x => x.done && x.day === cur.id).length + (cur.outs||[]).length; return n ? `এই দিনে ${toBn(n)} বার মাল গেছে · <button type="button" class="linkish" id="goQueue">দেখুন ›</button>` : 'মাল যাচ্ছে থেকে নিজে থেকে আসবে'; })()}</small></span>
-          <span class="val num">− ${bn(c.sold||0)} <small>কেজি</small></span>
+          <span class="lbl">মাল গেছে (−) <small class="from">${(() => { const n = goodsLines().filter(x => x.done && x.day === cur.id).length + (cur.outs||[]).length; return n ? `এই দিনে ${toBn(n)} বার মাল গেছে · <button type="button" class="linkish" id="goQueue">দেখুন ›</button>` : 'মাল যাচ্ছে থেকে নিজে থেকে আসবে'; })()}</small></span>
+          <span class="val num">− ${bn(sk.sold)} <small>কেজি</small></span>
         </div>
         ${cur.due ? `<div class="row minus"><span class="lbl">অন্য বাদ <small class="from">আগে হাতে লেখা ডিউ</small></span><input id="due" class="num" inputmode="decimal" value="${bn(cur.due)}" placeholder="০" aria-label="অন্য বাদ কেজি"></div>` : ''}
         <div class="rule-red"></div>
-        <div class="row">
-          <span class="lbl">বাদ দিয়ে থাকে</span>
-          <span class="val num" id="netVal">${bn(c.net)} <small>কেজি</small></span>
+        <div class="row stot">
+          <span class="lbl">মোট স্টক</span>
+          <span class="val num" id="netVal">${bn(sk.tot)} <small>কেজি</small></span>
         </div>
+      </div>
       </div>
 
 
@@ -4078,7 +4086,7 @@ function getDB(){
 
       <div class="grand">
         <div class="row"><span class="lbl">এই দিনের যোগ (${bn(new Set(entries.map((e, i) => e.car ? 'c:' + e.car : 'i:' + i)).size)} গাড়ি · ${bn(entries.length)}টা মাল)</span><span class="val num" id="sumVal">${bn(c.sum)} <small>কেজি</small></span></div>
-        <div class="total"><span class="lbl">সর্বমোট (T)</span><span class="val num" id="totVal">${bn(c.tot)}</span></div>
+        <div class="total"><span class="lbl">সর্বমোট স্টক (T)</span><span class="val num" id="totVal">${bn(sk.tot)}</span></div>
       </div>
 
       ${isLast
@@ -4119,11 +4127,7 @@ function getDB(){
     app.classList.toggle('sub-out', sSub === 'queue');
     app.classList.toggle('sub-all', sSub === 'types');
     const $ = id => document.getElementById(id);
-    const live = () => {
-      const c = calc()[cur.id];
-      $('netVal').innerHTML = bn(c.net)+' <small>কেজি</small>';
-      $('totVal').textContent = bn(c.tot);
-    };
+    const live = () => {};   // totals come from the মার্কা sizes; the due box re-renders on change
     const op = $('opening');
     if(op) op.addEventListener('input',()=>{ const n=parseNum(op.value); cur.opening=isNaN(n)?0:n; live(); saveDay(cur); });
     op && op.addEventListener('change', render);
