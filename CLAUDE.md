@@ -31,7 +31,7 @@ Tabs: স্টক · দৈনিক · মেমো · খতিয়ান �
 
 ## Rules the owner already decided (keep them)
 - Same header on every tab: page title left, date pill right. Old date = thin dashed light-red frame + "↩ বর্তমান দিনে ফিরে যান".
-- স্টক sub-tabs (at the top, right under the header, above the calc cards): 📊 সর্বমোট মাল (purple) | 🚚 মাল আসছে (green) | 📦 মাল যাচ্ছে (red). Tables with box lines + ক্রমিক. 🚚 মাল আসছে day list: one line per গাড়ি (first column = গাড়ি নং instead of ক্রমিক, ✎ in the গাড়ি নং column; total কেজি, কতটা মাল, company, চালান নং) — tap to open its মাল lines (in the order entered, same as the challan, with ✎ ×); মোট row at the bottom.
+- স্টক sub-tabs (at the top, right under the header, above the calc cards): 📊 সর্বমোট মাল (purple) | 🚚 মাল আসছে (green) | 📦 মাল যাচ্ছে (red). Tables with box lines + ক্রমিক. 🚚 মাল আসছে day list: one line per গাড়ি (first column = গাড়ি নং instead of ক্রমিক, ✎ in the গাড়ি নং column; "গাড়ির মোট" কেজি, কতটা মাল, company, চালান নং) — tap to open its মাল lines (in the order entered, same as the challan, with ✎ ×); মোট row at the bottom.
   - 📊 সর্বমোট মাল: each size has a red 🕘 "…বার এসেছে +কেজি" button → every arrival (date · গাড়ি · +কেজি in red), শুরুর কেজি and মোট এসেছে.
   - On an old date with no record, "＋ এই তারিখে মাল যোগ করুন" opens that day straight into this form.
   - Under the 🚚 মাল আসছে table: only a "📅 এই মাসের সব হিসাব" button (no separate ইতিহাস list — the day's গাড়ি are already in the table) → pop-up with every date of the month (গাড়ি · মাল · কেজি, no মোট row); rows highlight on hover (no › column); tap a date row → pop-up closes, that day's 🚚 মাল আসছে page opens scrolled to its গাড়ি table. গাড়ি count = unique গাড়ি নং, not lines.
