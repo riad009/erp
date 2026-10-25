@@ -3612,11 +3612,10 @@ function getDB(){
                 <span class="kv">${(() => {
                   const tot = b0 + x.now - (x.sold||0), mv = (x.moves||[]).slice().sort((p,q) => (p.ts||0) - (q.ts||0)), op = openMv.has(it.id);
                   return `<span class="kbad ${tot < 0 ? 'neg' : ''} ${markOf(it) ? 'mk-' + markOf(it) : ''}">${bn(tot)} <small>কেজি</small>${markOf(it) ? `<b class="zt">${markOf(it)}</b>` : ''}</span>`
-                    + (mv.length ? `<button type="button" class="mvt" data-item="${it.id}" aria-expanded="${op}">${op ? '▾' : '▸'} আজ ${toBn(mv.length)}টা${x.now ? ` <i class="in">+${bn(x.now)}</i>` : ''}${x.sold ? ` <i class="out">−${bn(x.sold)}</i>` : ''}</button>` : '')
                     + (() => { const ar = arrivalsOf(it.id, D); if(!ar.length) return ''; const aop = openArr.has(it.id), sum = ar.reduce((t, a) => t + a.kg, 0);
                         return `<button type="button" class="ahb" data-item="${it.id}" aria-expanded="${aop}" title="কবে কত মাল এসেছে">🕘 ${toBn(ar.length)} বার এসেছে ${aop ? '▾' : '▸'}</button>`
                           + (aop ? `<span class="ahl">${Number(it.open) ? `<span class="ahr st"><span>শুরুর কেজি</span><b>${bn(it.open)}</b></span>` : ''}${ar.map(a => `<span class="ahr"><span>${toBn(a.day.slice(8,10) + '/' + a.day.slice(5,7))}${a.car ? ' · গাড়ি ' + esc(toBn(a.car)) : (a.b ? ' · বেশি (B)' : '')}</span><b class="in">+${bn(a.kg)}</b></span>`).join('')}<span class="ahr tot"><span>মোট এসেছে</span><b class="in">+${bn(sum)}</b></span></span>` : ''); })()
-                    + (mv.length && op ? `<span class="mvl">${mv.map((m, k) => `<span class="mvr" role="button" tabindex="0" title="বিস্তারিত দেখুন" data-item="${it.id}" data-src="${m.src||''}" data-day="${m.day||''}" data-ref="${m.ref != null ? m.ref : ''}" data-acc="${m.acc||''}" data-ent="${m.ent||''}" data-k="${k+1}"><span class="mvn">${toBn(k+1)}.</span><span class="mvtm">${m.ts ? tmTxt(m.ts) : '—'}</span>${m.out ? `<em class="mv out">−${bn(m.kg)}</em>` : `<em class="mv in">+${bn(m.kg)}${m.b ? '<i>B</i>' : ''}</em>`}</span>`).join('')}</span>` : '');
+                    ;
                 })()}</span>
                 <span class="acts"><button type="button" class="ts-plus" data-item="${it.id}" aria-label="কেজি যোগ করুন">＋</button><button type="button" class="ts-pen" data-item="${it.id}" aria-label="বদলান">✎</button></span>
               </li>${tsAdd === it.id ? `<li class="ts-in ${tsB ? 'isb' : ''} ${tsOut ? 'isout' : ''}"><span class="lb">${dimTxt(it)} ${tsOut ? 'থেকে মাল গেছে:' : 'এ যোগ:'}</span>
