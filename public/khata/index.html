@@ -2128,6 +2128,29 @@ body.theme-pro #stock ol.entries .spec,body.theme-pro #stock ol.entries .itm,bod
 .uhd .udp{position:relative;display:inline-flex!important;align-items:center;gap:8px;flex:none!important;min-height:38px;padding:6px 14px;border-radius:12px;background:#fff;border:1.5px solid #C7D6EB;color:#1F3A6E;font-family:"Noto Sans Bengali","Hind Siliguri",sans-serif!important;font-size:16px;font-weight:700;white-space:nowrap;cursor:default;box-shadow:0 1px 2px rgba(16,24,40,.05)}
 .uhd label.udp{cursor:pointer}
 .uhd label.udp{position:relative}
+.pk-gmk{display:inline-block;padding:2px 10px;border-radius:7px;background:#EEF3FB;color:#1F4AA8;font-weight:800;font-size:13px}
+.pk-gmk.hard{background:#EDE3F7;color:#6B3FA0}.pk-gmk.soft{background:#DDF2E4;color:#1F7A3D}.pk-gmk.soft2{background:#DDF0F6;color:#1C6E8C}
+.cm-meta:has(.cm-pno){grid-template-columns:auto auto 1fr auto!important}
+.cmform.cmd .cm-meta:has(.cm-pno){flex-wrap:wrap;row-gap:8px}
+@media (max-width: 600px){ .cmform.cmd .cm-meta .cm-pno{margin:0 0 0 auto!important} .cmform.cmd .cm-meta .cm-date{margin-left:auto} }
+.mdrafts{margin:12px 0;padding:10px 12px;border-radius:12px;background:#FFFBEA;border:1.5px dashed #E2C15C}
+.mdrafts h3{margin:0 0 8px;font-size:16px;color:#7A5A00}
+.mdrafts h3 small{font-size:12.5px;font-weight:600;color:#9A7B20;margin-left:6px}
+.mdrafts ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.mdrafts li{display:flex;gap:6px}
+.mdrafts .mdr-open{flex:1;display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 10px;text-align:left;padding:9px 12px;border-radius:10px;border:1px solid #EAD9A0;background:#fff;cursor:pointer}
+.mdrafts .mdr-open:hover{border-color:#C9A227;background:#FFFDF3}
+.mdrafts .mdr-open b{font-size:15.5px;color:#1B2347}
+.mdrafts .mdr-open small{color:#6B7690;font-size:13px}
+.mdrafts .mdr-go{margin-left:auto;color:#1F4AA8;font-weight:800;font-size:13.5px}
+.mdrafts .mdr-del{width:40px;border-radius:10px;border:1px solid #F2B8C0;background:#fff;color:#B42318;font-size:16px;cursor:pointer}
+.mdrafts .mdr-del.armed{width:auto;padding:0 10px;background:#B42318;color:#fff;font-size:13px;font-weight:700}
+.mrow .mn .mpno{display:block;font-size:11.5px;color:#8A6A00;font-weight:700}
+.cm-pnov{margin-left:8px;font-size:13px;color:#8A6A00;font-family:"Noto Sans Bengali",sans-serif}
+.cmform .cm-pno,#lhost .cmform .cm-pno{display:inline-flex!important;flex-direction:row!important;align-items:center;gap:6px;width:auto!important;margin:0 auto 0 10px!important;font-size:13px;color:#6B7690;flex:0 1 auto}
+.cmform .cm-pno span{white-space:nowrap;font-size:12.5px!important;color:#6B7690!important}
+.cmform .cm-pno input,#lhost .cmform .cm-pno input{width:84px!important;flex:none;min-height:34px!important;padding:4px 8px!important;border:1.5px solid #C7D6EB!important;border-radius:8px!important;background:#fff!important;font-size:15px!important;font-weight:700}
+.lbtn.draft{background:#FFF8E1!important;color:#7A5A00!important;border:1.5px solid #E2C15C!important}
 .mday-bar{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;margin:10px 0;padding:10px 14px;border-radius:12px;background:#EEF3FB;border:1px solid #C9D8EE;color:#1B2347;font-size:14.5px}
 .mday-bar b{color:#1F4AA8}
 .uhd label.udp:hover{border-color:#1F4AA8;background:#F5F8FE}
@@ -3502,10 +3525,23 @@ function getDB(){
     const pick = id => { close(); onPick(id); };
     const draw = () => {
       const st = itemStats(D);
-      if(!cat){
+      if(!cat && q.trim()){
+        // search every মার্কা by মিলি (height) / লম্বা, e.g. "৬৫", "১.২", "৬৫x৯১৪"
+        const qq = en(q).toLowerCase().replace(/\s+/g, '').replace(/[×*]/g, 'x');
+        const hit = it => { const h = en(it.h), w = en(it.w); if(qq.includes('x')){ const [a, b] = qq.split('x'); return (!a || h === a || h.startsWith(a)) && (!b || w.startsWith(b)); } return h === qq || h.startsWith(qq) || w.startsWith(qq) || (Number(h) && Number(qq) && Number(h) === Number(qq)); };
+        const groups = cats.map(c => ({c, its:(c.items||[]).filter(hit)})).filter(g => g.its.length);
+        bg.innerHTML = `<div class="pk" role="dialog" aria-modal="true" aria-label="মাল খুঁজুন">
+          <div class="pk-hd"><h3>মাল বাছাই করুন</h3><button type="button" class="pk-x" aria-label="বন্ধ">×</button></div>
+          <input class="pk-q" id="pkQ" inputmode="decimal" autocomplete="off" placeholder="🔍 মিলি / সাইজ লিখে খুঁজুন: যেমন ৬৫ বা ১.২" value="${esc(q)}">
+          <div class="pk-list">${groups.length ? groups.map(g => `<p class="pk-sub"><span class="pk-gmk ${g.c.tone||''}">${esc(g.c.name)}</span></p>
+            <div class="pk-grid">${g.its.map(it => `<button type="button" class="pk-it ${it.id===lastItemId?'on':''}" data-it="${it.id}"><b>${dimTxt(it)}</b><small>${bn(itemNow(it, st))} কেজি</small></button>`).join('')}</div>`).join('')
+            : `<p class="pk-none">"${esc(q)}" — এই মিলি / সাইজের কোনো মাল নেই।</p>`}</div>
+        </div>`;
+      } else if(!cat){
         const rec = recentItems();
         bg.innerHTML = `<div class="pk" role="dialog" aria-modal="true" aria-label="মাল বাছাই করুন">
           <div class="pk-hd"><h3>মাল বাছাই করুন</h3><button type="button" class="pk-x" aria-label="বন্ধ">×</button></div>
+          <input class="pk-q" id="pkQ" inputmode="decimal" autocomplete="off" placeholder="🔍 মিলি / সাইজ লিখে খুঁজুন: যেমন ৬৫ বা ১.২" value="">
           ${rec.length ? `<p class="pk-sub">সাম্প্রতিক</p><div class="pk-rec">${rec.map(id => { const f = findItem(id); return `<button type="button" class="pk-r ${f.c.tone||''}" data-it="${id}"><small>${esc(f.c.name.replace(/\s*\(.*\)\s*/, ' ').trim())}</small><b>${dimTxt(f.it)}</b></button>`; }).join('')}</div>` : ''}
           <p class="pk-sub">কোন মার্কা?</p>
           <div class="pk-cats">${cats.map(c => { const n = (c.items||[]).length, tot = (c.items||[]).reduce((s, it) => s + itemNow(it, st), 0);
@@ -3531,6 +3567,7 @@ function getDB(){
       bg.querySelectorAll('.pk-x').forEach(b => b.onclick = close);
       const back = bg.querySelector('.pk-back'); if(back) back.onclick = () => { cat = null; q = ''; draw(); };
       bg.querySelectorAll('[data-cat]').forEach(b => b.onclick = () => { cat = b.dataset.cat; q = ''; draw(); });
+      if(!cat && !q){ const f0 = bg.querySelector('#pkQ'); if(f0 && matchMedia('(min-width: 700px)').matches) setTimeout(() => f0.focus(), 30); }
       bg.querySelectorAll('[data-it]').forEach(b => b.onclick = () => pick(b.dataset.it));
       const qi = bg.querySelector('#pkQ');
       if(qi){ qi.oninput = () => { const pos = qi.selectionStart; q = qi.value; draw(); const n = bg.querySelector('#pkQ'); n.focus(); try{ n.setSelectionRange(pos, pos); }catch(_){} }; }
@@ -4846,6 +4883,10 @@ function getDB(){
   const MT = {soft:'সফট', hard:'হার্ড'};
   let rates = {}; try{ rates = JSON.parse(localStorage.getItem('kg-khata-rates')||'{}'); }catch(_){ rates = {}; }
   async function loadRates(){ if(db){ try{ const d = await db.doc('settings/rates').get(); if(d.exists) rates = Object.assign({}, rates, clone(d.data())); }catch(_){} } }
+  // 📝 মেমো খসড়া: half-done memos saved to finish later (no memo number, no stock change)
+  let drafts = []; try{ drafts = JSON.parse(localStorage.getItem('kg-khata-drafts') || '[]'); }catch(_){}
+  async function loadDrafts(){ if(db){ try{ const d = await db.doc('settings/drafts').get(); if(d.exists && Array.isArray((d.data()||{}).list)) drafts = clone(d.data().list); }catch(_){} } }
+  function saveDrafts(){ try{ localStorage.setItem('kg-khata-drafts', JSON.stringify(drafts)); }catch(_){}; if(db) db.doc('settings/drafts').set({list: clone(drafts)}).catch(()=>{}); if(window.__memoRefresh) window.__memoRefresh(); }
   function saveRates(){ try{ localStorage.setItem('kg-khata-rates', JSON.stringify(rates)); }catch(_){}; if(db) db.doc('settings/rates').set(clone(rates)).catch(()=>{}); }
   // what to pre-fill in the form when editing a goods line
   function preItems(e){
@@ -4979,6 +5020,7 @@ function getDB(){
           <button type="button" class="bnkey" id="bnKey" aria-pressed="${BN_TYPE}">${BN_TYPE ? 'অ  ইংরেজিতে লিখলে বাংলা হবে — চালু' : 'A  বাংলা রূপান্তর বন্ধ'}</button>
           <div class="cm-meta">
             <div class="cm-no"><span>নং-</span><b>${toBn(form.editId ? ((() => { for(const a of accs){ const x = (a.entries||[]).find(y => y.id === form.editId); if(x) return x.memoNo || ''; } return ''; })()) : nextMemoNo())}</b></div>
+            <label class="cm-pno"><span>হাতের নং</span><input id="fPaperNo" inputmode="numeric" autocomplete="off" placeholder="ঐচ্ছিক" value="${esc((() => { if(form.draftId){ const d = drafts.find(x => x.id === form.draftId); return d && d.paperNo || ''; } if(form.editId){ for(const a of accs){ const x = (a.entries||[]).find(y => y.id === form.editId); if(x) return x.paperNo || ''; } } return ''; })())}"></label>
             <div class="cm-badge">ক্যাশ মেমো</div>
             <label class="cm-date cm-dpick"><span>তারিখ</span><b id="cdD">${toBn(td[2])}</b><b id="cdM">${toBn(td[1])}</b><b id="cdY">${toBn(td[0].slice(2))}</b>
               <input type="date" id="fEDate" value="${LD()}" aria-label="তারিখ"></label>
@@ -5027,7 +5069,7 @@ function getDB(){
           <div id="kgRate" hidden></div><div id="labBox" hidden><div id="labCalc"></div></div><span id="fAmtLbl" hidden></span>
         </div>
         <div class="lacts cm-acts">
-          <button class="lbtn solid" id="fSave">${form.editId ? '✓ বদলানো সেভ করুন' : '✓ মেমো সেভ করুন'}</button>${form.editId ? '<button class="lbtn danger" id="fDel">মুছুন</button>' : ''}
+          <button class="lbtn solid" id="fSave">${form.editId ? '✓ বদলানো সেভ করুন' : '✓ মেমো সেভ করুন'}</button>${form.editId ? '' : `<button class="lbtn draft" id="fDraft" type="button">📝 খসড়া সেভ করুন</button>`}${form.editId ? '<button class="lbtn danger" id="fDel">মুছুন</button>' : ''}
           <button class="lbtn" id="fCancel">বাতিল</button>
         </div>
         <p class="lhint" id="fHint">"＋ মাল বাছাই করুন" চেপে মার্কা ও সাইজ বাছাই করুন, কেজি দিন, তারপর দর — টাকা, লেবার আর মোট নিজে থেকে হিসাব হবে। কাস্টমারের মেমোতে শুধু সফট / হার্ড আর কেজি ছাপা হবে।</p>
@@ -5540,6 +5582,16 @@ function getDB(){
           drawPicks(); applySums();
         }
       }
+      if(form.draftId){
+        const D = drafts.find(x => x.id === form.draftId);
+        if(D){
+          (D.picks||[]).forEach(pk => { const inf = window.__marka.info(pk.item); if(inf) picks.push({item:pk.item, cat:inf.catId, t:inf.t, tone:inf.tone, catName:inf.catName, dims:inf.dims, kg:Number(pk.kg)||0, rate:Number(pk.rate)||0}); });
+          if($('fAddr') && D.addr) $('fAddr').value = D.addr;
+          if($('fLab') && D.lab === false) $('fLab').checked = false;
+          if(D.party === '__new' && $('fNewParty')){ $('fParty').value = '__new'; $('fParty').dispatchEvent(new Event('change')); $('fNewParty').value = D.newName || ''; if($('fNewLoc')) $('fNewLoc').value = D.newLoc || ''; }
+          drawPicks(); applySums();
+        }
+      }
       { const lf = $('lform'); if(lf) lf.classList.toggle('nogoods', selTypes().length === 0); }
     }
     // নতুন মেমো: keep the paper's labour row, মোট / বাকী and টাকা (কথায়) up to date
@@ -5681,13 +5733,28 @@ function getDB(){
         } else { delete target.goods; delete target.labour; delete target.labourRaw; delete target.roundAdj; delete target.labourRate; target.credit = amt; if(kgT > 0) target.labourOff = true; }
       } else { delete target.kg; delete target.status; delete target.confirmedOn; delete target.mtype; delete target.items; delete target.goods; delete target.labour; delete target.labourRaw; delete target.roundAdj; delete target.labourRate; }
       if(form.mode==='edit' || wasSale){ keepY = window.scrollY; noScrollFlash = true; }
+      if(wasSale){ const pn = $('fPaperNo') ? $('fPaperNo').value.trim() : ''; if(pn) target.paperNo = pn; else delete target.paperNo; }   // হাতের (কাগজের) মেমো নং
+      const doneDraft = form.draftId;
       save(acc); restoreDate(); form = {mode:'new', type:'debit', editId:null}; render();
+      if(doneDraft){ drafts = drafts.filter(x => x.id !== doneDraft); saveDrafts(); }
       // after saving: form closes, only the green banner shows (open the memo from the list when needed)
       if(wasSale && window.__memoShowNew) window.__memoShowNew(target.date);
       if(wasSale && isEditSale) kToast(`<b>✅ মেমো বদলানো হয়েছে</b><span>${esc(pnm(acc))} · মেমো #${toBn(target.memoNo||'')} · ${bn(target.credit)} ৳</span>`);
       else if(wasSale) kToast(target.status === 'pending'
         ? `<b>✅ মেমো সেভ হয়েছে · ⏳ মাল এখনো যায়নি</b><span>${esc(pnm(acc))} · মেমো #${toBn(target.memoNo||'')} · স্টকে মাল আসলে নিজে থেকে যাবে</span>`
         : `<b>✅ মেমো করা হয়ে গেছে · 🚚 মাল পাঠানো হয়েছে</b><span>${esc(pnm(acc))} · মেমো #${toBn(target.memoNo||'')} · ${bn(target.credit)} ৳ · স্টক থেকে বাদ হলো</span>`, 6000);
+    };
+    if($('fDraft')) $('fDraft').onclick = () => {
+      const pv = $('fParty') ? $('fParty').value : '';
+      const pk = picks.filter(p => p.item).map(p => ({item:p.item, kg:p.kg||0, rate:p.rate||0}));
+      if(!pv && !pk.length){ const h = $('fHint'); if(h){ h.textContent = 'খসড়া সেভ করতে অন্তত পার্টি বা মাল দিন।'; h.className = 'lhint err'; } return; }
+      const D = {id: form.draftId || uid(), ts: Date.now(), date: LD(), party: pv, newName: $('fNewParty') ? $('fNewParty').value.trim() : '', newLoc: $('fNewLoc') ? $('fNewLoc').value.trim() : '',
+        addr: $('fAddr') ? $('fAddr').value.trim() : '', paperNo: $('fPaperNo') ? $('fPaperNo').value.trim() : '', lab: $('fLab') ? $('fLab').checked : true, picks: pk};
+      const a = accs.find(x => x.id === pv); D.name = pv === '__new' ? D.newName : (a ? pnm(a) : '');
+      D.kg = pk.reduce((t, p) => t + (p.kg||0), 0); D.amt = pk.reduce((t, p) => t + Math.round((p.kg||0) * (p.rate||0)), 0);
+      const k = drafts.findIndex(x => x.id === D.id); if(k >= 0) drafts[k] = D; else drafts.unshift(D);
+      saveDrafts(); restoreDate(); form = {mode:'new', type:'debit', editId:null}; render();
+      kToast(`<b>📝 খসড়া সেভ হয়েছে</b><span>${esc(D.name || 'পার্টি ছাড়া')}${D.kg ? ' · ' + bn(D.kg) + ' কেজি' : ''} — মেমো ট্যাবের "খসড়া" থেকে খুলে শেষ করুন</span>`, 5000);
     };
     if($('fParty')) $('fParty').addEventListener('change', ()=>{ const nw = $('fParty').value==='__new'; $('fNewWrap').hidden = !nw; { const fld = $('fParty').closest('.cm-field'); if(fld) fld.classList.toggle('isnew', nw); } if($('fNewLocWrap')) $('fNewLocWrap').hidden = !nw; if($('fParty').closest('.cm-sel')) $('fParty').hidden = nw; if(nw) $('fNewParty').focus(); });
     if($('fBackList')) $('fBackList').onclick = ()=>{ const sel = $('fParty'); sel.value = curId || (sel.options[0]||{}).value; sel.hidden = false; $('fNewWrap').hidden = true; $('fNewParty').value = ''; if($('fNewLoc')) $('fNewLoc').value = ''; if($('fNewLocWrap')) $('fNewLocWrap').hidden = true; sel.dispatchEvent(new Event('change')); };
@@ -6267,6 +6334,7 @@ function getDB(){
     await loadSabek();
     await loadKh();
     await loadRates();
+    await loadDrafts();
     if(!accs.length){
       let seeded = false; try{ seeded = localStorage.getItem('kg-khata-ledger-seeded')==='1'; }catch(_){}
       if(!seeded && !db){ seed(); try{ localStorage.setItem('kg-khata-ledger-seeded','1'); }catch(_){} }   // never bring the sample party back once parties live online (they may have been deleted)
@@ -6294,6 +6362,10 @@ function getDB(){
       if(window.__dashRender) window.__dashRender();
       return true;
     },
+    drafts: () => drafts,
+    openDraft: id => { const D = drafts.find(x => x.id === id); if(!D) return; if(D.party && D.party !== '__new' && accs.find(a => a.id === D.party)) curId = D.party;
+      lPrevDate = LD(); lDate = D.date || null; form = {mode:'sale', type:'credit', editId:null, preParty: D.party !== '__new' ? D.party : '', draftId: id}; render(); },
+    delDraft: id => { drafts = drafts.filter(x => x.id !== id); saveDrafts(); },
     newMemo: (aid) => {
       if(aid && accs.find(a=>a.id===aid)) curId = aid;
       if(!curId && accs[0]) curId = accs[0].id;
@@ -6766,7 +6838,7 @@ document.addEventListener('input', e=>{
       <div class="cm-phone">${SHOP.phone}</div>
 
       <div class="cm-meta">
-        <div class="cm-no"><span>নং-</span><b>${toBn(e.memoNo||'')}</b></div>
+        <div class="cm-no"><span>নং-</span><b>${toBn(e.memoNo||'')}</b>${e.paperNo ? `<span class="cm-pnov">হাতের নং ${esc(toBn(e.paperNo))}</span>` : ''}</div>
         <div class="cm-badge">${sale ? 'ক্যাশ মেমো' : 'জমা রসিদ'}</div>
         <div class="cm-date"><span>তারিখ</span><b>${toBn(d)}</b><b>${toBn(m)}</b><b>${toBn(y.slice(2))}</b></div>
       </div>
@@ -6939,6 +7011,8 @@ document.addEventListener('input', e=>{
         <span class="nm-tx"><b>নতুন মেমো লিখুন</b><small>মাল বিক্রির ক্যাশ মেমো</small></span>
         <span class="nm-ar" aria-hidden="true">›</span>
       </button>
+      ${(() => { const D = L().drafts ? L().drafts() : []; if(!D.length) return '';
+        return `<section class="mdrafts"><h3>📝 খসড়া মেমো <small>${toBn(D.length)}টা · শেষ করতে খুলুন</small></h3><ul>${D.map(d => `<li><button type="button" class="mdr-open" data-dr="${d.id}"><b>${esc(d.name || 'পার্টি ছাড়া')}</b><small>${d.date ? toBn(d.date.slice(8,10) + '/' + d.date.slice(5,7)) : ''}${d.paperNo ? ' · হাতের নং ' + esc(toBn(d.paperNo)) : ''}${d.kg ? ' · ' + bn(d.kg) + ' কেজি' : ''}${d.amt ? ' · ' + bn(d.amt) + ' ৳' : ''}</small><span class="mdr-go">খুলুন ›</span></button><button type="button" class="mdr-del" data-drd="${d.id}" aria-label="খসড়া মুছুন">×</button></li>`).join('')}</ul></section>`; })()}
       <button type="button" class="ftoggle" id="mFT" aria-expanded="${!!mst.open}">
         <span>🔍 ফিল্টার <small>${({today:'আজ',week:'৭ দিন',month:'এই মাস',last:'গত মাস',all:'সব সময়',custom:'কাস্টম'})[mst.p]}${mst.q ? ' · "'+esc(mst.q)+'"' : ''}</small></span>
         <span class="ft-ar">${mst.open ? '▴' : '▾'}</span>
@@ -6973,7 +7047,7 @@ document.addEventListener('input', e=>{
           const sh = s && k && x.e.status !== 'confirmed' && Array.isArray(x.e.picks) && window.__shortage ? window.__shortage(x.e.picks, {}).length > 0 : false;
           const q = s && mview.profit ? profitOf(x.e) : null;
           return `<li><button type="button" class="mrow mrow2 ${sh ? 'mshortrow' : ''}" data-a="${x.a.id}" data-e="${x.e.id}">
-            <span class="mn">#${toBn(x.e.memoNo||'—')}</span>
+            <span class="mn">#${toBn(x.e.memoNo||'—')}${x.e.paperNo ? `<small class="mpno" title="হাতের মেমো নং">📄${esc(toBn(x.e.paperNo))}</small>` : ''}</span>
             <span class="mm"><b>${esc(pnm(x.a))}</b>
               <small class="mline">${s ? 'মাল বিক্রি' : 'টাকা জমা'}${mtBadges(x.e)?' · '+mtBadges(x.e):''}${k?' · '+bn(k)+' কেজি':''}</small>
               ${mview.sizes && s && Array.isArray(x.e.picks) && x.e.picks.length && window.__marka ? `<span class="mpks">${x.e.picks.map(pk => { const L = window.__marka.label(pk.item); if(!L) return ''; const short = String(L.cat).replace(/^.*?\((.*)\)\s*$/, '$1') || L.cat; return `<span class="mpk"><i class="${L.tone}">${esc(short)}</i><b>${L.dims}</b><em>${bn(pk.kg)} কেজি</em></span>`; }).join('')}</span>` : ''}
@@ -7020,6 +7094,8 @@ document.addEventListener('input', e=>{
     mroot.querySelectorAll('.msend').forEach(x => x.addEventListener('keydown', e => { if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); x.click(); } }));
     document.getElementById('mNew').onclick = () => L().newMemo();
     mroot.querySelectorAll('[data-ms]').forEach(b => b.onclick = () => { memoStyle = b.dataset.ms; try{ localStorage.setItem('kg-khata-memostyle', memoStyle); }catch(_){}; renderMemo(); });
+    mroot.querySelectorAll('.mdr-open').forEach(b => b.onclick = () => L().openDraft(b.dataset.dr));
+    mroot.querySelectorAll('.mdr-del').forEach(b => b.onclick = () => { if(!b.classList.contains('armed')){ b.classList.add('armed'); b.textContent = 'মুছবেন?'; setTimeout(() => { if(b.isConnected){ b.classList.remove('armed'); b.textContent = '×'; } }, 3500); return; } L().delDraft(b.dataset.drd); });
     if(document.getElementById('mDay')) document.getElementById('mDay').onchange = e => { const v = e.target.value; if(!v) return; mst.p = 'custom'; mst.f = v; mst.t = v; try{ localStorage.setItem('kg-khata-memo', JSON.stringify(mst)); }catch(_){}; renderMemo(); };
     if(document.getElementById('mAllBtn')) document.getElementById('mAllBtn').onclick = () => { mst.p = 'month'; delete mst.f; delete mst.t; try{ localStorage.setItem('kg-khata-memo', JSON.stringify(mst)); }catch(_){}; renderMemo(); };
     document.getElementById('mFT').onclick = () => { mst.open = !mst.open; try{ localStorage.setItem('kg-khata-memo', JSON.stringify(mst)); }catch(_){}; renderMemo(); };
@@ -7096,6 +7172,7 @@ document.addEventListener('input', e=>{
 
   window.__memoRender = renderMemo;
   // after a new memo is saved: make sure the list filter shows it
+  window.__memoRefresh = () => { try{ renderMemo(); }catch(_){} };
   window.__memoShowNew = (date) => {
     let ch = false;
     if(mst.k === 'pay'){ mst.k = 'all'; ch = true; }

@@ -13,6 +13,7 @@ import type { Db, Document } from 'mongodb';
 //   amdani/sabek        cash_opening   (one per day: সাবেক জমা)
 //   settings/rates      settings       _id "sale_rates"
 //   settings/labour     settings       _id "labour_rate"
+//   settings/drafts     settings       _id "memo_drafts" (unsaved মেমো খসড়া)
 
 export const COLLECTIONS = ['stock_markas', 'stock_sizes', 'stock_days', 'parties', 'companies', 'expenses', 'cash_opening', 'settings'];
 
@@ -21,7 +22,7 @@ type Row = Document & { _id: string };
 
 // plain one-record-per-item collections
 const SIMPLE: Record<string, string> = { days: 'stock_days', ledgers: 'parties', companies: 'companies', khoroch: 'expenses' };
-const SETTING: Record<string, string> = { rates: 'sale_rates', labour: 'labour_rate' };
+const SETTING: Record<string, string> = { rates: 'sale_rates', labour: 'labour_rate', drafts: 'memo_drafts' };
 export const LISTABLE = Object.keys(SIMPLE);
 
 const strip = ({ _id, ...rest }: Row): Data => rest;
