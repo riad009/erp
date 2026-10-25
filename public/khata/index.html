@@ -3806,12 +3806,16 @@ function getDB(){
     if(!cur){
       app.innerHTML = head + `
         <div class="nodata">
-          <p class="empty">${bnShort(viewId)} তারিখে কোনো হিসাব খোলা হয়নি।</p>
-          <button id="createBtn" type="button">এই তারিখের হিসাব খুলুন</button>
+          <p class="empty">${bnShort(viewId)} তারিখে এখনো কোনো মাল যোগ করা হয়নি।</p>
+          <button id="createBtn" type="button">＋ এই তারিখে মাল যোগ করুন</button>
+          <p class="hint">পুরনো তারিখেও মাল যোগ করা যায় — পরের সব দিনের মোট নিজে থেকে ঠিক হবে।</p>
         </div>
         <button class="second" id="backBtn" type="button">চলতি দিনে ফিরে যান</button>` + history;
       bindCommon();
-      document.getElementById('createBtn').onclick = ()=>{ addDay(viewId); render(); };
+      document.getElementById('createBtn').onclick = ()=>{   // open this date and go straight to the 🚚 মাল আসছে form
+        addDay(viewId); sSub = 'delivery'; try{ localStorage.setItem('kg-khata-ssub', sSub); }catch(_){}
+        render(); const k = document.getElementById('kg'); if(k) k.focus();
+      };
       document.getElementById('backBtn').onclick = ()=>go(last.id);
       return;
     }
