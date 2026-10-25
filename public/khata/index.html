@@ -6408,10 +6408,10 @@ function getDB(){
     openDraft: id => { const D = drafts.find(x => x.id === id); if(!D) return; if(D.party && D.party !== '__new' && accs.find(a => a.id === D.party)) curId = D.party;
       lPrevDate = LD(); lDate = D.date || null; form = {mode:'sale', type:'credit', editId:null, preParty: D.party !== '__new' ? D.party : '', draftId: id}; render(); },
     delDraft: id => { drafts = drafts.filter(x => x.id !== id); saveDrafts(); },
-    newMemo: (aid) => {
+    newMemo: (aid, day) => {   // day: the date picked on the মেমো tab → the new memo starts on that date
       if(aid && accs.find(a=>a.id===aid)) curId = aid;
       if(!curId && accs[0]) curId = accs[0].id;
-      lPrevDate = LD(); lDate = null;
+      lPrevDate = LD(); lDate = day || null;
       form = {mode:'sale', type:'credit', editId:null, preParty: aid || ''};
       render();
     },
@@ -7110,7 +7110,7 @@ document.addEventListener('input', e=>{
       const setH = v => { mSumHide = v; try{ localStorage.setItem('kg-khata-msumhide', v ? '1' : '0'); }catch(_){}; renderMemo(); };
       if(h) h.onclick = () => setH(true);
       if(sh) sh.onclick = () => setH(false);
-      if(n2) n2.onclick = () => L().newMemo(); }
+      if(n2) n2.onclick = () => L().newMemo(null, oneDay || null); }
     mroot.querySelectorAll('[data-mv2]').forEach(b => b.onclick = () => { const k2 = b.dataset.mv2; mview[k2] = !mview[k2]; try{ localStorage.setItem('kg-khata-mview', JSON.stringify(mview)); }catch(_){}; renderMemo(); });
     mroot.querySelectorAll('[data-mk]').forEach(b => b.onclick = () => { mst.k = b.dataset.mk; try{ localStorage.setItem('kg-khata-memo', JSON.stringify(mst)); }catch(_){}; renderMemo(); });
     const qi = document.getElementById('mQ');
@@ -7134,7 +7134,7 @@ document.addEventListener('input', e=>{
       }, 1500);
     });
     mroot.querySelectorAll('.msend').forEach(x => x.addEventListener('keydown', e => { if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); x.click(); } }));
-    document.getElementById('mNew').onclick = () => L().newMemo();
+    document.getElementById('mNew').onclick = () => L().newMemo(null, oneDay || null);
     mroot.querySelectorAll('[data-ms]').forEach(b => b.onclick = () => { memoStyle = b.dataset.ms; try{ localStorage.setItem('kg-khata-memostyle', memoStyle); }catch(_){}; renderMemo(); });
     mroot.querySelectorAll('.mdr-open').forEach(b => b.onclick = () => L().openDraft(b.dataset.dr));
     mroot.querySelectorAll('.mdr-del').forEach(b => b.onclick = () => { if(!b.classList.contains('armed')){ b.classList.add('armed'); b.textContent = 'মুছবেন?'; setTimeout(() => { if(b.isConnected){ b.classList.remove('armed'); b.textContent = '×'; } }, 3500); return; } L().delDraft(b.dataset.drd); });
