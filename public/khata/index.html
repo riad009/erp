@@ -3167,7 +3167,7 @@ const markBtns = (pre, cur) => ['K'].map(m => `<button type="button" class="zbtn
 function wireMarks(pre){ const bs = ['B','K'].map(m => document.getElementById(pre + m)).filter(Boolean); bs.forEach(b => b.onclick = () => { const on = b.getAttribute('aria-pressed') !== 'true'; bs.forEach(x => x.setAttribute('aria-pressed', x === b && on)); }); }
 const pickedMark = pre => ((['B','K'].map(m => document.getElementById(pre + m)).find(b => b && b.getAttribute('aria-pressed') === 'true')) || {}).dataset?.mark || '';
 // party names: first letter of each word capital (arafat steel → Arafat Steel); Bangla is left as it is
-const capName = v => String(v||'').replace(/(^|[\s(.\-\/])([a-z])/g, (m, a, b) => a + b.toUpperCase());
+const capName = v => String(v||'').replace(/(^|[\s(.\-\/])([a-z])/g, (m, a, b) => a + b.toUpperCase()).replace(/\bsteal\b/gi, 'Steel');   // owner: "Steal" is always "Steel"
 document.addEventListener('input', e => {
   const el = e.target; if(!el || !['npName','fNewParty','aNewName','accName','arName','npAddr','fNewLoc','aNewAddr','fAddr'].includes(el.id)) return;
   const v = capName(el.value); if(v === el.value) return;
@@ -3485,23 +3485,34 @@ function getDB(){
   // মাল of this size that came in recently, oldest first — today: the last 24 hours; an old date: that day only
   const arrivalsOf = (itemId, D) => { const out = [], now = Date.now(), isToday = D === todayId(); days.forEach(d => { if(d.id > D) return; (d.entries||[]).forEach(e => { const fresh = isToday && e.ts ? now - e.ts < 864e5 : d.id === D; if(fresh && e.item === itemId && Number(e.kg) > 0) out.push({day:d.id, kg:Number(e.kg), car:e.car||'', b:!!e.b}); }); }); return out; };
   // kg per size up to day D: before D (black) and on D (red +)
+  // kg per size up to day D. Stock never goes below ০: if a memo / মাল গেছে asks for more than is in stock,
+  // only what is there leaves (the extra is billed on the memo but not taken from the stock).
   function itemStats(D){
-    const st = {};
-    const get = id => st[id] || (st[id] = {prev:0, now:0, nowB:0, sold:0, moves:[]});   // moves = this day's in (+) / out (−), in order
+    const st = {}, ev = {};   // ev[item][day] = {in, out}
+    const get = id => st[id] || (st[id] = {prev:0, now:0, nowB:0, sold:0, over:0, moves:[]});   // moves = this day's in (+) / out (−), in order
+    const add = (id, day, k, v) => { const e = ev[id] || (ev[id] = {}); const x = e[day] || (e[day] = {in:0, out:0}); x[k] += v; };
     for(const d of days){ if(d.id > D) continue;
       (d.entries||[]).forEach((e, ei) => { if(!e.item || !findItem(e.item)) return;
-        const x = get(e.item); const kg = Number(e.kg)||0;
-        if(d.id === D){ x.now += kg; if(e.b) x.nowB += kg; x.moves.push({kg, b:!!e.b, ts:e.ts||0, src:'in', day:d.id, ref:ei}); } else x.prev += kg; });
+        const kg = Number(e.kg)||0; add(e.item, d.id, 'in', kg);
+        if(d.id === D){ const x = get(e.item); if(e.b) x.nowB += kg; x.moves.push({kg, b:!!e.b, ts:e.ts||0, src:'in', day:d.id, ref:ei}); } });
       (d.outs||[]).forEach((o, oi) => { if(!o.item || !findItem(o.item)) return;
-        const x = get(o.item), kg = Number(o.kg)||0;
-        if(d.id === D){ x.sold += kg; x.moves.push({kg, out:true, ts:o.ts||0, src:'hand', day:d.id, ref:oi}); } else x.prev -= kg; }); }
-    // sold from মেমো (only after "মাল গেছে" is confirmed), on the day it left
+        const kg = Number(o.kg)||0; add(o.item, d.id, 'out', kg);
+        if(d.id === D) get(o.item).moves.push({kg, out:true, ts:o.ts||0, src:'hand', day:d.id, ref:oi}); }); }
+    // sold from মেমো, on the day it left
     const L = window.__ledger;
     if(L) L.accs().forEach(a => (a.entries||[]).forEach(e => {
       if(e.status !== 'confirmed' || !Array.isArray(e.picks)) return;
       const on = e.confirmedOn || e.date; if(on > D) return;
-      e.picks.forEach(pk => { if(!findItem(pk.item)) return; const x = get(pk.item), kg = Number(pk.kg)||0; if(on === D){ x.sold += kg; x.moves.push({kg, out:true, ts:e.ts||0, src:'memo', acc:a.id, ent:e.id}); } else x.prev -= kg; });
+      e.picks.forEach(pk => { if(!findItem(pk.item)) return; const kg = Number(pk.kg)||0; add(pk.item, on, 'out', kg);
+        if(on === D) get(pk.item).moves.push({kg, out:true, ts:e.ts||0, src:'memo', acc:a.id, ent:e.id}); });
     }));
+    Object.keys(ev).forEach(id => {
+      const f = findItem(id), open = Number(f.it.open)||0, x = get(id); let bal = open;
+      Object.keys(ev[id]).sort().forEach(day => { const v = ev[id][day];
+        if(day < D) bal = Math.max(0, bal + v.in - v.out);
+        else { x.now = v.in; x.sold = Math.min(v.out, Math.max(0, bal + v.in)); x.over = v.out - x.sold; } });
+      x.prev = bal - open;
+    });
     return st;
   }
   const itemNow = (it, st) => { const x = st[it.id] || {prev:0, now:0, sold:0}; return (Number(it.open)||0) + x.prev + x.now - (x.sold||0); };
@@ -5761,8 +5772,8 @@ function getDB(){
             short = window.__shortage(target.picks, {}).length > 0;
             target.status = prevSt;
           }
-          if(short){ target.status = 'pending'; delete target.confirmedOn; }
-          else if(target.status !== 'confirmed'){ target.status = 'confirmed'; target.confirmedOn = target.date; }
+          // short or not, the memo is done and its মাল leaves now — the stock stops at ০ (never minus)
+          void short; if(target.status !== 'confirmed'){ target.status = 'confirmed'; target.confirmedOn = target.date; }
         }
         const kgT = entryKg(target);
         if($('fLab') && $('fLab').checked && kgT > 0){
@@ -5821,7 +5832,7 @@ function getDB(){
           const sh = window.__shortage(pkNow, {addBack});
           if(sh.length){
             willShort = true;
-            const go = await kDialog({icon:'⚠️', tone:'warn', title:'স্টকে মাল কম আছে', html: window.__shortHtml(sh, false) + '<p class="kd-note">মেমো সেভ হবে, কিন্তু মাল এখন যাবে না। স্টকে মাল আসলে (মাল আসছে তে যোগ করলে) এই মেমোর মাল নিজে থেকে পাঠানো হবে।</p>', ok:'তবুও মেমো করুন (মাল পরে যাবে)', cancel:'ফিরে যান'});
+            const go = await kDialog({icon:'⚠️', tone:'warn', title:'স্টকে মাল কম আছে', html: window.__shortHtml(sh, false) + '<p class="kd-note">মেমোতে পুরো কেজিই থাকবে (বিল পুরোটা)। স্টক থেকে শুধু যতটুকু আছে ততটুকু যাবে — স্টক ০ হবে, মাইনাস হবে না।</p>', ok:'মেমো করুন (স্টক ০ হবে)', cancel:'ফিরে যান'});
             if(!go) return;
           }
         } }
@@ -5854,7 +5865,7 @@ function getDB(){
           <div class="kd-row tot"><span>মোট টাকা</span><b>${esc(tot)}</b></div>
           ${$('cmPrev') && $('cmPrev').textContent.trim() ? `<div class="kd-row sm"><span>আগের বাকি</span><b>${esc($('cmPrev').textContent)}</b></div>` : ''}
           ${$('cmDue') && $('cmDue').textContent.trim() ? `<div class="kd-row due"><span>এখন বাকি হবে</span><b>${esc($('cmDue').textContent)}</b></div>` : ''}
-        </div><p class="kd-note">${form.editId ? 'সেভ করলে আগের মেমোটা বদলে যাবে।' : (willShort ? 'সেভ করলে খতিয়ানে যোগ হবে — স্টকে কম, তাই মাল এখন পাঠানো হবে না।' : 'সেভ করলে খতিয়ানে যোগ হবে আর মাল স্টক থেকে বাদ হবে (মাল পাঠানো হবে)।')}</p>`,
+        </div><p class="kd-note">${form.editId ? 'সেভ করলে আগের মেমোটা বদলে যাবে।' : (willShort ? 'সেভ করলে খতিয়ানে যোগ হবে — স্টকে যতটুকু আছে ততটুকু বাদ হবে, স্টক ০ হবে।' : 'সেভ করলে খতিয়ানে যোগ হবে আর মাল স্টক থেকে বাদ হবে (মাল পাঠানো হবে)।')}</p>`,
         ok:'✓ হ্যাঁ, সেভ করুন', cancel:'বাতিল'});
       if(ok) doSave();
     };
@@ -6451,8 +6462,8 @@ function getDB(){
       waiting.sort((x, y) => (x.e.date < y.e.date ? -1 : x.e.date > y.e.date ? 1 : (x.e.memoNo||0) - (y.e.memoNo||0)));
       const sent = [], changed = new Set();
       waiting.forEach(({a, e}) => {
-        const ok = !Array.isArray(e.picks) || !e.picks.length || !window.__shortage(e.picks, {}).length;
-        if(ok){ e.status = 'confirmed'; e.confirmedOn = (Array.isArray(e.picks) && e.picks.length) ? isoOfL(new Date()) : e.date; sent.push({a, e}); changed.add(a); }
+        // no more waiting: a memo's মাল leaves on its own date (the stock stops at ০)
+        e.status = 'confirmed'; e.confirmedOn = e.date; sent.push({a, e}); changed.add(a);
       });
       changed.forEach(a => save(a));
       if(sent.length){
