@@ -50,6 +50,9 @@ Tabs: স্টক · দৈনিক · মেমো · খতিয়ান �
   - খরচ column has a 💰 বিবিধ খরচ (খুচরা) card: items saved in the same day's khoroch list with `misc:true`; the main খরচ list shows them as one auto line "বিবিধ খরচ (খুচরা)" = their sum (totals already include them).
 - Fonts: Noto Sans Bengali (clear ১), Baloo Da 2 for numbers, Tiro Bangla headings.
 
+## Challan photos → স্টক
+- When the owner sends a mill delivery challan photo + গাড়ি নং + date, follow the **`stock-challan` skill** (`.claude/skills/stock-challan/SKILL.md`): read it → show a Bangla table → after his "yes" run `insert.py` (writes the live DB: stock day + company খতিয়ান, adds missing sizes, refuses a duplicate চালান নং). ANN = নরম (kK), TRI = হার্ড (kE), RW Coil = হার্ড (kE), GLG = জাকের; 650X914 → 65 × 914; net kg, not gross.
+
 ## Roadmap (do in this order, one small step at a time)
 1. ✅ Run the existing app inside Next.js (this repo).
 2. Backup / restore buttons inside the app (JSON download/upload).
