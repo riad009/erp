@@ -2873,6 +2873,16 @@ html body #stock .ssub .st[aria-selected="false"]:hover{filter:brightness(.97)}
 #baki .bk-t .paid{color:#1F7A3D;font-size:15px}
 #ledger .tile.big.paid .v{color:#1F7A3D!important}
 #amdani .acol.kout .cnt .kmhint{color:#8A1C2C;font-weight:700;font-size:12.5px}
+/* সর্বমোট মাল: মোট স্টক bar */
+.tstock .ts-total{display:flex;flex-wrap:wrap;align-items:center;gap:10px 18px;margin:0 0 10px;padding:12px 16px;background:#F4EEFC;border:1.5px solid #C9B6EA;border-radius:12px}
+.tstock .ts-total .tt-main{display:flex;align-items:baseline;gap:10px}
+.tstock .ts-total .tt-main span{font-family:"Tiro Bangla",serif;font-weight:700;font-size:17px;color:#4F2C7A}
+.tstock .ts-total .tt-main b{font-family:"Baloo Da 2","Noto Sans Bengali",sans-serif;font-size:28px;font-weight:800;color:#3B1F63;line-height:1}
+.tstock .ts-total .tt-main b small{font-size:14px;font-weight:600;color:#6B5A86}
+.tstock .ts-total .tt-parts{display:flex;flex-wrap:wrap;gap:6px}
+.tstock .ts-total .tt-p{font-family:"Noto Sans Bengali",sans-serif;font-size:13px;font-weight:600;color:#475467;background:#fff;border:1px solid #DCD0EF;border-radius:999px;padding:3px 10px}
+.tstock .ts-total .tt-p b{font-family:"Baloo Da 2",sans-serif;font-weight:800;color:#1B2347;margin-left:2px}
+.tstock .ts-total .tt-p.hard{border-color:#C9B6EA}.tstock .ts-total .tt-p.soft{border-color:#A9D8B6}.tstock .ts-total .tt-p.soft2{border-color:#A6D3E3}
 </style>
 </head>
 <body>
@@ -3452,7 +3462,12 @@ function getDB(){
   // every goods line (খতিয়ানে মাল কিনেছে with kg), with the stock day it counts on
   function typesHtml(cur){
     const D = cur.id, st = itemStats(D);
+    const perCat = cats.map(c => ({c, t:(c.items||[]).reduce((sum, it) => sum + itemNow(it, st), 0)})), allKg = perCat.reduce((sum, x) => sum + x.t, 0);
     return `<section class="tstock">
+      <div class="ts-total">
+        <div class="tt-main"><span>📦 মোট স্টক</span><b>${bn(allKg)} <small>কেজি</small></b></div>
+        <div class="tt-parts">${perCat.map(x => `<span class="tt-p ${x.c.tone||''}">${esc(x.c.name)} <b>${bn(x.t)}</b></span>`).join('')}</div>
+      </div>
       <p class="ts-date">${bnDate(D)} · <span class="red">সবুজ +</span> = এই দিনে এসেছে · <b style="color:#C0152F">লাল −</b> = মেমোতে গেছে · মার্কায় চাপ দিলে বন্ধ হবে</p>
       ${tsMsg ? `<p class="ts-msg">${esc(tsMsg)}</p>` : ''}
       <div class="ts-cats">${cats.map(c => {
