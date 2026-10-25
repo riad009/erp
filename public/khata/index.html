@@ -877,6 +877,18 @@ body.memo-open{overflow:hidden}
 .cm-newname .nfb input{flex:1 1 0;min-width:0;width:auto}
 .cm-newname[hidden]{display:none!important}
 #lhost select#fParty[hidden]{display:none!important}
+select.psx-sel{display:none!important}
+.psx{position:relative;flex:1;width:100%;min-width:0}
+.psx[hidden]{display:none!important}
+.psx .psx-in{width:100%;box-sizing:border-box;min-height:44px;padding:8px 12px!important;border:1.5px solid #C7D6EB!important;border-radius:10px!important;background:#fff!important;font-size:17px!important;font-weight:700;color:#1B2347;text-align:left!important}
+.psx .psx-in:focus{outline:none;border-color:#1F4AA8!important;box-shadow:0 0 0 3px rgba(31,74,168,.15)}
+.psx .psx-l{position:absolute;left:0;right:0;top:calc(100% + 4px);z-index:60;max-height:300px;overflow-y:auto;margin:0;padding:4px;list-style:none;background:#fff;border:1px solid #C7D6EB;border-radius:10px;box-shadow:0 12px 30px rgba(12,24,48,.18);text-align:left}
+.psx .psx-l li{padding:9px 12px;border-radius:8px;font-size:15.5px;font-weight:600;color:#1B2347;cursor:pointer}
+.psx .psx-l li:hover,.psx .psx-l li.on{background:#EAF0FB;color:#1F4AA8}
+.psx .psx-l li.new{color:#1F7A3D;font-weight:800;border-top:1px dashed #DCE3EF;margin-top:2px}
+.psx .psx-l li.none{color:#8A94A8;font-weight:500;cursor:default}
+.cmd .psx .psx-l{position:static;margin-top:6px;max-height:260px}
+@media (max-width: 700px){ .psx .psx-l{position:static;margin-top:6px;max-height:260px} }
 .cm-back{flex:none;width:30px;height:30px;border-radius:50%;background:#7A4A1E;color:#fff;font-size:14px;padding:0;line-height:1}
 #lhost .cm-tbl input.cm-desc,#ledger .cm-tbl input.cm-desc{text-align:left!important;font-size:16px!important}
 #lhost .cm-tbl td.d .mt+input.cm-desc{margin-top:4px!important}
@@ -3286,6 +3298,43 @@ function makeCombo(input, getList){
     ul.hidden = true;
   });
 }
+// পার্টি বাছাই: a <select> becomes a search box — type any part of the name (or location), matches show under it
+function partySearch(sel){
+  if(!sel || sel.dataset.ps) return; sel.dataset.ps = '1';
+  const BDc = '০১২৩৪৫৬৭৮৯';
+  const norm = v => String(v||'').replace(/[০-৯]/g, d => BDc.indexOf(d)).toLowerCase().replace(/[\s.()\-_,]+/g, '');
+  const e = v => String(v).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const wrap = document.createElement('div'); wrap.className = 'psx';
+  wrap.innerHTML = `<input class="psx-in" autocomplete="off" autocorrect="off" spellcheck="false" placeholder="🔍 পার্টির নাম লিখে খুঁজুন" aria-label="পার্টি খুঁজুন"><ul class="psx-l" role="listbox" hidden></ul>`;
+  sel.after(wrap); sel.classList.add('psx-sel');
+  const inp = wrap.querySelector('input'), ul = wrap.querySelector('ul');
+  const opts = () => [...sel.options].filter(o => o.value && !o.disabled).map(o => ({v:o.value, t:o.text}));
+  const curText = () => { const o = sel.selectedOptions[0]; return o && o.value && o.value !== '__new' ? o.text : ''; };
+  let act = -1, shown = [];
+  const paint = all => {
+    const q = norm(inp.value), list = opts(), normal = list.filter(x => x.v !== '__new'), nw = list.find(x => x.v === '__new');
+    let hit = all || !q ? normal : normal.filter(x => norm(x.t).includes(q));
+    if(q && !all) hit.sort((a, b) => (norm(b.t).startsWith(q) - norm(a.t).startsWith(q)));   // names that start with it first
+    shown = nw ? [...hit, nw] : hit; act = q && hit.length ? 0 : -1;
+    ul.innerHTML = (hit.length ? '' : `<li class="none">"${e(inp.value)}" নামে কোনো পার্টি নেই</li>`) + shown.map((x, i) => `<li role="option" data-i="${i}" class="${x.v === '__new' ? 'new' : ''}${i === act ? ' on' : ''}">${e(x.t)}</li>`).join('');
+    ul.hidden = false;
+  };
+  const pick = x => { if(!x) return; sel.value = x.v; inp.value = x.v === '__new' ? '' : x.t; ul.hidden = true; sel.dispatchEvent(new Event('change', {bubbles:true})); };
+  inp.value = curText();
+  inp.addEventListener('focus', () => { inp.select(); paint(true); });
+  inp.addEventListener('input', () => paint(false));
+  inp.addEventListener('blur', () => setTimeout(() => { ul.hidden = true; inp.value = curText(); }, 160));
+  inp.addEventListener('keydown', ev => {
+    if(ev.key === 'ArrowDown' || ev.key === 'ArrowUp'){ ev.preventDefault(); if(ul.hidden) paint(false); act = Math.max(0, Math.min(shown.length - 1, act + (ev.key === 'ArrowDown' ? 1 : -1))); ul.querySelectorAll('li[data-i]').forEach(li => li.classList.toggle('on', +li.dataset.i === act)); const on = ul.querySelector('li.on'); if(on) on.scrollIntoView({block:'nearest'}); }
+    else if(ev.key === 'Enter'){ ev.preventDefault(); if(act >= 0) pick(shown[act]); }
+    else if(ev.key === 'Escape'){ ul.hidden = true; inp.blur(); }
+  });
+  ul.addEventListener('mousedown', ev => ev.preventDefault());
+  ul.addEventListener('click', ev => { const li = ev.target.closest('li[data-i]'); if(li) pick(shown[+li.dataset.i]); });
+  sel.addEventListener('change', () => { if(document.activeElement !== inp) inp.value = curText(); });
+  // the "নতুন পার্টি" flow hides the select → hide the search box too
+  new MutationObserver(() => { wrap.hidden = sel.hidden; if(!sel.hidden) inp.value = curText(); }).observe(sel, {attributes:true, attributeFilter:['hidden']});
+}
 // money box → the amount in Bangla words right under it (e.g. ৫,০০,০০০ → পাঁচ লক্ষ টাকা মাত্র)
 function attachWords(el){
   if(!el || el.dataset.words) return;
@@ -5625,6 +5674,7 @@ function getDB(){
     };
     if($('fParty')) $('fParty').addEventListener('change', ()=>{ const nw = $('fParty').value==='__new'; $('fNewWrap').hidden = !nw; { const fld = $('fParty').closest('.cm-field'); if(fld) fld.classList.toggle('isnew', nw); } if($('fNewLocWrap')) $('fNewLocWrap').hidden = !nw; if($('fParty').closest('.cm-sel')) $('fParty').hidden = nw; if(nw) $('fNewParty').focus(); });
     if($('fBackList')) $('fBackList').onclick = ()=>{ const sel = $('fParty'); sel.value = curId || (sel.options[0]||{}).value; sel.hidden = false; $('fNewWrap').hidden = true; $('fNewParty').value = ''; if($('fNewLoc')) $('fNewLoc').value = ''; if($('fNewLocWrap')) $('fNewLocWrap').hidden = true; sel.dispatchEvent(new Event('change')); };
+    partySearch($('fParty'));
     if($('fToSale')) $('fToSale').onclick = ()=>window.__ledger.newMemo(accRef.id);
     if($('fEDate')) $('fEDate').addEventListener('change', ev=>{ if(ev.target.value) lDate = ev.target.value; });
     $('fSave').onclick = async () => {
