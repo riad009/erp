@@ -3066,8 +3066,8 @@ function nextMemoNo(){
   return m + 1;
 }
 // party name with ঠিকানা in brackets, e.g. Riad (Bagber)
-const markOf = it => it.mark || (it.z ? 'B' : '');
-const markBtns = (pre, cur) => ['B','K'].map(m => `<button type="button" class="zbtn ${m.toLowerCase()}" id="${pre}${m}" data-mark="${m}" aria-pressed="${cur === m}" title="${m} মাল — ${m === 'B' ? 'লাল' : 'সবুজ'} দেখাবে">${m}</button>`).join('');
+const markOf = it => it.mark === 'K' ? 'K' : '';   // the old B (red) mark is no longer used
+const markBtns = (pre, cur) => ['K'].map(m => `<button type="button" class="zbtn ${m.toLowerCase()}" id="${pre}${m}" data-mark="${m}" aria-pressed="${cur === m}" title="${m} মাল — ${m === 'B' ? 'লাল' : 'সবুজ'} দেখাবে">${m}</button>`).join('');
 // B / K buttons: tap one to choose it, tap again to clear
 function wireMarks(pre){ const bs = ['B','K'].map(m => document.getElementById(pre + m)).filter(Boolean); bs.forEach(b => b.onclick = () => { const on = b.getAttribute('aria-pressed') !== 'true'; bs.forEach(x => x.setAttribute('aria-pressed', x === b && on)); }); }
 const pickedMark = pre => ((['B','K'].map(m => document.getElementById(pre + m)).find(b => b && b.getAttribute('aria-pressed') === 'true')) || {}).dataset?.mark || '';
@@ -3615,12 +3615,12 @@ function getDB(){
                   return `<span class="kbad ${tot < 0 ? 'neg' : ''} ${markOf(it) ? 'mk-' + markOf(it) : ''}">${bn(tot)} <small>কেজি</small>${markOf(it) ? `<b class="zt">${markOf(it)}</b>` : ''}</span>`
                     + (() => { const ar = arrivalsOf(it.id, D); if(!ar.length) return ''; const aop = openArr.has(it.id), sum = ar.reduce((t, a) => t + a.kg, 0);
                         return `<button type="button" class="ahb" data-item="${it.id}" aria-expanded="${aop}" title="কবে কত মাল এসেছে">🕘 ${toBn(ar.length)} বার এসেছে ${aop ? '▾' : '▸'}</button>`
-                          + (aop ? `<span class="ahl">${Number(it.open) ? `<span class="ahr st"><span>শুরুর কেজি</span><b>${bn(it.open)}</b></span>` : ''}${ar.map(a => `<span class="ahr"><span>${toBn(a.day.slice(8,10) + '/' + a.day.slice(5,7))}${a.car ? ' · গাড়ি ' + esc(toBn(a.car)) : (a.b ? ' · বেশি (B)' : '')}</span><b class="in">+${bn(a.kg)}</b></span>`).join('')}<span class="ahr tot"><span>মোট এসেছে</span><b class="in">+${bn(sum)}</b></span></span>` : ''); })()
+                          + (aop ? `<span class="ahl">${Number(it.open) ? `<span class="ahr st"><span>শুরুর কেজি</span><b>${bn(it.open)}</b></span>` : ''}${ar.map(a => `<span class="ahr"><span>${toBn(a.day.slice(8,10) + '/' + a.day.slice(5,7))}${a.car ? ' · গাড়ি ' + esc(toBn(a.car)) : ''}</span><b class="in">+${bn(a.kg)}</b></span>`).join('')}<span class="ahr tot"><span>মোট এসেছে</span><b class="in">+${bn(sum)}</b></span></span>` : ''); })()
                     ;
                 })()}</span>
                 <span class="acts"><button type="button" class="ts-plus" data-item="${it.id}" aria-label="কেজি যোগ করুন">＋</button><button type="button" class="ts-pen" data-item="${it.id}" aria-label="বদলান">✎</button></span>
               </li>${tsAdd === it.id ? `<li class="ts-in ${tsB ? 'isb' : ''} ${tsOut ? 'isout' : ''}"><span class="lb">${dimTxt(it)} ${tsOut ? 'থেকে মাল গেছে:' : 'এ যোগ:'}</span>
-                <div class="ts-mode m3" role="group" aria-label="কী ধরনের"><button type="button" data-b="0" aria-pressed="${!tsB && !tsOut}">＋ নতুন মাল</button><button type="button" data-b="1" aria-pressed="${tsB}">বেশি (B)</button><button type="button" data-b="2" aria-pressed="${tsOut}">− মাল গেছে</button></div>
+                <div class="ts-mode" role="group" aria-label="কী ধরনের"><button type="button" data-b="0" aria-pressed="${!tsOut}">＋ নতুন মাল</button><button type="button" data-b="2" aria-pressed="${tsOut}">− মাল গেছে</button></div>
                 <input id="tsKg" class="num" inputmode="decimal" placeholder="${tsOut ? 'কত কেজি গেছে?' : tsB ? 'কত কেজি বেশি?' : 'কত কেজি এলো?'}"><button type="button" id="tsOk">${tsOut ? '− মাল গেছে' : tsB ? '＋ বেশি যোগ করুন' : '＋ যোগ করুন'}</button><button type="button" id="tsNo" class="x">×</button></li>` : ''}`;
             }).join('') || '<li class="none">এখনো কোনো সাইজ নেই — নিচে ＋ নতুন সাইজ চাপুন</li>'}</ol>
             <div class="ts-sum"><span>মোট</span><b>${bn(base)}</b>${now ? `<em>+${bn(now)}</em>` : ''}${sold ? `<em class="so">−${bn(sold)}</em>` : ''}${now || sold ? `<strong>= ${bn(base + now - sold)} কেজি</strong>` : '<b>কেজি</b>'}</div>
@@ -3647,9 +3647,9 @@ function getDB(){
     let title = '', tone = '', body = '', acts = '';
     if(ds.src === 'in'){
       const d = days.find(x => x.id === ds.day), e = d && (d.entries||[])[+ds.ref]; if(!e) return;
-      title = e.b ? '＋ বেশি (B) যোগ' : '＋ মাল এসেছে'; tone = 'in';
+      title = '＋ মাল এসেছে'; tone = 'in';
       body = row('কেজি', '+' + bn(e.kg) + ' কেজি', 'in') + row('কখন', whenTxt(d.id, e.ts))
-        + (e.car ? row('গাড়ি নং', toBn(e.car)) : row('কিভাবে', e.b ? 'বেশি (B) — ওজনে বেশি' : 'মার্কা লিস্ট থেকে ＋'))
+        + (e.car ? row('গাড়ি নং', toBn(e.car)) : row('কিভাবে', 'মার্কা লিস্ট থেকে ＋'))
         + (e.co && C ? row('কোম্পানি', '🏭 ' + esc(C.name(e.co) || '')) : '');
       acts = e.co ? '<p class="mvd-note">কোম্পানির চালানের সাথে যুক্ত — বদলাতে "মাল আসছে" ট্যাবে ✎ চাপুন।</p>' : '<button type="button" class="danger" id="mvDel">মুছুন</button>';
     } else if(ds.src === 'hand'){
@@ -4049,7 +4049,7 @@ function getDB(){
             <span class="d-mal">${(() => { const f = e.item ? findItem(e.item) : null; const c = e.cat ? catOf(e.cat) : (f ? f.c : null);
                 if(c) return `<span class="itm mk ${c.tone||''}">${esc(c.name)}</span>${f ? `<span class="spec">${dimTxt(f.it)}</span>` : ''}`;
                 return e.item || e.mt ? `<span class="itm">${esc(e.item||'')}${e.mt ? ` <b class="mtb ${e.mt}">${MTN[e.mt]}</b>` : ''}</span>` : '<i class="na">—</i>'; })()}${e.mili || e.size || e.len ? `<span class="spec">${specTxt(e)}</span>` : ''}${e.coil ? `<span class="coilno">কয়েল নং ${esc(toBn(e.coil))}</span>` : ''}${e.ci ? `<span class="ciname">${esc(e.ci)}</span>` : ''}</span>
-            <span class="d-car">${e.b ? '<span class="btag">বেশি (B)</span>' : (e.car ? `<b class="carno">${esc(toBn(e.car))}</b>` : '<i class="na">—</i>')}</span>
+            <span class="d-car">${e.car ? `<b class="carno">${esc(toBn(e.car))}</b>` : '<i class="na">—</i>'}</span>
             <span class="d-co">${e.co && window.__company ? `<span class="coname">🏭 ${esc(window.__company.name(e.co) || '')}</span>` : (e.vno ? '' : '<i class="na">—</i>')}${e.vno ? `<span class="vno">চালান ${esc(toBn(e.vno))}</span>` : ''}</span>
             <span class="d-act"><button class="edit" data-i="${i}" aria-label="বদলান">✎</button><button class="del" data-i="${i}" aria-label="মুছুন">×</button></span>
           </li>`;
@@ -4061,10 +4061,10 @@ function getDB(){
             const cos = [...new Set(es.map(e => e.co && window.__company ? window.__company.name(e.co) : '').filter(Boolean))], vnos = [...new Set(es.map(e => e.vno).filter(Boolean))];
             const mk = [...new Set(es.map(e => { const f = e.item ? findItem(e.item) : null, c = e.cat ? catOf(e.cat) : (f ? f.c : null); return c ? c.name : ''; }).filter(Boolean))];
             return `<li class="drow dcar ${open ? 'open' : ''}" data-ckey="${esc(key)}" tabindex="0" title="গাড়ির মাল দেখুন">
-              <span class="d-sl dcarno">${es[0].car ? `<small>গাড়ি</small><b>${esc(toBn(es[0].car))}</b>` : (es[0].b ? '<small>বেশি</small><b>B</b>' : '<b>—</b>')}</span>
+              <span class="d-sl dcarno">${es[0].car ? `<small>গাড়ি</small><b>${esc(toBn(es[0].car))}</b>` : '<b>—</b>'}</span>
               <span class="d-kg"><small class="ktot">গাড়ির মোট</small><b class="kg num">${bn(kgT)} <small>কেজি</small></b><small class="when">${whenTxt(cur.id, es[0].ts)}</small></span>
               <span class="d-mal"><b class="citems">${toBn(es.length)}টা মাল</b><small class="cmk">${mk.map(esc).join(' · ')}</small></span>
-              <span class="d-car">${es[0].b ? '' : `<button type="button" class="cedit" data-cday="${cur.id}" data-cidx="${g.idx.join(',')}" aria-label="গাড়ি নং বদলান" title="গাড়ি নং বদলান">✎</button>`}</span>
+              <span class="d-car">${`<button type="button" class="cedit" data-cday="${cur.id}" data-cidx="${g.idx.join(',')}" aria-label="গাড়ি নং বদলান" title="গাড়ি নং বদলান">✎</button>`}</span>
               <span class="d-co">${cos.length ? `<span class="coname">🏭 ${cos.map(esc).join(', ')}</span>` : (vnos.length ? '' : '<i class="na">—</i>')}${vnos.length ? `<span class="vno">চালান ${vnos.map(v => esc(toBn(v))).join(', ')}</span>` : ''}</span>
               <span class="d-act"><i class="cchev">${open ? '▾' : '▸'}</i></span>
             </li>` + (open ? g.idx.map(i => rowOf(entries[i], i)).join('') : '');

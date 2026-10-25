@@ -19,7 +19,7 @@ Tabs: স্টক · দৈনিক · মেমো · খতিয়ান �
 
 ## Data
 - **MongoDB** via `app/api/db/route.ts` + `lib/store.ts` (+ `lib/mongo.ts`, env `MONGO_URI`, `MONGO_DB` default `khata`). The app still uses its old paths; `lib/store.ts` maps them to clearly named collections, one record per item, fields stored directly:
-  `stock_days` (days/<date>) · `stock_markas` + `stock_sizes` (settings/cats; sizes stored as `height`, `width`, `open_kg`, `buy_rate`, `mark` (B = red, K = green; old `is_z` = B), `marka_id`, `position` = order added) · `parties` (ledgers) · `companies` · `expenses` (khoroch) · `cash_opening` (amdani/sabek, one per date) · `settings` (`sale_rates`, `labour_rate`).
+  `stock_days` (days/<date>) · `stock_markas` + `stock_sizes` (settings/cats; sizes stored as `height`, `width`, `open_kg`, `buy_rate`, `mark` (only K = green now; the old B red mark was removed on purpose — don't bring it back), `marka_id`, `position` = order added) · `parties` (ledgers) · `companies` · `expenses` (khoroch) · `cash_opening` (amdani/sabek, one per date) · `settings` (`sale_rates`, `labour_rate`).
   The first layout (`{_id, data}` in days/ledgers/settings…) is moved over automatically on the first request (`migrateOldLayout`). Open `/api/db` to see record counts.
 - Browser side: `public/khata/db.js` gives the same small API the app had on claude.ai (`collection(n).get()`, `doc('col/id').get()/set()/delete()`); `getDB()` in index.html uses it. On an empty database it first uploads that browser's localStorage. If the server can't be reached → `null` → app works from localStorage only.
 - **No password** on the site (owner removed it on purpose) — anyone with the link can read/write. Don't add one back unless he asks.
