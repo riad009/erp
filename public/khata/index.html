@@ -2902,6 +2902,19 @@ html body #stock .ssub .st[aria-selected="false"]:hover{filter:brightness(.97)}
 #stock .hrows .hc{color:#66728A;font-size:13px;white-space:nowrap}
 #stock .hnone{color:#66728A;padding:8px 2px}
 @media (max-width: 700px){ #stock .hrows li{grid-template-columns:24px minmax(0,1fr)} #stock .hrows .hm,#stock .hrows .hc{grid-column:2} }
+/* মাল আসছে list: মোট row (lines are in the order they were entered, ১ on top) */
+#stock ol.entries.dtab > li.dfoot{display:grid!important;grid-template-columns:64px 168px minmax(0,1.5fr) 104px minmax(0,1fr) 96px!important;background:#EAF6EE!important;border-top:2px solid #2E7D4F!important}
+#stock ol.entries.dtab > li.dfoot > span{display:flex;align-items:center;padding:10px 12px;border-right:1px solid #CFE6D5;font-weight:800;color:#17402A}
+#stock ol.entries.dtab > li.dfoot > span:last-child{border-right:0}
+#stock ol.entries.dtab > li.dfoot .d-sl{justify-content:center;font-family:"Tiro Bangla",serif;font-size:15px}
+#stock ol.entries.dtab > li.dfoot .d-car{justify-content:center;font-family:"Baloo Da 2",sans-serif}
+#stock ol.entries.dtab > li.dfoot .kg{font-family:"Baloo Da 2","Noto Sans Bengali",sans-serif;font-size:19px;color:#17603A}
+#stock ol.entries.dtab > li.dfoot .kg small{font-size:12px;color:#4B6B57}
+@media (max-width: 760px){
+  #stock ol.entries.dtab > li.dfoot{grid-template-columns:40px minmax(0,1fr) auto!important}
+  #stock ol.entries.dtab > li.dfoot > .d-co,#stock ol.entries.dtab > li.dfoot > .d-act,#stock ol.entries.dtab > li.dfoot > .d-car{display:none}
+  #stock ol.entries.dtab > li.dfoot > span{border-right:0;padding:8px 10px}
+}
 </style>
 </head>
 <body>
@@ -3933,7 +3946,9 @@ function getDB(){
             <span class="d-car">${e.b ? '<span class="btag">বেশি (B)</span>' : (e.car ? `<b class="carno">${esc(toBn(e.car))}</b>` : '<i class="na">—</i>')}</span>
             <span class="d-co">${e.co && window.__company ? `<span class="coname">🏭 ${esc(window.__company.name(e.co) || '')}</span>` : '<i class="na">—</i>'}</span>
             <span class="d-act"><button class="edit" data-i="${i}" aria-label="বদলান">✎</button><button class="del" data-i="${i}" aria-label="মুছুন">×</button></span>
-          </li>`).reverse().join('') : `<li class="empty">এই দিনে এখনো কোনো গাড়ি যোগ হয়নি।</li>`}
+          </li>`).join('') : `<li class="empty">এই দিনে এখনো কোনো গাড়ি যোগ হয়নি।</li>`}
+        ${entries.length ? (() => { const cars = [...new Set(entries.map(e => e.car).filter(Boolean))];
+          return `<li class="dfoot"><span class="d-sl">মোট</span><span class="d-kg"><b class="kg num">${bn(entries.reduce((t, e) => t + (Number(e.kg)||0), 0))} <small>কেজি</small></b></span><span class="d-mal">${toBn(entries.length)} লাইন</span><span class="d-car">${cars.length ? cars.map(c => esc(toBn(c))).join(', ') : ''}</span><span class="d-co"></span><span class="d-act"></span></li>`; })() : ''}
       </ol>
       ${histHtml()}
       `}
