@@ -1612,13 +1612,13 @@ body.theme-pro .tabs button[aria-selected="true"]{background:#EAF0FC!important;c
 
 /* মাল button on the form */
 #stock .add.add2 .pkrow{display:flex;gap:6px}
-#stock .add.add2 .pkbtn{flex:1;display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px;text-align:left;background:#fff!important;color:#1B2347!important;border:1.5px solid #C7D6EB!important;border-radius:10px!important;padding:9px 12px!important;height:auto!important;min-height:48px;font-weight:600!important;grid-column:auto!important}
-#stock .add.add2 .pkbtn:hover{border-color:#1F4AA8!important}
-#stock .add.add2 .pkbtn b{font-family:"Baloo Da 2","Noto Sans Bengali","Hind Siliguri",sans-serif;font-size:18px;color:#1B2347}
-#stock .add.add2 .pkbtn small{font-size:13px;color:#5E6B85}
-#stock .add.add2 .pkbtn .pk-ph{flex:1;color:#1F4AA8;font-weight:700;font-size:16px}
-#stock .add.add2 .pkbtn .pk-ch{margin-left:auto;color:#1F4AA8;font-size:13.5px;font-weight:700;white-space:nowrap}
-#stock .add.add2 .pkbtn .pk-mk{font-size:12.5px;font-weight:700;padding:1px 8px;border-radius:6px;background:#EEF3FB;color:#1F4AA8}
+#stock .add.add2 .pkbtn,.hodlg .pkbtn{flex:1;display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px;text-align:left;background:#fff!important;color:#1B2347!important;border:1.5px solid #C7D6EB!important;border-radius:10px!important;padding:9px 12px!important;height:auto!important;min-height:48px;font-weight:600!important;grid-column:auto!important}
+#stock .add.add2 .pkbtn:hover,.hodlg .pkbtn:hover{border-color:#1F4AA8!important}
+#stock .add.add2 .pkbtn b,.hodlg .pkbtn b{font-family:"Baloo Da 2","Noto Sans Bengali","Hind Siliguri",sans-serif;font-size:18px;color:#1B2347}
+#stock .add.add2 .pkbtn small,.hodlg .pkbtn small{font-size:13px;color:#5E6B85}
+#stock .add.add2 .pkbtn .pk-ph,.hodlg .pkbtn .pk-ph{flex:1;color:#1F4AA8;font-weight:700;font-size:16px}
+#stock .add.add2 .pkbtn .pk-ch,.hodlg .pkbtn .pk-ch{margin-left:auto;color:#1F4AA8;font-size:13.5px;font-weight:700;white-space:nowrap}
+#stock .add.add2 .pkbtn .pk-mk,.hodlg .pkbtn .pk-mk{font-size:12.5px;font-weight:700;padding:1px 8px;border-radius:6px;background:#EEF3FB;color:#1F4AA8}
 .pk-mk.hard,.pk-r.hard small{background:#EDE3F7!important;color:#6B3FA0!important}
 .pk-mk.soft,.pk-r.soft small{background:#DDF2E4!important;color:#1F7A3D!important}
 .pk-mk.soft2,.pk-r.soft2 small{background:#DDF0F6!important;color:#1C6E8C!important}
@@ -2890,6 +2890,21 @@ html body #stock .ssub .st[aria-selected="false"]:hover{filter:brightness(.97)}
 #stock .calc .row.plus .val.in{color:#17803D}
 #stock .calc .row.stot .lbl{font-weight:800;color:#3B1F63}
 #stock .calc .row.stot .val{font-weight:800;color:#3B1F63}
+#stock .houtbtn{width:100%;margin:12px 0 4px;padding:13px;border-radius:12px;background:#B42318;color:#fff;border:0;font-weight:800;font-size:16px;cursor:pointer}
+#stock .houtbtn:hover{background:#9A1D14}
+#stock .hout .houtdel{width:30px;height:30px;border-radius:50%;border:1px solid #F2B8C0;background:#fff;color:#B42318;font-size:16px;cursor:pointer}
+#stock .hout .houtdel.armed{width:auto;padding:0 10px;border-radius:999px;background:#B42318;color:#fff}
+.kdlg.hodlg{max-width:620px;text-align:left}
+.kdlg.hodlg h3{text-align:center}
+.hodlg .ho-rows{list-style:none;margin:10px 0 6px;padding:0;display:flex;flex-direction:column;gap:8px}
+.hodlg .ho-row{display:grid;grid-template-columns:22px minmax(0,1fr) 130px 34px;gap:8px;align-items:center}
+.hodlg .ho-n{font-family:"Baloo Da 2",sans-serif;font-weight:800;color:#B42318;text-align:center}
+.hodlg .ho-pk{min-height:46px;text-align:left}
+.hodlg .ho-kg{height:46px;box-sizing:border-box;padding:0 10px;border:1.5px solid #B9C7DD;border-radius:10px;font-size:17px;font-family:"Baloo Da 2","Noto Sans Bengali",sans-serif;text-align:right;width:100%}
+.hodlg .ho-del{width:34px;height:34px;border-radius:50%;border:1px solid #F2B8C0;background:#fff;color:#B42318;font-size:16px;cursor:pointer}
+.hodlg .ho-more{width:100%;padding:10px;border-radius:10px;border:1.5px dashed #E8A0AA;background:#FFF7F8;color:#B42318;font-weight:700;cursor:pointer}
+.hodlg .ho-msg{min-height:18px;margin:8px 0 0;color:#B42318;font-size:13.5px;font-weight:600}
+@media (max-width: 600px){ .hodlg .ho-row{grid-template-columns:20px minmax(0,1fr) 34px} .hodlg .ho-kg{grid-column:2} }
 #stock .dcar .d-kg .ktot{display:block;font-size:11.5px;font-weight:700;color:#2E7D4F;letter-spacing:.2px;margin-bottom:1px}
 #stock .dcar .d-sl.dcarno{display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.1}
 #stock .dcar .dcarno small{font-size:11.5px;color:#2E7D4F;font-weight:600}
@@ -3788,6 +3803,10 @@ function getDB(){
         <div class="qt today"><span class="qi">🚚</span><span class="k">${cur.id === todayId() ? 'আজকের দিনে গেছে' : 'এই দিনে গেছে'}</span><b class="v">${bn(c.sold||0)} <small>কেজি</small></b><small class="s">${toBn(today.length)}টা মেমো</small></div>
         <div class="qt due ${due.length ? '' : 'zero'}"><span class="qi">${due.length ? '⏳' : '✅'}</span><span class="k">বাকি মাল (দিতে হবে)</span><b class="v">${bn(dueKg)} <small>কেজি</small></b><small class="s">${due.length ? toBn(due.length) + 'টা মেমোর মাল বাকি' : 'সব মাল চলে গেছে'}</small></div>
       </section>
+      <button type="button" class="houtbtn" id="handOutBtn">✋ হাতে মাল বের করুন</button>
+      ${(cur.outs||[]).length ? `<h3 class="qh qh2 gone"><span>✋ ${cur.id === todayId() ? 'আজ' : 'এই দিনে'} হাতে বের করা মাল</span><span class="qc">${bn(sumOuts(cur))} কেজি</span></h3>
+      <ol class="qlist qtab hout">${(cur.outs||[]).map((o, i) => { const f = o.item ? findItem(o.item) : null;
+        return `<li class="qrow"><span class="qsl">${toBn(i+1)}</span><div class="qmain">${f ? `<span class="qp"><span class="qp-mk ${f.c.tone||''}">${esc(f.c.name)}</span><b>${dimTxt(f.it)}</b></span>` : '<span class="qn">—</span>'}<span class="qd">${o.ts ? tmTxt(o.ts) : ''}</span></div><span class="qkg num">${bn(o.kg)} <small>কেজি</small></span><span class="qact"><button type="button" class="houtdel" data-oi="${i}" aria-label="মুছুন">×</button></span></li>`; }).join('')}</ol>` : ''}
 
       <h3 class="qh due qh2"><span>⏳ স্টকে কম — যে মেমোর মাল এখনো যায়নি</span><span class="qc">${toBn(due.length)}টা</span></h3>
       <ol class="qlist qtab">${due.length ? qhead + due.map((x, i)=>row(x, `<span class="qwait">⏳ মাল আসলে<br>নিজে যাবে</span>`, i)).join('')
@@ -3918,6 +3937,51 @@ function getDB(){
       requestAnimationFrame(() => { const c = document.querySelector('#stock .dcar'), t = c && c.closest('ol'); if(!t) return;
         let off = 12; document.querySelectorAll('header, nav, #stock > *').forEach(el => { const cs = getComputedStyle(el), r = el.getBoundingClientRect(); if((cs.position === 'sticky' || cs.position === 'fixed') && r.height && r.height < 300 && r.top <= 4) off = Math.max(off, r.bottom + 12); });
         window.scrollTo({top: window.scrollY + t.getBoundingClientRect().top - off, behavior:'smooth'}); }); });   // a date → that day's page
+  }
+
+  // ✋ হাতে মাল বের করুন: pick মার্কা → সাইজ + মোট কেজি, ＋ আরো মাল for the next one; saved as the day's outs (leave the stock)
+  function openHandOut(cur){
+    const st = itemStats(cur.id), have = id => { const f = findItem(id); return f ? itemNow(f.it, st) : 0; };
+    const bg = document.createElement('div'); bg.className = 'kdlg-bg';
+    bg.innerHTML = `<div class="kdlg hodlg" role="dialog" aria-modal="true" aria-label="হাতে মাল বের করুন">
+      <h3>✋ হাতে মাল বের করুন</h3><p class="kd-note">${bnDate(cur.id)} · প্রতিটা লাইনে মাল বাছাই করুন, তারপর মোট কেজি লিখুন</p>
+      <ol class="ho-rows"></ol>
+      <button type="button" class="ho-more">＋ আরো মাল</button>
+      <p class="ho-msg" role="alert"></p>
+      <div class="kd-acts two"><button type="button" class="kd-c">বাতিল</button><button type="button" class="kd-ok">✓ মাল বের করুন</button></div></div>`;
+    document.body.appendChild(bg);
+    const rows = bg.querySelector('.ho-rows'), msg = bg.querySelector('.ho-msg'), close = () => bg.remove();
+    const renum = () => rows.querySelectorAll('.ho-n').forEach((n, i) => n.textContent = toBn(i + 1));
+    const addRow = () => {
+      const li = document.createElement('li'); li.className = 'ho-row';
+      li.innerHTML = `<span class="ho-n"></span><button type="button" class="pkbtn ho-pk" data-item="">${pickHtml(cur.id, '')}</button><input class="num ho-kg" inputmode="decimal" placeholder="মোট কেজি" aria-label="মোট কেজি"><button type="button" class="ho-del" aria-label="এই লাইন বাদ দিন">×</button>`;
+      const pb = li.querySelector('.ho-pk'), kIn = li.querySelector('.ho-kg');
+      pb.onclick = () => openPicker(cur.id, id => { pb.dataset.item = id || ''; pb.innerHTML = pickHtml(cur.id, id || ''); kIn.focus(); });
+      li.querySelector('.ho-del').onclick = () => { if(rows.children.length > 1){ li.remove(); renum(); } else { pb.dataset.item = ''; pb.innerHTML = pickHtml(cur.id, ''); kIn.value = ''; } };
+      kIn.addEventListener('keydown', e => { if(e.key === 'Enter'){ e.preventDefault(); bg.querySelector('.kd-ok').click(); } });
+      rows.appendChild(li); renum(); pb.click();
+    };
+    bg.querySelector('.ho-more').onclick = addRow;
+    bg.querySelector('.kd-c').onclick = close;
+    bg.addEventListener('click', e => { if(e.target === bg) close(); });
+    bg.querySelector('.kd-ok').onclick = () => {
+      const lines = [];
+      for(const li of rows.children){
+        const id = li.querySelector('.ho-pk').dataset.item, kg = parseNum(li.querySelector('.ho-kg').value);
+        if(!id && !(kg > 0)) continue;
+        if(!id){ msg.textContent = 'প্রতিটা লাইনে মাল বাছাই করুন।'; return; }
+        if(!(kg > 0)){ msg.textContent = 'প্রতিটা লাইনে মোট কেজি লিখুন।'; li.querySelector('.ho-kg').focus(); return; }
+        lines.push({id, kg});
+      }
+      if(!lines.length){ msg.textContent = 'অন্তত একটা মাল আর কেজি দিন।'; return; }
+      const need = {}; lines.forEach(l => need[l.id] = (need[l.id]||0) + l.kg);
+      for(const id in need){ if(need[id] > have(id) + 1e-9){ const f = findItem(id); msg.textContent = `${f.c.name} ${dimTxt(f.it).replace(/<[^>]+>/g, '')}: স্টকে আছে ${bn(Math.max(0, have(id)))} কেজি — এর বেশি বের করা যাবে না।`; return; } }
+      const ts = Date.now(); cur.outs = cur.outs || [];
+      lines.forEach((l, i) => { const f = findItem(l.id); cur.outs.push({kg:l.kg, cat:f.c.id, item:l.id, ts:ts + i, hand:true}); });
+      saveDay(cur, true); close(); render();
+      kToast(`<b>✋ ${bn(lines.reduce((t, l) => t + l.kg, 0))} কেজি মাল বের হয়েছে</b><span>${toBn(lines.length)}টা লাইন — স্টক থেকে বাদ হলো</span>`, 5000);
+    };
+    addRow();
   }
 
   /* ---------- render ---------- */
@@ -4136,6 +4200,8 @@ function getDB(){
       due.addEventListener('input',()=>{ const n=parseNum(due.value); cur.due=isNaN(n)?0:n; live(); saveDay(cur); });
       due.addEventListener('change', render);
     }
+    if($('handOutBtn')) $('handOutBtn').onclick = () => openHandOut(cur);
+    document.querySelectorAll('#stock .houtdel').forEach(b => twoTap(b, 'মুছুন?', 4000, () => { cur.outs.splice(+b.dataset.oi, 1); saveDay(cur, true); render(); }));
     if($('goQueue')) $('goQueue').onclick = () => { sSub = 'queue'; try{ localStorage.setItem('kg-khata-ssub', sSub); }catch(_){}; render(); };
 
     document.querySelectorAll('#stock .ssub .st').forEach(b=>b.onclick=()=>{ sSub = b.dataset.ssub; try{ localStorage.setItem('kg-khata-ssub', sSub); }catch(_){}; editIndex=-1; render(); });
