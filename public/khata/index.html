@@ -887,6 +887,15 @@ select.psx-sel{display:none!important}
 .psx .psx-l li:hover,.psx .psx-l li.on{background:#EAF0FB;color:#1F4AA8}
 .psx .psx-l li.new{color:#1F7A3D;font-weight:800;border-top:1px dashed #DCE3EF;margin-top:2px}
 .psx .psx-l li.none{color:#8A94A8;font-weight:500;cursor:default}
+.acct .psx{flex:1}
+@media (max-width: 700px){ .acct{flex-wrap:wrap} .acct .psx{flex:1 1 calc(100% - 90px)} }
+#amdani .aprev{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 10px;margin:8px 0 2px;padding:10px 14px;border-radius:10px;background:#FFF4F5;border:1px solid #F5C2C9}
+#amdani .aprev .ap-k{font-size:13.5px;font-weight:600;color:#6B5A60}
+#amdani .aprev .ap-v{font-family:"Baloo Da 2","Noto Sans Bengali",sans-serif;font-size:20px;font-weight:800;color:#C0152F}
+#amdani .aprev .ap-v.after{color:#1F4AA8}
+#amdani .aprev .ap-v.adv{color:#1F7A3D}
+#amdani .aprev .ap-arrow{color:#8A94A8;font-weight:800}
+.acct .psx .psx-l{max-height:360px}
 .cmd .psx .psx-l{position:static;margin-top:6px;max-height:260px}
 @media (max-width: 700px){ .psx .psx-l{position:static;margin-top:6px;max-height:260px} }
 .cm-back{flex:none;width:30px;height:30px;border-radius:50%;background:#7A4A1E;color:#fff;font-size:14px;padding:0;line-height:1}
@@ -5141,6 +5150,7 @@ function getDB(){
     { const lr = document.getElementById('ledger'); if(lr) lr.classList.toggle('pastday', LD() !== isoOfL(new Date())); }
     if($('goTodayL')) $('goTodayL').onclick = () => { lDate = null; render(); };
     if($('accSel')) $('accSel').onchange = e => { curId = e.target.value; try{localStorage.setItem(LSCUR,curId);}catch(_){}; form={mode:'new',type:'credit',editId:null}; render(); };
+    partySearch($('accSel'));   // খতিয়ান: type any part of the party name
     if($('renBtn')) $('renBtn').onclick = ()=>{ accMode='rename'; render(); $('accName').focus(); };
     $('newAccBtn').onclick = openNewParty;
     if($('delAccBtn')) $('delAccBtn').onclick = async () => {
@@ -5976,6 +5986,7 @@ function getDB(){
           <button type="button" class="combo-btn" id="aToggle" aria-label="সব পার্টি দেখুন">▾</button>
           <ul class="combo-list" id="aList" role="listbox" hidden></ul>
         </div>
+        <div class="aprev" id="aPrevDue" hidden></div>
         <div class="newparty" id="aNew" hidden>
           <p class="np-h">＋ নতুন পার্টি তৈরি করুন</p>
           <label for="aNewName">পার্টির নাম</label>
@@ -6105,10 +6116,21 @@ function getDB(){
     const list = $('aList');
     const showHint = ()=>{
       const n = name.value.trim(); hint.className='hint';
-      if(!n){ hint.textContent='পুরনো পার্টি হলে তালিকা থেকে বাছুন, নতুন হলে "+ নতুন পার্টি" চাপুন।'; return; }
+      if(!n){ hint.textContent='পুরনো পার্টি হলে তালিকা থেকে বাছুন, নতুন হলে "+ নতুন পার্টি" চাপুন।'; if($('aPrevDue')) $('aPrevDue').hidden = true; return; }
       const a = findAcc(n);
-      hint.textContent = a ? `${a.name}: এখন ${balTxt(balOf(a))}` : `"${n}" নতুন পার্টি। যোগ করলে খতিয়ানে খোলা হবে।`;
+      hint.textContent = a ? '' : `"${n}" নতুন পার্টি। যোগ করলে খতিয়ানে খোলা হবে।`;
+      paintPrev();
     };
+    // আগের বাকি of the chosen party, and what it becomes after this জমা
+    const paintPrev = () => {
+      const bx = $('aPrevDue'); if(!bx) return; const a = findAcc(name.value || '');
+      if(!a){ bx.hidden = true; return; }
+      const b = balOf(a), v = parseNum(amt.value), lab = x => x < 0 ? 'অগ্রিম' : 'বাকি';
+      bx.innerHTML = `<span class="ap-k">আগের ${lab(b)}</span><b class="ap-v ${b < 0 ? 'adv' : ''}">${bn(Math.abs(b))} ৳</b>`
+        + (v > 0 ? `<span class="ap-arrow">→</span><span class="ap-k">জমার পর ${lab(b - v)}</span><b class="ap-v after ${b - v < 0 ? 'adv' : ''}">${bn(Math.abs(b - v))} ৳</b>` : '');
+      bx.hidden = false;
+    };
+    amt.addEventListener('input', paintPrev);
     const openList = ()=>{
       const q = name.value.trim().toLowerCase();
       const items = [...accs].sort((x,y)=>x.name.localeCompare(y.name,'bn'))

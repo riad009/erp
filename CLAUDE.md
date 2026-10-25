@@ -42,14 +42,14 @@ Tabs: স্টক · দৈনিক · মেমো · খতিয়ান �
   - ✎ next to গাড়ি নং (day list গাড়ি line + month pop-up) → `startCarEdit()` opens the same মাল pop-up filled with that গাড়ি (কোম্পানি, every মাল line + কেজি + কয়েল, গাড়ি নং, দর, চালান) → ✓ সেভ করুন replaces those lines (and their কোম্পানি চালান lines); 🗑 removes the whole গাড়ি. গাড়ি নং is saved in Bangla digits.
   - 🚚 মাল আসছে form: one গাড়ি can carry several মাল lines (＋ আরো মাল); each line = মাল + কেজি + কয়েল নং (`coil` on the stock entry); গাড়ি নং / দর / চালান নং are shared and saved on every line.
 - মাল is picked with the pop-up **মার্কা → সাইজ**. Printed memo shows only **সফট / হার্ড + কেজি** (no sizes).
-- পার্টি box in the memo / জমা form = search box (`partySearch(sel)` over the hidden `#fParty` select): type any part of the name/location → matches (names starting with it first), ↑↓ Enter, "＋ নতুন পার্টি" always last.
+- পার্টি box in the memo / জমা form and the খতিয়ান "হিসাব" picker (`#accSel`) = search box (`partySearch(sel)` over the hidden select): type any part of the name/location → matches (names starting with it first), ↑↓ Enter, "＋ নতুন পার্টি" always last.
 - Memo form: কাগজ or ডিজিটাল (setting). Digital = step by step: party first → মাল; one কেজি + দর box per size line with its টাকা (ক্রমিক ১. ২. …; the same size can be picked again as its own line; after the first মাল the top "মাল বাছাই করুন" hides and only "＋ আরো মাল যোগ করুন" (after the last group) adds more). In the digital form the সফট/হার্ড "মোট হিসাব" row is hidden once sizes are picked (owner's wish; it still holds the sums). In the paper form that row's দর box sets every line of that type ("আলাদা আলাদা দর" when they differ). Saved: each pick has `rate`; `items` = one line per type + দর (so the printed memo shows kg × দর per দর); লেবার hidden until মাল picked; full summary pop-up before saving.
 - Stock check: warn when making a memo with low stock ("তবুও মেমো করুন (মাল পরে যাবে)"); that memo shows "⏳ স্টকে কম — মাল আসলে নিজে যাবে" until stock arrives.
 - **মেমো = মাল বিক্রি only.** টাকা জমা (from খতিয়ান or দৈনিক → নতুন জমা) gets no memo number and never shows in the মেমো tab — it is only in খতিয়ান / দৈনিক.
 - Saving a memo = the goods leave the stock right away (no "মাল পাঠান / গেছে / ফেরান" buttons anywhere). Only if a size is short, the memo waits and goes out **by itself** when enough stock comes in (`window.__ledger.autoSend`).
 - লাভ = (বিক্রি দর − কেনা দর) × কেজি per size; কেনা দর = size ✎ value, else latest কোম্পানি চালান দর (per টন ÷ 1000). লেবার is not profit. Memo stores the cost of that day.
 - দৈনিক: 3 tiles (সাবেক জমা + নিট = হাতে নগদ), then আমদানি | খরচ | বিক্রয় columns; adding happens in pop-ups.
-  - নতুন জমা has কার মাধ্যমে (`via`) + optional রেফারেন্স (`ref`) on the জমা entry, shown in আমদানি list and খতিয়ান.
+  - নতুন জমা has কার মাধ্যমে (`via`) + optional রেফারেন্স (`ref`) on the জমা entry, shown in আমদানি list and খতিয়ান. After a party is chosen a box shows its **আগের বাকি** and, once টাকা is typed, **জমার পর বাকি** (`#aPrevDue`).
   - খরচ column has a 💰 বিবিধ খরচ (খুচরা) card: items saved in the same day's khoroch list with `misc:true`; the main খরচ list shows them as one auto line "বিবিধ খরচ (খুচরা)" = their sum (totals already include them).
 - Fonts: Noto Sans Bengali (clear ১), Baloo Da 2 for numbers, Tiro Bangla headings.
 
