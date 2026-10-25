@@ -2483,6 +2483,10 @@ html body #stock .ssub .st[aria-selected="false"]:hover{filter:brightness(.97)}
 .cmform.cmd .cm-tbl tr.pkrow td.d{grid-column:1;flex-wrap:wrap;gap:6px}
 .cmform.cmd .cm-tbl tr.pkrow td:nth-child(3){grid-column:2}
 .cmform.cmd .cm-tbl tr.pkrow{grid-template-columns:repeat(3,minmax(0,1fr))!important}
+/* sizes picked → every line has its own দর + টাকা, so the সফট / হার্ড "মোট হিসাব" row is not shown (still used for the totals) */
+.cmform.cmd .cm-tbl tr.pkrow + tr[id^="row_"]{display:none!important}
+.cmform.cmd .cm-tbl tr.pkrow:has(+ tr[id^="row_"]){border-radius:0 0 12px 12px!important;border-bottom:1px solid #DCE3EF!important;margin-bottom:10px!important}
+.cmform.cmd .cm-tbl tr.pkrow.pkfirst:has(+ tr[id^="row_"]){border-radius:12px!important}
 .cmform.cmd .cm-tbl tr.pkrow td.d{grid-column:1 / -1!important}
 .cmform.cmd .cm-tbl tr.pkrow td:nth-child(3){grid-column:auto!important}
 .cmform.cmd .cm-tbl tr.pkrow td.cmp-amt{align-self:center;font-family:"Baloo Da 2","Noto Sans Bengali",sans-serif;font-size:15px;color:#1B2347}
