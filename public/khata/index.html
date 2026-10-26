@@ -2158,7 +2158,14 @@ body.theme-pro #stock ol.entries .spec,body.theme-pro #stock ol.entries .itm,bod
 .syncbar #sbUp{background:#1F7A3F;color:#fff}
 .syncbar #sbNo{background:#fff;color:#B42318;border:1.5px solid #F2B8C0}
 .syncbar #sbNo.armed{background:#B42318;color:#fff}
-.syncbar.off{background:#FFF1F2;border-color:#F2B8C0;color:#8A1C1C;flex-direction:column;align-items:flex-start;gap:2px}
+.syncbar.off{top:8px;bottom:auto;left:50%;right:auto;transform:translateX(-50%);width:max-content;max-width:calc(100vw - 24px);box-sizing:border-box;padding:6px 8px 6px 14px;flex-wrap:nowrap;gap:8px;background:#FFF1F2;border:1.5px solid #F2B8C0;color:#8A1C1C;font-size:13px;box-shadow:0 6px 18px rgba(12,24,48,.15)}
+.syncbar.off button{padding:2px 9px;background:#fff;color:#8A1C1C;border:1px solid #F2B8C0;border-radius:999px;font-size:15px}
+@media (min-width: 900px){ .syncbar.off{left:calc(50% + var(--side, 224px) / 2)} }
+.cm-sum .sum-in{width:100%;box-sizing:border-box;min-height:42px;padding:4px 10px!important;border:1.5px solid #DCE3EF!important;border-radius:10px!important;background:#fff!important;font-family:"Baloo Da 2","Noto Sans Bengali",sans-serif!important;font-size:22px!important;font-weight:800!important;color:#1B2347;text-align:left}
+.cm-sum .due .sum-in{color:#C0152F}
+.cm-sum .due .sum-in.adv{color:#1F7A3D}
+.cm-sum .sum-auto{margin-left:6px;width:24px;height:24px;padding:0;border-radius:50%;border:1px solid #DCE3EF;background:#fff;color:#1F4AA8;font-weight:800;font-size:13px;cursor:pointer}
+.cm-sum .sum-auto[hidden]{display:none}
 .mdrafts{margin:12px 0;padding:10px 12px;border-radius:12px;background:#FFFBEA;border:1.5px dashed #E2C15C}
 .mdrafts h3{margin:0 0 8px;font-size:16px;color:#7A5A00}
 .mdrafts h3 small{font-size:12.5px;font-weight:600;color:#9A7B20;margin-left:6px}
@@ -5000,7 +5007,7 @@ function getDB(){
   }
   function paintSync(){
     let bar = document.getElementById('syncBar');
-    if(!db && !bar && !document.getElementById('offBar')){ const o = document.createElement('div'); o.id = 'offBar'; o.className = 'syncbar off'; o.innerHTML = '<b>⚠️ অনলাইনে যুক্ত নেই</b><span>এখন শুধু এই ডিভাইসে সেভ হচ্ছে। ইন্টারনেট ঠিক হলে পাতা রিফ্রেশ করুন।</span>'; document.body.appendChild(o); }
+    if(!db && !bar && !document.getElementById('offBar')){ const o = document.createElement('div'); o.id = 'offBar'; o.className = 'syncbar off'; o.innerHTML = '<span><b>⚠️ অনলাইনে যুক্ত নেই</b> — এখন শুধু এই ডিভাইসে সেভ হচ্ছে, ইন্টারনেট ঠিক হলে পাতা রিফ্রেশ করুন।</span><button type="button" aria-label="বন্ধ">×</button>'; o.querySelector('button').onclick = () => o.remove(); document.body.appendChild(o); }
     if(!unsynced.length){ if(bar) bar.remove(); return; }
     if(!bar){ bar = document.createElement('div'); bar.id = 'syncBar'; bar.className = 'syncbar'; document.body.appendChild(bar); }
     const line = u => u.party ? `নতুন পার্টি ${esc(u.party.name)}` : `${esc(u.name)} · ${u.e.memoNo ? 'মেমো #' + toBn(u.e.memoNo) : (Number(u.e.debit) > 0 ? 'জমা' : 'লেনদেন')} · ${toBn((u.e.date||'').slice(8,10) + '/' + (u.e.date||'').slice(5,7))}${Number(u.e.credit) > 0 ? ' · ' + bn(u.e.credit) + ' ৳' : (Number(u.e.debit) > 0 ? ' · ' + bn(u.e.debit) + ' ৳' : '')}`;
@@ -5156,8 +5163,8 @@ function getDB(){
             <div class="cm-thanks">ধন্যবাদ আবার আসবেন।</div>
             <div class="cm-sum">
               <div><span>মোট</span><b id="cmTot">০/-</b></div>
-              <div class="adv"><span>অগ্রীম</span><b id="cmAdv"></b></div>
-              <div class="due"><span>বাকী</span><b id="cmDue"></b></div>
+              <div class="adv"><span>অগ্রীম <button type="button" class="sum-auto" id="fAdvAuto" hidden title="নিজে হিসাব">↺</button></span><b id="cmAdv" hidden></b><input id="fAdvAmt" class="num sum-in" inputmode="decimal" autocomplete="off" aria-label="অগ্রীম"></div>
+              <div class="due"><span>বাকী <button type="button" class="sum-auto" id="fDueAuto" hidden title="নিজে হিসাব">↺</button></span><b id="cmDue" hidden></b><input id="fDueAmt" class="num sum-in" inputmode="decimal" autocomplete="off" aria-label="বাকী"></div>
             </div>
           </div>
           <div class="cm-words"><span>টাকা (কথায়)</span><b id="cmWords"></b></div>
@@ -5534,6 +5541,7 @@ function getDB(){
     let kgNote = '';   // "(কেজি×রেট)" saved with a খরচ line
     let picks = [];    // মেমো: sizes picked from the মার্কা list (only the shop sees these, not the customer)
     let labMan = null; // লেবার টাকা typed by hand (null = worked out from কেজি × দর)
+    let advMan = null, dueMan = null;   // অগ্রীম / বাকী typed by hand (only what the memo paper shows; the খতিয়ান is not changed)
     const selTypes = () => [...document.querySelectorAll('#lform .mtc')].filter(b=>b.getAttribute('aria-pressed')==='true').map(b=>b.dataset.mt);
     const raw = el => toBn(toEn(el.value));
     const calcKg = ()=>{
@@ -5678,6 +5686,7 @@ function getDB(){
           }
           if($('fLab')) $('fLab').checked = !E.labourOff;
           if(E.labourManual && E.labour != null) labMan = Number(E.labour);
+          if(E.memoAdv != null) advMan = Number(E.memoAdv); if(E.memoDue != null) dueMan = Number(E.memoDue);
           drawPicks(); applySums();
         }
       }
@@ -5688,6 +5697,7 @@ function getDB(){
           if($('fAddr') && D.addr) $('fAddr').value = D.addr;
           if($('fLab') && D.lab === false) $('fLab').checked = false;
           if(D.labMan != null) labMan = Number(D.labMan);
+          if(D.advMan != null) advMan = Number(D.advMan); if(D.dueMan != null) dueMan = Number(D.dueMan);
           if(D.party === '__new' && $('fNewParty')){ $('fParty').value = '__new'; $('fParty').dispatchEvent(new Event('change')); $('fNewParty').value = D.newName || ''; if($('fNewLoc')) $('fNewLoc').value = D.newLoc || ''; }
           drawPicks(); applySums();
         }
@@ -5717,10 +5727,21 @@ function getDB(){
       $('cmPrev').textContent = before < 0 ? 'অগ্রিম '+bn(-before) : bn(before)+'/-';
       $('cmTot').textContent = bn(total)+'/-';
       const after = before + total;
-      $('cmAdv').textContent = before < 0 ? bn(-before)+'/-' : '';
-      $('cmDue').textContent = after < 0 ? 'অগ্রিম '+bn(-after) : bn(after)+'/-';
+      // অগ্রীম / বাকী: worked out, or what was typed (typing অগ্রীম also changes বাকী = মোট + আগের বাকি − অগ্রীম)
+      const advV = advMan != null ? advMan : (before < 0 ? -before : 0);
+      const dueV = dueMan != null ? dueMan : (advMan != null ? total + Math.max(before, 0) - advMan : after);
+      $('cmAdv').textContent = advV ? bn(advV)+'/-' : '';
+      $('cmDue').textContent = dueV < 0 ? 'অগ্রিম '+bn(-dueV) : bn(dueV)+'/-';
+      if(document.activeElement !== $('fAdvAmt')) $('fAdvAmt').value = advV ? bn(advV) : '';
+      if(document.activeElement !== $('fDueAmt')) $('fDueAmt').value = dueV < 0 ? '-' + bn(-dueV) : bn(dueV);
+      $('fAdvAuto').hidden = advMan == null; $('fDueAuto').hidden = dueMan == null;
+      $('fDueAmt').classList.toggle('adv', dueV < 0);
       $('cmWords').textContent = total > 0 && window.__inWords ? window.__inWords(total)+' টাকা মাত্র' : '';
     };
+    [['fAdvAmt', v => { advMan = v; }], ['fDueAmt', v => { dueMan = v; }]].forEach(([id, set]) => { const el = $(id); if(!el) return;
+      el.addEventListener('input', () => { const raw = el.value.trim(), v = parseNum(raw.replace(/^[-−]/, '')); set(raw === '' || isNaN(v) ? null : (/^[-−]/.test(raw) ? -v : v)); paintCm(); });
+      el.addEventListener('blur', () => paintCm()); });
+    if($('fAdvAuto')){ $('fAdvAuto').onclick = () => { advMan = null; paintCm(); }; $('fDueAuto').onclick = () => { dueMan = null; paintCm(); }; }
     if($('fLabAmt')){
       $('fLabAmt').addEventListener('input', () => { const v = parseNum($('fLabAmt').value); labMan = isNaN(v) || $('fLabAmt').value.trim() === '' ? null : v; calcLab(); paintCm(); });
       $('fLabAmt').addEventListener('blur', () => paintCm());
@@ -5843,6 +5864,7 @@ function getDB(){
       } else { delete target.kg; delete target.status; delete target.confirmedOn; delete target.mtype; delete target.items; delete target.goods; delete target.labour; delete target.labourRaw; delete target.roundAdj; delete target.labourRate; }
       if(form.mode==='edit' || wasSale){ keepY = window.scrollY; noScrollFlash = true; }
       if(wasSale){ const pn = $('fPaperNo') ? $('fPaperNo').value.trim() : ''; if(pn) target.paperNo = pn; else delete target.paperNo; }   // হাতের (কাগজের) মেমো নং
+      if(wasSale){ if(advMan != null) target.memoAdv = advMan; else delete target.memoAdv; if(dueMan != null) target.memoDue = dueMan; else delete target.memoDue; }   // অগ্রীম / বাকী typed on the memo
       const doneDraft = form.draftId;
       save(acc); restoreDate(); form = {mode:'new', type:'debit', editId:null}; render();
       if(doneDraft){ drafts = drafts.filter(x => x.id !== doneDraft); saveDrafts(); }
@@ -5858,7 +5880,7 @@ function getDB(){
       const pk = picks.filter(p => p.item).map(p => ({item:p.item, kg:p.kg||0, rate:p.rate||0}));
       if(!pv && !pk.length){ const h = $('fHint'); if(h){ h.textContent = 'খসড়া সেভ করতে অন্তত পার্টি বা মাল দিন।'; h.className = 'lhint err'; } return; }
       const D = {id: form.draftId || uid(), ts: Date.now(), date: LD(), party: pv, newName: $('fNewParty') ? $('fNewParty').value.trim() : '', newLoc: $('fNewLoc') ? $('fNewLoc').value.trim() : '',
-        addr: $('fAddr') ? $('fAddr').value.trim() : '', paperNo: $('fPaperNo') ? $('fPaperNo').value.trim() : '', lab: $('fLab') ? $('fLab').checked : true, labMan, picks: pk};
+        addr: $('fAddr') ? $('fAddr').value.trim() : '', paperNo: $('fPaperNo') ? $('fPaperNo').value.trim() : '', lab: $('fLab') ? $('fLab').checked : true, labMan, advMan, dueMan, picks: pk};
       const a = accs.find(x => x.id === pv); D.name = pv === '__new' ? D.newName : (a ? pnm(a) : '');
       D.kg = pk.reduce((t, p) => t + (p.kg||0), 0); D.amt = pk.reduce((t, p) => t + Math.round((p.kg||0) * (p.rate||0)), 0);
       const k = drafts.findIndex(x => x.id === D.id); if(k >= 0) drafts[k] = D; else drafts.unshift(D);
@@ -6932,8 +6954,9 @@ document.addEventListener('input', e=>{
     } else {
       rows.push({g:'', desc:'নগদ জমা', q:'', r:'', v: bn(amt)+'/-'});
     }
-    const advance = before < 0 ? -before : 0;
-    const due = after > 0 ? after : 0;
+    const advance = e.memoAdv != null ? Number(e.memoAdv) : (before < 0 ? -before : 0);   // typed on the memo, else worked out
+    const dueV = e.memoDue != null ? Number(e.memoDue) : (e.memoAdv != null ? amt + Math.max(before, 0) - Number(e.memoAdv) : after);
+    const due = dueV > 0 ? dueV : 0;
     const blank = Math.max(0, (forPdf ? 9 : 4) - rows.length);
     return `<div class="cm ${forPdf?'forpdf':''}">
       <div class="cm-head">
@@ -6970,7 +6993,7 @@ document.addEventListener('input', e=>{
         <div class="cm-sum">
           <div><span>মোট</span><b>${bn(amt)}/-</b></div>
           <div class="adv"><span>অগ্রীম</span><b>${advance ? bn(advance)+'/-' : ''}</b></div>
-          <div class="due"><span>বাকী</span><b>${after < 0 ? 'অগ্রিম '+bn(-after) : bn(due)+'/-'}</b></div>
+          <div class="due"><span>বাকী</span><b>${dueV < 0 ? 'অগ্রিম '+bn(-dueV) : bn(due)+'/-'}</b></div>
         </div>
       </div>
       <div class="cm-words"><span>টাকা (কথায়)</span><b>${inWords(amt)} টাকা মাত্র</b></div>
