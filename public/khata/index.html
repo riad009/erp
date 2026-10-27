@@ -2166,6 +2166,7 @@ body.theme-pro #stock ol.entries .spec,body.theme-pro #stock ol.entries .itm,bod
 .cm-sum .due .sum-in.adv{color:#1F7A3D}
 .cm-sum .sum-auto{margin-left:6px;width:24px;height:24px;padding:0;border-radius:50%;border:1px solid #DCE3EF;background:#fff;color:#1F4AA8;font-weight:800;font-size:13px;cursor:pointer}
 .cm-sum .sum-auto[hidden]{display:none}
+.cm-dpick:hover{outline:2px solid #1F4AA8;outline-offset:2px;border-radius:8px}
 .mdrafts{margin:12px 0;padding:10px 12px;border-radius:12px;background:#FFFBEA;border:1.5px dashed #E2C15C}
 .mdrafts h3{margin:0 0 8px;font-size:16px;color:#7A5A00}
 .mdrafts h3 small{font-size:12.5px;font-weight:600;color:#9A7B20;margin-left:6px}
@@ -3144,7 +3145,7 @@ function uHead(title, sub){
 }
 // tap anywhere on the date pill → the calendar opens (pick any day directly)
 document.addEventListener('click', e => {
-  const l = e.target.closest && e.target.closest('.uhd label.udp'); if(!l) return;
+  const l = e.target.closest && e.target.closest('.uhd label.udp, label.cm-dpick'); if(!l) return;   // header pill + the memo form's তারিখ box
   const inp = l.querySelector('input[type="date"]'); if(!inp) return;
   if(typeof inp.showPicker !== 'function') return;   // older browsers: the (invisible) date box on top opens by itself
   e.preventDefault(); try{ inp.showPicker(); }catch(_){ try{ inp.focus(); inp.click(); }catch(__){} }
@@ -5851,7 +5852,7 @@ function getDB(){
             target.status = prevSt;
           }
           // short or not, the memo is done and its মাল leaves now — the stock stops at ০ (never minus)
-          void short; if(target.status !== 'confirmed'){ target.status = 'confirmed'; target.confirmedOn = target.date; }
+          void short; target.status = 'confirmed'; target.confirmedOn = target.date;   // date changed while editing → the মাল leaves on the new date too
         }
         const kgT = entryKg(target);
         if($('fLab') && $('fLab').checked && kgT > 0){
