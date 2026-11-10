@@ -2,7 +2,8 @@ import { randomBytes } from 'node:crypto';
 import { getMongo } from '@/lib/mongo';
 import { currentUser, hashPass, cleanPerms, FEATURES, type User } from '@/lib/auth';
 import { logAct } from '@/lib/activity';
-import { getCfg, saveCfg, sendDaily } from '@/lib/report';
+import { getCfg, saveCfg, sendDaily, fullBackup } from '@/lib/report';
+import { PARTS, counts, wipe } from '@/lib/wipe';
 
 // super admin only: users + their permissions, the nightly email
 export const dynamic = 'force-dynamic';
@@ -85,6 +86,16 @@ export async function POST(req: Request) {
         await logAct(db, me, { kind: 'email', action: 'ইমেইল সেটিং', label: '✉️ দিনের ইমেইল সেটিং', lines: [(body.enabled ? 'চালু' : 'বন্ধ') + ' · ' + (to.join(', ') || 'কোনো ইমেইল নেই')] });
         return Response.json({ ok: true });
       }
+      // 🗑 ডেটা মুছুন (user accounts always stay)
+      case 'wipeInfo':
+        return Response.json({ parts: PARTS, counts: await counts(db) });
+      case 'wipe': {
+        if (!PARTS[body.part]) return Response.json({ error: 'ভুল অংশ' }, { status: 400 });
+        if (String(body.confirm || '').trim() !== 'মুছে ফেলুন') return Response.json({ error: 'নিশ্চিত করতে "মুছে ফেলুন" লিখুন' }, { status: 400 });
+        return Response.json(await wipe(db, body.part, me));
+      }
+      case 'backup':
+        return Response.json(await fullBackup(db));
       case 'sendNow':
         return Response.json(await sendDaily(db, { force: true, who: me }));
       default:

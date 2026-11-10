@@ -8,13 +8,15 @@ import type { User } from './auth';
 type Data = Record<string, unknown>;
 export type Act = {
   _id: string; ts: number; uid: string; uname: string;
-  kind: 'data' | 'login' | 'logout' | 'user' | 'email' | 'undo' | 'import';
+  kind: 'data' | 'login' | 'logout' | 'user' | 'email' | 'undo' | 'import' | 'wipe';
   action: string;            // নতুন | পরিবর্তন | মুছে ফেলা | …
   label: string;             // what it was about: party name, স্টক দিন …
   lines: string[];           // short details (Bangla)
   path?: string; before?: Data | null; existed?: boolean;
   cid?: string;              // which open page (browser tab) made the change — live sync skips its own
-  undone?: { ts: number; uname: string };
+  undone?: { ts: number; uname: string; by?: string; cascade?: boolean };   // later ফেরানো (cascade = went with an earlier one)
+  undoOf?: { id: string; ts: number; uname: string; label: string };          // on a ফেরানো line: the line it reverted
+  snapshot?: Record<string, unknown[]>; restorable?: boolean;                // on a 🗑 সব মুছে ফেলা line
 };
 
 const BD = '০১২৩৪৫৬৭৮৯';

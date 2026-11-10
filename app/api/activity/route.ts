@@ -2,6 +2,7 @@ import { getMongo } from '@/lib/mongo';
 import { currentUser, can, type User } from '@/lib/auth';
 import { setDoc, deleteDoc, getDoc } from '@/lib/store';
 import { logAct, describe, type Act } from '@/lib/activity';
+import { restore } from '@/lib/wipe';
 
 // the activity list: {op:'list'} · {op:'undo', id} · {op:'delete', id}
 export const dynamic = 'force-dynamic';
@@ -22,13 +23,13 @@ export async function POST(req: Request) {
     if (body.op === 'list') {
       const q: Record<string, unknown> = {};
       if (body.user) q.uid = String(body.user);
-      if (body.kind === 'data') q.kind = { $in: ['data', 'undo', 'import'] };
-      else if (body.kind === 'other') q.kind = { $nin: ['data', 'undo', 'import'] };
+      if (body.kind === 'data') q.kind = { $in: ['data', 'undo', 'import', 'wipe'] };
+      else if (body.kind === 'other') q.kind = { $nin: ['data', 'undo', 'import', 'wipe'] };
       if (body.date) { const s = new Date(body.date + 'T00:00:00+06:00').getTime(); q.ts = { $gte: s, $lt: s + 864e5 }; }
       if (body.before) q.ts = { ...(q.ts as object || {}), $lt: Number(body.before) };
-      const rows = await acts.find(q, { projection: { before: 0 } }).sort({ ts: -1 }).limit(60).toArray();
+      const rows = await acts.find(q, { projection: { before: 0, snapshot: 0 } }).sort({ ts: -1 }).limit(60).toArray();
       const users = await db.collection<User>('users').find({}, { projection: { name: 1 } }).toArray();
-      return Response.json({ rows: rows.map(r => ({ ...r, canUndo: (r.kind === 'data' || r.kind === 'undo') && !r.undone })), users: users.map(u => ({ id: u._id, name: u.name })), more: rows.length === 60 });
+      return Response.json({ rows: rows.map(r => ({ ...r, canUndo: (r.kind === 'data' || (r.kind === 'undo' && r.path !== '*') || (r.kind === 'wipe' && r.restorable)) && !r.undone })), users: users.map(u => ({ id: u._id, name: u.name })), more: rows.length === 60 });
     }
 
     if (!can(me, 'undo')) return Response.json({ error: 'অনুমতি নেই' }, { status: 403 });
@@ -40,8 +41,18 @@ export async function POST(req: Request) {
       return Response.json({ ok: true });
     }
 
+    if (body.op === 'undo' && a.kind === 'wipe') {
+      if (a.undone) return Response.json({ error: 'আগেই ফেরানো হয়েছে' }, { status: 400 });
+      if (!a.snapshot) return Response.json({ error: 'এটা ফেরানো যায় না — ব্যাকআপ ফাইল দিয়ে ফেরত আনুন' }, { status: 400 });
+      await restore(db, a.snapshot as Parameters<typeof restore>[1]);
+      await acts.updateOne({ _id: a._id }, { $set: { undone: { ts: Date.now(), uname: me.name } } });
+      await logAct(db, me, { kind: 'undo', action: 'ফেরানো', label: '↶ ফেরানো — ' + a.label.replace(/ — .*$/, '') + ' আবার ফিরে এসেছে', lines: a.lines,
+        path: '*', undoOf: { id: a._id, ts: a.ts, uname: a.uname, label: a.label } });
+      return Response.json({ ok: true, gone: [], later: 0, all: true });
+    }
+
     if (body.op === 'undo') {
-      if ((a.kind !== 'data' && a.kind !== 'undo') || !a.path) return Response.json({ error: 'এটা ফেরানো যায় না' }, { status: 400 });
+      if ((a.kind !== 'data' && a.kind !== 'undo') || !a.path || a.path === '*') return Response.json({ error: 'এটা ফেরানো যায় না' }, { status: 400 });
       if (a.undone) return Response.json({ error: 'আগেই ফেরানো হয়েছে' }, { status: 400 });
       // later changes on the same record would be undone too → ask first
       const laterQ = { path: a.path, ts: { $gt: a.ts }, kind: { $in: ['data', 'undo'] }, undone: { $exists: false } } as const;
@@ -53,10 +64,11 @@ export async function POST(req: Request) {
       // entries that disappear with this undo: the app must not offer to "upload" them again from its old copy
       const gone = [...ids(now, 'entries').filter(x => !ids(back, 'entries').includes(x)), ...(!back && now?.id ? [String(now.id)] : [])];
       const d = describe(a.path, now, back);
-      const mark = { $set: { undone: { ts: Date.now(), uname: me.name } } };
-      await acts.updateMany(laterQ, mark);
-      await acts.updateOne({ _id: a._id }, mark);
-      await logAct(db, me, { kind: 'undo', action: 'ফেরানো', label: '↶ ফেরানো — ' + a.label, lines: d.lines, path: a.path, before: now, existed: cur.exists });
+      const undoId = Date.now().toString(36) + Math.random().toString(36).slice(2, 10), t = Date.now();
+      await acts.updateMany(laterQ, { $set: { undone: { ts: t, uname: me.name, by: undoId, cascade: true } } });
+      await acts.updateOne({ _id: a._id }, { $set: { undone: { ts: t, uname: me.name, by: undoId } } });
+      await acts.insertOne({ _id: undoId, ts: t, uid: me._id, uname: me.name, kind: 'undo', action: 'ফেরানো', label: '↶ ফেরানো — ' + a.label, lines: d.lines,
+        path: a.path, before: now, existed: cur.exists, undoOf: { id: a._id, ts: a.ts, uname: a.uname, label: a.label } });
       return Response.json({ ok: true, gone, later });
     }
     return Response.json({ error: 'bad op' }, { status: 400 });

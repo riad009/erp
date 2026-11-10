@@ -3238,7 +3238,10 @@ body.auth-wait .tabs button[data-tab], body.auth-wait main{visibility:hidden}
 .ac-day::after{content:"";flex:1;border-top:1.5px dashed #D3DCEA}
 .ac-list{display:flex;flex-direction:column;gap:8px}
 .ac-row{display:grid;grid-template-columns:62px minmax(0,1fr) auto;gap:4px 12px;align-items:start;padding:11px 14px;background:#fff;border:1px solid var(--line);border-radius:12px}
-.ac-row.undone{background:#FAFAFB;opacity:.75}
+.ac-row.undone{background:#FFF7F7;border:2px dotted #D92D20;opacity:1}
+.ac-row.undone ul li{text-decoration:line-through;text-decoration-color:rgba(192,21,47,.55)}
+.ac-row.flash{animation:acFlash 1.6s ease}
+@keyframes acFlash{0%,60%{box-shadow:0 0 0 4px rgba(31,74,168,.35)}100%{box-shadow:none}}
 .ac-row .tm{font-family:"Baloo Da 2",sans-serif;font-weight:700;font-size:15px;color:#475467;padding-top:2px}
 .ac-row .who{display:flex;flex-wrap:wrap;align-items:center;gap:6px;font-size:14px}
 .ac-row .who .nm{font-weight:800;color:var(--ink)}
@@ -3249,7 +3252,23 @@ body.auth-wait .tabs button[data-tab], body.auth-wait main{visibility:hidden}
 .ac-row ul{list-style:none;margin:4px 0 0;padding:0;font-size:13.5px;color:#475467;line-height:1.6}
 .ac-row li{word-break:break-word}
 .ac-row li.p{color:#1F7A3D} .ac-row li.m{color:#C0152F} .ac-row li.e{color:#1F4AA8}
-.ac-row .und{margin-top:5px;font-size:12.5px;font-weight:700;color:#A0610B}
+.ac-row .und{margin-top:8px;padding:7px 10px;border-radius:9px;background:#FFE9EC;color:#A3122A;font-size:13px;line-height:1.5}
+.ac-row .und .by{display:block;font-size:12px;font-weight:700;color:#7A1A2A}
+.ac-row .uof{margin-top:6px;padding:6px 10px;border-radius:9px;background:#FFF4E0;color:#7A4B00;font-size:12.5px}
+.ac-row .go{margin-left:8px;padding:2px 8px;border-radius:999px;border:1px solid currentColor;background:#fff;color:inherit;font-family:inherit;font-size:11.5px;font-weight:800;cursor:pointer}
+.ad-wipe{border-color:#F3B8C2}
+.ad-wipe h2{color:#A3122A}
+.wp-bk{padding:10px 14px;border-radius:10px;border:1.5px solid #1F4AA8;background:#fff;color:#1F4AA8;font-family:inherit;font-weight:800;font-size:14.5px;cursor:pointer;margin:0 0 12px}
+.wp-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px}
+.wp-c{display:flex;flex-direction:column;gap:5px;padding:12px;border:1.5px solid #F3D0D6;border-radius:12px;background:#FFFBFB}
+.wp-c b{font-size:15.5px} .wp-c small{color:#66728A;font-size:12.5px;line-height:1.45;flex:1}
+.wp-c .n{font-size:13px;font-weight:700;color:#344054}
+.wp-c button{margin-top:4px;padding:9px;border-radius:9px;border:1.5px solid #E5A3AE;background:#fff;color:#C0152F;font-family:inherit;font-weight:800;font-size:14px;cursor:pointer}
+.wp-c.all{grid-column:1 / -1;border-color:#C0152F;background:#FFF1F3}
+.wp-c.all button{background:#C0152F;border-color:#C0152F;color:#fff}
+.au .wp-what{padding:10px 12px;border-radius:10px;background:#FFF1F3;border:1px solid #F3B8C2;color:#7A1A2A;font-size:14px;line-height:1.6;margin-top:6px}
+.au .wp-keep{margin:10px 0;font-size:13px;color:#1F7A3D;font-weight:700;line-height:1.5}
+.au .acts button.r:disabled{opacity:.45;cursor:not-allowed}
 .ac-row .bt{display:flex;flex-direction:column;gap:6px;align-items:stretch}
 .ac-row .bt button{padding:7px 10px;border-radius:9px;font-family:inherit;font-size:13px;font-weight:800;cursor:pointer;white-space:nowrap;border:1.5px solid #C7D6EB;background:#fff;color:#1F4AA8}
 .ac-row .bt button.dl{color:#C0152F;border-color:#F3B8C2}
@@ -8034,7 +8053,7 @@ window.__appBack = () => {
     busy = false; paint();
   }
   const badge = a => {
-    const c = a.kind === 'undo' ? 'und' : a.action === 'নতুন' ? 'add' : a.action === 'মুছে ফেলা' ? 'del' : a.kind === 'data' ? 'chg' : '';
+    const c = a.kind === 'undo' ? 'und' : a.action === 'নতুন' ? 'add' : (a.action === 'মুছে ফেলা' || a.kind === 'wipe') ? 'del' : a.kind === 'data' ? 'chg' : '';
     return `<span class="bdg ${c}">${esc(a.action)}</span>`;
   };
   const line = t => { const c = t[0] === '＋' ? 'p' : t[0] === '－' ? 'm' : t[0] === '✎' ? 'e' : ''; return `<li class="${c}">${esc(t)}</li>`; };
@@ -8049,7 +8068,11 @@ window.__appBack = () => {
         <div><div class="who"><span class="nm">👤 ${esc(a.uname)}</span>${badge(a)}</div>
           <div class="lb">${esc(a.label)}</div>
           ${(a.lines||[]).length ? `<ul>${a.lines.map(line).join('')}</ul>` : ''}
-          ${a.undone ? `<div class="und">↶ ফেরানো হয়েছে — ${esc(a.undone.uname)}, ${timeTxt(a.undone.ts)}</div>` : ''}</div>
+          ${a.undone ? `<div class="und">⚠️ ${a.kind === 'wipe' ? `<b>এই মোছা ফেরানো হয়েছে</b> — মুছে ফেলা সব ডেটা আবার ফিরে এসেছে`
+              : a.undone.cascade ? `<b>এই কাজটা বাতিল হয়ে গেছে</b> — এর আগের একটা কাজ ফেরানোর সময় এটাও আগের অবস্থায় গেছে। এখানে যা লেখা, তা এখন আর নেই।`
+              : `<b>এই কাজটা পরে ফেরানো হয়েছে</b> — আগের অবস্থায় ফিরিয়ে নেওয়া হয়েছে। এখানে যা লেখা, তা এখন আর নেই।`}
+            <span class="by">${esc(a.undone.uname)} · ${dayTxt(a.undone.ts)}, ${timeTxt(a.undone.ts)}</span>${a.undone.by ? `<button type="button" class="go" data-go="${esc(a.undone.by)}">কোন লাইনে ফেরানো ↓</button>` : ''}</div>` : ''}
+          ${a.undoOf ? `<div class="uof">↶ যে কাজটা ফেরানো হলো: <b>${esc(a.undoOf.uname)}</b> · ${dayTxt(a.undoOf.ts)}, ${timeTxt(a.undoOf.ts)}<button type="button" class="go" data-go="${esc(a.undoOf.id)}">দেখুন ↓</button></div>` : ''}</div>
         <div class="bt">${canUndo && a.canUndo ? `<button type="button" class="un">↶ ফেরান</button>` : ''}${canUndo ? `<button type="button" class="dl">× মুছুন</button>` : ''}</div>
       </div>`;
     });
@@ -8066,6 +8089,12 @@ window.__appBack = () => {
     root.querySelector('#acD').onchange = e => { f.date = e.target.value; load(); };
     root.querySelectorAll('[data-k]').forEach(b => b.onclick = () => { f.kind = b.dataset.k; load(); });
     const mb = root.querySelector('#acMore'); if(mb) mb.onclick = () => load(true);
+    // jump to the line a ফেরানো belongs to (if it is in the loaded list)
+    root.querySelectorAll('[data-go]').forEach(b => b.onclick = () => {
+      const t = root.querySelector(`.ac-row[data-id="${CSS.escape(b.dataset.go)}"]`);
+      if(!t){ kToast('<b>ওই লাইনটা এই লিস্টে নেই</b><span>নিচে "আরো দেখুন" চাপুন বা তারিখ বদলান।</span>', 4000); return; }
+      t.scrollIntoView({block:'center', behavior:'smooth'}); t.classList.remove('flash'); void t.offsetWidth; t.classList.add('flash');
+    });
     root.querySelectorAll('.ac-row').forEach(r => {
       const a = rows.find(x => x._id === r.dataset.id);
       const ub = r.querySelector('.un'); if(ub) ub.onclick = () => undo(a);
@@ -8101,13 +8130,13 @@ window.__appBack = () => {
   const root = document.getElementById('admin');
   const BD = '০১২৩৪৫৬৭৮৯', toBn = s => String(s).replace(/[0-9]/g, d => BD[d]);
   const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-  let users = [], features = [], em = null, tos = [];
+  let users = [], features = [], em = null, tos = [], wipeInfo = {parts:{}, counts:{}};
   const fname = id => (features.find(x => x[0] === id) || [id, id])[1];
 
   async function load(){
     try{
-      const [u, e] = await Promise.all([__post('/api/admin', {op:'users'}), __post('/api/admin', {op:'email'})]);
-      users = u.users; features = u.features; em = e; tos = e.to.slice();
+      const [u, e, w] = await Promise.all([__post('/api/admin', {op:'users'}), __post('/api/admin', {op:'email'}), __post('/api/admin', {op:'wipeInfo'})]);
+      users = u.users; features = u.features; em = e; tos = e.to.slice(); wipeInfo = w;
     }catch(e){ root.innerHTML = uHead('👑 অ্যাডমিন প্যানেল', '') + `<p class="ac-empty">${esc(e.message)}</p>`; return; }
     paint();
   }
@@ -8140,9 +8169,22 @@ window.__appBack = () => {
         <div class="acts"><button type="button" class="p" id="emSave">✓ সেভ করুন</button><button type="button" id="emNow">✉️ এখনই একটা পাঠান (টেস্ট)</button></div>
         <p class="last">${em.lastSent ? 'শেষ পাঠানো: ' + toBn(em.lastSent.split('-').reverse().join('/')) : 'এখনো পাঠানো হয়নি'}</p>
         <p class="msg" id="emMsg"></p>
+      </section>
+      <section class="ad-sec ad-wipe">
+        <h2>🗑 ডেটা মুছে ফেলা</h2>
+        <p class="sub">পুরো একটা অংশ একবারে মুছে ফেলুন। <b>ইউজার অ্যাকাউন্ট কখনো মুছবে না।</b> ভুল হলে 📝 অ্যাক্টিভিটি থেকে ↶ ফেরান করে সব ফিরিয়ে আনা যাবে।</p>
+        <button type="button" class="wp-bk" id="wpBackup">⬇ আগে পুরো ডেটার ব্যাকআপ নামিয়ে রাখুন</button>
+        <div class="wp-grid">${Object.entries(wipeInfo.parts).map(([k, p]) => `
+          <div class="wp-c ${k === 'all' ? 'all' : ''}">
+            <b>${esc(p.label)}</b><small>${esc(p.what)}</small>
+            <span class="n">এখন আছে: ${toBn(wipeInfo.counts[k] || 0)}টা</span>
+            <button type="button" data-wipe="${k}">🗑 ${k === 'all' ? 'সব ডেটা মুছে ফেলুন' : 'মুছে ফেলুন'}</button>
+          </div>`).join('')}</div>
       </section>`;
     const $ = id => root.querySelector('#' + id);
     const pw = $('adPw'); if(pw) pw.onclick = () => document.getElementById('uBtn').click();
+    $('wpBackup').onclick = e => backup(e.currentTarget);
+    root.querySelectorAll('[data-wipe]').forEach(b => b.onclick = () => askWipe(b.dataset.wipe));
     $('adNew').onclick = () => edit(null);
     root.querySelectorAll('.ad-u').forEach(c => {
       const u = users.find(x => x.id === c.dataset.id);
@@ -8213,6 +8255,42 @@ window.__appBack = () => {
         load();
       }catch(e){ $('euErr').textContent = e.message; }
     };
+  }
+  // ⬇ full backup file (same as the nightly email's; /import.html puts it back)
+  async function backup(btn){
+    const orig = btn.textContent; btn.disabled = true; btn.textContent = '⏳ তৈরি হচ্ছে…';
+    try{
+      const data = await __post('/api/admin', {op:'backup'});
+      const name = 'khata-backup-' + new Date().toISOString().slice(0, 10) + '.json', blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
+      if(window.KhataApp && window.KhataApp.saveFile){
+        const r = new FileReader(); r.onload = () => window.KhataApp.saveFile(String(r.result).split(',')[1], name, 'application/json'); r.readAsDataURL(blob);
+      } else { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); a.remove(); }
+      btn.textContent = '✓ ব্যাকআপ নামানো হয়েছে';
+    }catch(e){ btn.textContent = '⚠️ ' + e.message; }
+    setTimeout(() => { btn.disabled = false; btn.textContent = orig; }, 3000);
+  }
+  function askWipe(k){
+    const p = wipeInfo.parts[k], n = wipeInfo.counts[k] || 0, WORD = 'মুছে ফেলুন';
+    const pop = __auPop(`<h3>🗑 ${esc(p.label)} মুছে ফেলবেন? <button class="x" data-close aria-label="বন্ধ">✕</button></h3>
+      <div class="wp-what"><b>যা মুছে যাবে:</b> ${esc(p.what)}<br><b>এখন আছে:</b> ${toBn(n)}টা রেকর্ড</div>
+      <p class="wp-keep">✓ ইউজার অ্যাকাউন্ট থাকবে · ✓ ভুল হলে 📝 অ্যাক্টিভিটি থেকে ↶ ফেরান করা যাবে · সব ফোন/কম্পিউটার থেকেও মুছে যাবে</p>
+      <button type="button" class="wp-bk" id="wpBk2">⬇ আগে ব্যাকআপ নামিয়ে রাখুন</button>
+      <label class="f">নিশ্চিত করতে নিচে লিখুন: <b style="color:#C0152F">${WORD}</b></label>
+      <input type="text" id="wpC" autocomplete="off" placeholder="${WORD}">
+      <p class="err" id="wpE"></p>
+      <div class="acts"><button data-close>বাতিল</button><button class="r" id="wpGo" disabled>🗑 মুছে ফেলুন</button></div>`);
+    const $ = id => pop.el.querySelector('#' + id);
+    $('wpBk2').onclick = e => backup(e.currentTarget);
+    $('wpC').oninput = () => { $('wpGo').disabled = $('wpC').value.trim() !== WORD; };
+    $('wpGo').onclick = async () => {
+      $('wpGo').disabled = true; $('wpGo').textContent = '⏳ মোছা হচ্ছে…';
+      try{
+        await __post('/api/admin', {op:'wipe', part:k, confirm:$('wpC').value.trim()});
+        pop.close(); kToast(`<b>✓ ${esc(p.label)} মুছে ফেলা হয়েছে</b><span>পাতা নতুন করে খুলছে…</span>`, 3000);
+        setTimeout(() => location.reload(), 900);
+      }catch(e){ $('wpE').textContent = e.message; $('wpGo').disabled = false; $('wpGo').textContent = '🗑 মুছে ফেলুন'; }
+    };
+    setTimeout(() => $('wpC').focus(), 50);
   }
   window.__adminRender = load;
 })();

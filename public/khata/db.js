@@ -171,6 +171,20 @@
     return b;
   }
 
+  // saved copies of the data in this browser (not login, not screen choices)
+  const WIPE_KEY = 'kg-khata-wipe-seen';
+  const DATA_KEYS = ['kg-khata-days-v1', 'kg-khata-ledger-v1', 'kg-khata-company-v1', 'kg-khata-khoroch-v1', 'kg-khata-cats-v1', 'kg-khata-rates',
+                     'kg-khata-sabek-v1', 'kg-khata-labour-rate', 'kg-khata-drafts', 'kg-khata-unsynced', CACHE_KEY];
+  function dropLocal(wipeTs){
+    let had = false;
+    DATA_KEYS.forEach(k => { try{ if(localStorage.getItem(k) != null){ had = true; localStorage.removeItem(k); } }catch(_){} });
+    clearTimeout(cacheT); Object.keys(cache).forEach(k => delete cache[k]);
+    const n = outbox.length;
+    outbox = outbox.filter(o => (o.t || 0) > wipeTs);   // saves made before the delete must not bring data back
+    if(outbox.length !== n){ had = true; keep(OUT_KEY, outbox); }
+    return had;
+  }
+
   let ready = null;
   window.__khataDB = {
     LS, toDocs, localBackup,
@@ -186,6 +200,14 @@
       if(!ready) ready = (async () => {
         try{
           const p = await call({op:'ping'});
+          // 👑 ডেটা মুছুন happened since this device last looked → drop every saved copy here (once), start fresh from online
+          if(p.wipe && p.wipe.ts){
+            let seen = 0; try{ seen = Number(localStorage.getItem(WIPE_KEY)) || 0; }catch(_){}
+            if(p.wipe.ts > seen){
+              keep(WIPE_KEY, p.wipe.ts);
+              if(dropLocal(p.wipe.ts)){ location.reload(); return new Promise(() => {}); }
+            }
+          }
           // first time on an empty database: move this browser's data up so nothing is lost
           if(p.empty){ const docs = toDocs(localBackup()); if(docs.length) await call({op:'import', docs}); }
           // live sync starts from now (before the tabs read their data)

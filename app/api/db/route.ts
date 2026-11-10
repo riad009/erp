@@ -44,7 +44,9 @@ export async function POST(req: Request) {
     switch (body.op) {
       case 'ping': {
         const counts = await Promise.all(COLLECTIONS.map(n => db.collection(n).countDocuments({}, { limit: 1 })));
-        return Response.json({ ok: true, empty: counts.every(n => n === 0) });
+        // after 👑 ডেটা মুছুন every device drops its saved copy (db.js compares this time)
+        const w = await db.collection<{ _id: string; ts?: number; part?: string }>('settings').findOne({ _id: 'wipe_marker' });
+        return Response.json({ ok: true, empty: counts.every(n => n === 0), wipe: w ? { ts: w.ts, part: w.part } : null });
       }
       // live sync: which records other pages changed after `since` (the page then re-reads only those)
       case 'changes': {
@@ -55,9 +57,9 @@ export async function POST(req: Request) {
         const since = Number(body.since) || 0, now = Date.now();
         if (!since) return Response.json({ now, paths: [] });
         const cid = req.headers.get('x-khata-client') || '';
-        const rows = await acts.find({ ts: { $gt: since - 3000 }, kind: { $in: ['data', 'undo', 'import'] } }, { projection: { path: 1, ts: 1, kind: 1, cid: 1 } }).sort({ ts: 1 }).limit(500).toArray();
+        const rows = await acts.find({ ts: { $gt: since - 3000 }, kind: { $in: ['data', 'undo', 'import', 'wipe'] } }, { projection: { path: 1, ts: 1, kind: 1, cid: 1 } }).sort({ ts: 1 }).limit(500).toArray();
         const mine = rows.filter(r => !(r.kind === 'data' && cid && r.cid === cid));
-        return Response.json({ now, rows: mine.map(r => ({ id: r._id, path: r.kind === 'import' ? '*' : r.path, cid: r.cid || '' })) });
+        return Response.json({ now, rows: mine.map(r => ({ id: r._id, path: r.kind === 'import' || r.kind === 'wipe' || r.path === '*' ? '*' : r.path, cid: r.cid || '' })) });
       }
       case 'list': {
         if (!LISTABLE.includes(body.col)) throw new Error('bad collection');
