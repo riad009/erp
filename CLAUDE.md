@@ -73,7 +73,10 @@ Tabs (this order on phone AND computer — owner's wish): দৈনিক · ম
 - Fonts: Noto Sans Bengali (clear ১), Baloo Da 2 for numbers, Tiro Bangla headings.
 
 ## 📱 Android app (APK)
-- `android/` = Trusted Web Activity (androidbrowserhelper) opening the live site full screen; package `com.krb.khata`, name "হিসাব খাতা", minSdk 24. The site part: `public/manifest.webmanifest`, `public/icons/`, `public/sw.js` (offline helper: pages network-first with a cached copy, so the app opens without internet; `/api` untouched), `public/.well-known/assetlinks.json` (SHA-256 of the signing key — must match, or the browser bar shows). `proxy.ts` lets these through without login.
+- `android/` = a small native app (`MainActivity.java`) showing the live site in its **own WebView** — no browser in between (the first Trusted-Web-Activity versions 1.0/1.1 opened nothing on a Samsung S23, so don't go back to TWA). Package `com.krb.khata`, name "হিসাব খাতা", minSdk 24, current version 1.2 (raise `versionCode` each build).
+  - Keeps login (cookies flushed on pause), localStorage, the offline helper; other sites / links open outside; file picker works; Android 15+ edge-to-edge handled (blue strip under the status bar, keyboard padding); back = `window.__appBack()` in index.html (closes the top pop-up) → page history → app to background.
+  - PDFs: the page sees `window.KhataApp.saveFile(base64, name, mime)` (getDL in the memo/PDF module) → saved to Download/HisabKhata and opened.
+- Site part: `public/manifest.webmanifest`, `public/icons/`, `public/sw.js` (offline helper: pages network-first with a cached copy, so the app opens without internet; `/api` untouched), `public/.well-known/assetlinks.json` (signing key SHA-256, for app links). `proxy.ts` lets these through without login.
 - The signing key (`khata-release.jks` + password) is private, kept by the owner, never in git. Build steps: `android/README.md`. Maven Central via Google's mirror in settings.gradle (repo.maven.apache.org rate-limits the sandbox).
 - iPhone: no APK possible; "Add to Home Screen" in Safari uses the same manifest/icons/offline helper.
 

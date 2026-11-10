@@ -7107,7 +7107,14 @@ document.addEventListener('input', e=>{
     return scriptP[src];
   }
   let dlP = null;
-  const getDL = () => { if(!dlP) dlP = (window.claude && typeof window.claude.use === 'function') ? window.claude.use('downloads').catch(()=>null) : Promise.resolve(null); return dlP; };
+  // inside the Android app: the app saves the file to the phone's Download folder and opens it
+  const appDL = () => ({ save: ({filename, data}) => new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onload = () => window.KhataApp.saveFile(String(r.result).split(',')[1], filename, data.type || 'application/pdf') ? res() : rej(new Error('save'));
+    r.onerror = rej; r.readAsDataURL(data);
+  }) });
+  const getDL = () => { if(!dlP) dlP = window.KhataApp && window.KhataApp.saveFile ? Promise.resolve(appDL())
+    : (window.claude && typeof window.claude.use === 'function') ? window.claude.use('downloads').catch(()=>null) : Promise.resolve(null); return dlP; };
   async function makePdf(paperHtml, filename, btn, fitOne){
     const orig = btn ? btn.innerHTML : '';
     const say = t => { if(btn) btn.innerHTML = t; };
@@ -7910,6 +7917,20 @@ setTimeout(() => { try{ if(window.__ledger && window.__ledger.autoSend) window._
     };
   };
 })();
+
+/* Android app Back button: close the open pop-up (returns true) before leaving the page */
+window.__appBack = () => {
+  const shown = el => !!(el && el.getClientRects().length);
+  const top = [...document.querySelectorAll('.au-bg, .kdlg-bg, [aria-modal="true"]')].filter(shown).pop();
+  if(!top) return false;
+  const box = top.closest('.au-bg, .kdlg-bg, .sheet-bg, .addmodal, .cy-sheet-bg') || top;
+  const btn = box.querySelector('[data-close], .kd-c, #fCancelTop, #fCancel, .x, [aria-label="বন্ধ"], .close, .nz-x');
+  if(btn && shown(btn)){ btn.click(); return true; }
+  document.dispatchEvent(new KeyboardEvent('keydown', {key:'Escape', bubbles:true}));
+  if(!shown(top)) return true;
+  box.dispatchEvent(new MouseEvent('mousedown', {bubbles:true})); box.dispatchEvent(new MouseEvent('click', {bubbles:true}));
+  return !shown(top);
+};
 
 /* ================= 🔄 live sync: changes made on another phone / computer show up here by themselves ================= */
 (function(){
