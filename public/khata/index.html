@@ -4187,7 +4187,20 @@ function getDB(){
   window.__stock = { days: () => days, calc: () => calc(), render: () => { if(viewId) render(); },
     // new day: open today's page carrying yesterday's total; jump there if you were on the last day
     rollover: () => { if(!viewId) return; const wasLast = viewId === lastDay().id; ensureToday(); if(wasLast) viewId = lastDay().id; render(); },
-    removeByLink: ce => { for(const d of days){ const i = (d.entries||[]).findIndex(e => e.ce === ce); if(i >= 0){ d.entries.splice(i,1); saveDay(d,true); if(viewId) render(); return true; } } return false; } };
+    removeByLink: ce => { for(const d of days){ const i = (d.entries||[]).findIndex(e => e.ce === ce); if(i >= 0){ d.entries.splice(i,1); saveDay(d,true); if(viewId) render(); return true; } } return false; },
+    // live sync: another phone / computer changed this record (data = null → deleted)
+    remote: (path, data) => {
+      const [col, id] = path.split('/');
+      if(col === 'days'){
+        const i = days.findIndex(d => d.id === id);
+        if(data){ data = JSON.parse(JSON.stringify(data)); if(i >= 0) days[i] = data; else days.push(data); }
+        else if(i >= 0) days.splice(i, 1);
+        sortDays(); if(!days.length) ensureToday(); lsSave();
+        if(viewId && !findDay(viewId)) viewId = lastDay().id;
+      } else if(path === 'settings/cats' && data && Array.isArray(data.list)){
+        cats = JSON.parse(JSON.stringify(data.list)); try{ localStorage.setItem('kg-khata-cats-v1', JSON.stringify(cats)); }catch(_){}
+      }
+    } };
   const findDay = id => days.find(d=>d.id===id);
   const lastDay = () => days[days.length-1];
 
@@ -5073,6 +5086,13 @@ function getDB(){
   function remove(coId, eid){ const c = findCo(coId); if(!c) return; c.entries = (c.entries||[]).filter(x => x.id !== eid); save(c); render(); }
   window.__company = {html, bind, badge, list: () => cos, create, addInv, updateInv, remove, lastRate, name: id => (findCo(id)||{}).name, inv: (coId, eid) => ((findCo(coId)||{}).entries||[]).find(x => x.id === eid) || null};
   window.__companyRender = render;
+  window.__company.remote = (path, data) => {
+    const id = path.split('/')[1], i = cos.findIndex(c => c.id === id);
+    if(data){ data = clone(data); if(i >= 0) cos[i] = data; else cos.push(data); }
+    else if(i >= 0) cos.splice(i, 1);
+    if(ui.editId && !(co() && (co().entries||[]).some(e => e.id === ui.editId))) ui.editId = null;
+    lsSave();
+  };
 })();
 
 (function(){
@@ -6659,6 +6679,27 @@ function getDB(){
   window.__amdaniRender = () => renderAmdani();
   window.__ledger = {
     accs: () => accs, kh: () => kh, compute, sabekInfo, dayTotal, khTotal,
+    // live sync: another phone / computer changed this record (data = null → deleted)
+    remote: (path, data) => {
+      const [col, id] = path.split('/');
+      data = data ? clone(data) : null;
+      if(col === 'ledgers'){
+        const i = accs.findIndex(a => a.id === id);
+        if(data){ if(i >= 0) accs[i] = data; else { accs.push(data); accs.sort((a,b)=>(a.created||0)-(b.created||0)); } }
+        else if(i >= 0){ accs.splice(i, 1); if(curId === id) curId = accs[0] && accs[0].id; }
+        lsSave();
+      } else if(col === 'khoroch'){
+        if(data) kh[id] = data.items || []; else delete kh[id];
+        try{ localStorage.setItem(KH_LS, JSON.stringify(kh)); }catch(_){}
+      } else if(path === 'amdani/sabek'){
+        sabek = data ? data.map || {} : {}; try{ localStorage.setItem(SB_LS, JSON.stringify(sabek)); }catch(_){}
+      } else if(path === 'settings/rates'){
+        rates = data || {}; try{ localStorage.setItem('kg-khata-rates', JSON.stringify(rates)); }catch(_){}
+      } else if(path === 'settings/drafts'){
+        drafts = data && Array.isArray(data.list) ? data.list : []; try{ localStorage.setItem('kg-khata-drafts', JSON.stringify(drafts)); }catch(_){}
+      }
+      render(); renderAmdani();
+    },
     newDay: (oldD, newD) => { if(aDate === oldD) aDate = newD; render(); },
     saveAcc: a => save(a),
     // delete one memo / জমা from a party's খতিয়ান (its মাল goes back to স্টক by itself)
@@ -7422,6 +7463,7 @@ document.addEventListener('input', e=>{
     const db = await getDB(); if(!db) return;
     try{ const d = await db.doc('settings/labour').get(); if(d.exists && Number(d.data().rate) > 0){ lrate = Number(d.data().rate); renderLabour(); } }catch(_){}
   }
+  window.__labourRemote = data => { if(data && Number(data.rate) > 0){ lrate = Number(data.rate); try{ localStorage.setItem('kg-khata-labour-rate', String(lrate)); }catch(_){} } };
   async function saveLRate(){
     try{ localStorage.setItem('kg-khata-labour-rate', String(lrate)); }catch(_){}
     const db = await getDB(); if(db) db.doc('settings/labour').set({rate: lrate}).catch(()=>{});
@@ -7804,6 +7846,56 @@ setTimeout(() => { try{ if(window.__ledger && window.__ledger.autoSend) window._
       location.href = '/login';
     };
   };
+})();
+
+/* ================= 🔄 live sync: changes made on another phone / computer show up here by themselves ================= */
+(function(){
+  const seen = new Set();
+  let running = false;
+  const shown = el => !!(el && el.getClientRects().length);
+  // don't touch the screen while someone is typing or has a pop-up open (try again a few seconds later)
+  function busy(){
+    const a = document.activeElement;
+    if(a && a !== document.body && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName) && a.type !== 'search' && !a.closest('.uhd')) return true;
+    if([...document.querySelectorAll('[aria-modal="true"], .au-bg, .kdlg-bg')].some(shown)) return true;
+    // typed but not saved yet
+    return [...document.querySelectorAll('main:not([hidden]) input, main:not([hidden]) textarea')].some(i =>
+      shown(i) && !/^(search|date|checkbox|radio|hidden|file|button|submit)$/.test(i.type) && i.value !== i.defaultValue);
+  }
+  function repaint(){
+    const t = (document.querySelector('.tabs button[aria-selected="true"]') || {dataset:{}}).dataset.tab;
+    const R = {stock: () => window.__stock && window.__stock.render(), amdani: window.__amdaniRender, memo: window.__memoRender, labour: window.__labourRender,
+      dash: window.__dashRender, company: window.__companyRender, baki: window.__bakiRender, settings: window.__settingsRender};
+    try{ if(R[t]) R[t](); }catch(e){ console.warn('live sync repaint', e); }
+  }
+  async function tick(){
+    const K = window.__khataDB;
+    if(running || document.hidden || !K || !K.since || !window.__me) return;
+    const db = await getDB(); if(!db) return;
+    if(busy()) return;
+    running = true;
+    try{
+      const j = await K.changes(K.since);
+      const rows = (j.rows || []).filter(r => !seen.has(r.id));
+      if(rows.some(r => r.path === '*')){ location.reload(); return; }   // whole database was replaced
+      const paths = [...new Set(rows.map(r => r.path))];
+      for(const path of paths){
+        const d = await db.doc(path).get(), data = d.exists ? d.data() : null, col = path.split('/')[0];
+        if(col === 'days' || path === 'settings/cats'){ if(window.__stock && window.__stock.remote) window.__stock.remote(path, data); }
+        else if(col === 'companies'){ if(window.__company && window.__company.remote) window.__company.remote(path, data); }
+        else if(path === 'settings/labour'){ if(window.__labourRemote) window.__labourRemote(data); }
+        else if(window.__ledger && window.__ledger.remote) window.__ledger.remote(path, data);
+      }
+      rows.forEach(r => seen.add(r.id));
+      K.since = j.now;
+      if(paths.length) repaint();
+    }catch(e){ console.warn('live sync', e.message); }
+    finally{ running = false; }
+  }
+  setInterval(tick, 6000);
+  document.addEventListener('visibilitychange', () => { if(!document.hidden) setTimeout(tick, 300); });
+  window.addEventListener('focus', () => setTimeout(tick, 300));
+  window.__syncNow = tick;
 })();
 
 /* ================= 📝 অ্যাক্টিভিটি: who did what, with ↶ ফেরান (undo) and × মুছুন ================= */

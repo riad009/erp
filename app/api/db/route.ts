@@ -1,7 +1,7 @@
 import { getMongo } from '@/lib/mongo';
 import { COLLECTIONS, getDoc, setDoc, deleteDoc, listDocs, wipeAll, migrateOldLayout, LISTABLE } from '@/lib/store';
 import { currentUser } from '@/lib/auth';
-import { logAct, describe, actionOf, sameData } from '@/lib/activity';
+import { logAct, describe, actionOf, sameData, type Act } from '@/lib/activity';
 
 // Small doc store used by public/khata/index.html (same API it had on claude.ai):
 //   collection(name).get()  → {op:'list', col}
@@ -39,12 +39,25 @@ export async function POST(req: Request) {
       const empty = (d: Record<string, unknown> | null) => !!d && !((d.entries as unknown[]) || []).length && !((d.outs as unknown[]) || []).length;
       if (path.startsWith('days/') && ((!before && empty(after)) || (!after && empty(before)))) return;
       const { label, lines } = describe(path, before, after);
-      await logAct(db, me, { kind: 'data', action: actionOf(before, after), label, lines, path, before, existed: old.exists });
+      await logAct(db, me, { kind: 'data', action: actionOf(before, after), label, lines, path, before, existed: old.exists, cid: req.headers.get('x-khata-client') || undefined });
     };
     switch (body.op) {
       case 'ping': {
         const counts = await Promise.all(COLLECTIONS.map(n => db.collection(n).countDocuments({}, { limit: 1 })));
         return Response.json({ ok: true, empty: counts.every(n => n === 0) });
+      }
+      // live sync: which records other pages changed after `since` (the page then re-reads only those)
+      case 'changes': {
+        const acts = db.collection<Act>('activity');
+        const g2 = globalThis as unknown as { __actIdx?: Promise<unknown> };
+        if (!g2.__actIdx) g2.__actIdx = acts.createIndex({ ts: -1 }).catch(() => { g2.__actIdx = undefined; });
+        await g2.__actIdx;
+        const since = Number(body.since) || 0, now = Date.now();
+        if (!since) return Response.json({ now, paths: [] });
+        const cid = req.headers.get('x-khata-client') || '';
+        const rows = await acts.find({ ts: { $gt: since - 3000 }, kind: { $in: ['data', 'undo', 'import'] } }, { projection: { path: 1, ts: 1, kind: 1, cid: 1 } }).sort({ ts: 1 }).limit(500).toArray();
+        const mine = rows.filter(r => !(r.kind === 'data' && cid && r.cid === cid));
+        return Response.json({ now, rows: mine.map(r => ({ id: r._id, path: r.kind === 'import' ? '*' : r.path })) });
       }
       case 'list': {
         if (!LISTABLE.includes(body.col)) throw new Error('bad collection');

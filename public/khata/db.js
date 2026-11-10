@@ -2,8 +2,10 @@
    db.collection(name).get() → {docs:[{id, exists, data()}]}
    db.doc('col/id').get() → {exists, data()} · .set(obj) · .delete()                         */
 (function(){
+  // this open page: its own saves are not "news" for live sync
+  const CID = Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
   const call = async body => {
-    const r = await fetch('/api/db', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)});
+    const r = await fetch('/api/db', {method:'POST', headers:{'Content-Type':'application/json', 'x-khata-client': CID}, body: JSON.stringify(body)});
     const j = await r.json().catch(() => ({}));
     // logged out (or the login was ended by the admin) → login page
     if(r.status === 401){ location.href = '/login?next=' + encodeURIComponent(location.pathname); throw new Error('login'); }
@@ -44,11 +46,15 @@
   window.__khataDB = {
     LS, toDocs, localBackup,
     importAll: b => call({op:'import', docs: toDocs(b)}),
+    changes: since => call({op:'changes', since}),
+    since: 0,
     // resolves to the db, or null when the server is not there (then the app keeps using this browser only)
     open(){
       if(!ready) ready = (async () => {
         try{
           const p = await call({op:'ping'});
+          // live sync starts from now (before the tabs read their data)
+          try{ window.__khataDB.since = (await call({op:'changes', since:0})).now; }catch(_){}
           // first time on an empty database: move this browser's data up so nothing is lost
           if(p.empty){ const docs = toDocs(localBackup()); if(docs.length) await call({op:'import', docs}); }
           return api;

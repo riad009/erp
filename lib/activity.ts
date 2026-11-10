@@ -13,6 +13,7 @@ export type Act = {
   label: string;             // what it was about: party name, স্টক দিন …
   lines: string[];           // short details (Bangla)
   path?: string; before?: Data | null; existed?: boolean;
+  cid?: string;              // which open page (browser tab) made the change — live sync skips its own
   undone?: { ts: number; uname: string };
 };
 
