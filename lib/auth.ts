@@ -6,7 +6,7 @@ import type { Db } from 'mongodb';
 // so a disabled user or a changed password ends old logins at once.
 
 export const COOKIE = 'khata_s';
-const DAYS = 30;
+const DAYS = 365;   // stay logged in (owner: "never ask again and again"); renewed on every visit
 
 // every tab the owner can switch on / off per user (+ the activity list and its undo)
 export const FEATURES: [string, string][] = [

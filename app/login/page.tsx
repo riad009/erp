@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 // লগইন: ইমেইল + পাসওয়ার্ড → /api/auth → back to the app (or the page that was asked for)
 export default function Login() {
@@ -9,6 +9,26 @@ export default function Login() {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
 
+  const go = () => {
+    const next = new URLSearchParams(location.search).get('next') || '';
+    location.href = next.startsWith('/') && !next.startsWith('//') ? next : '/khata/index.html';
+  };
+  // already logged in on this phone before → in again without typing
+  const [resuming, setResuming] = useState(true);
+  useEffect(() => {
+    let tok = '';
+    try { tok = localStorage.getItem('kg-khata-tok') || ''; } catch {}
+    if (!tok) { setResuming(false); return; }
+    fetch('/api/auth', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ op: 'resume', token: tok }) })
+      .then(async r => {
+        const j = await r.json().catch(() => ({}));
+        if (r.ok && j.token) { try { localStorage.setItem('kg-khata-tok', j.token); } catch {} go(); return; }
+        try { localStorage.removeItem('kg-khata-tok'); } catch {}
+        setResuming(false);
+      })
+      .catch(() => setResuming(false));
+  }, []);
+
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setBusy(true); setErr('');
@@ -16,8 +36,8 @@ export default function Login() {
       const r = await fetch('/api/auth', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ op: 'login', email, pass }) });
       const j = await r.json().catch(() => ({}));
       if (!r.ok) throw new Error(j.error || 'লগইন হয়নি');
-      const next = new URLSearchParams(location.search).get('next') || '';
-      location.href = next.startsWith('/') && !next.startsWith('//') ? next : '/khata/index.html';
+      try { if (j.token) localStorage.setItem('kg-khata-tok', j.token); } catch {}
+      go();
     } catch (x) {
       setErr((x as Error).message === 'Failed to fetch' ? 'ইন্টারনেট দেখুন' : (x as Error).message);
       setBusy(false);
@@ -48,6 +68,7 @@ export default function Login() {
         .err{margin:14px 0 0;padding:10px 12px;border-radius:10px;background:#FFF1F3;border:1px solid #F3B8C2;color:#A0182E;font-size:14px;font-weight:700}
         .foot{margin:16px 0 0;text-align:center;color:#8A94A8;font-size:12.5px}
       `}</style>
+      {resuming ? <p className="card" style={{ textAlign: 'center', fontWeight: 700 }}>⏳ খাতা খুলছে…</p> :
       <form className="card" onSubmit={submit}>
         <div className="brand">
           <div className="logo" aria-hidden="true">📒</div>
@@ -65,7 +86,7 @@ export default function Login() {
         {err && <p className="err" role="alert">⚠️ {err}</p>}
         <button className="go" disabled={busy}>{busy ? 'ঢুকছে…' : 'লগইন'}</button>
         <p className="foot">পাসওয়ার্ড ভুলে গেলে সুপার অ্যাডমিনকে বলুন</p>
-      </form>
+      </form>}
     </main>
   );
 }

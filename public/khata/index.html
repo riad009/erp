@@ -7853,7 +7853,7 @@ setTimeout(() => { try{ if(window.__ledger && window.__ledger.autoSend) window._
       if(r.status === 401){ location.href = '/login?next=' + encodeURIComponent(location.pathname); return; }
       const me = await r.json();
       if(!r.ok) throw new Error(me.error);
-      try{ localStorage.setItem('kg-khata-me', JSON.stringify(me)); }catch(_){}
+      try{ if(me.token) localStorage.setItem('kg-khata-tok', me.token); delete me.token; localStorage.setItem('kg-khata-me', JSON.stringify(me)); }catch(_){}
       apply(me);
     }catch(e){
       // no internet: use who was here last time
@@ -7887,7 +7887,7 @@ setTimeout(() => { try{ if(window.__ledger && window.__ledger.autoSend) window._
     p.el.querySelector('#uPw').onclick = () => { p.close(); changePass(); };
     p.el.querySelector('#uOut').onclick = async () => {
       try{ await post('/api/auth', {op:'logout'}); }catch(_){}
-      try{ localStorage.removeItem('kg-khata-me'); }catch(_){}
+      try{ localStorage.removeItem('kg-khata-me'); localStorage.removeItem('kg-khata-tok'); }catch(_){}
       location.href = '/login';
     };
   };

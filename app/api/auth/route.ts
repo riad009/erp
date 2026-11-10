@@ -1,5 +1,5 @@
 import { getMongo } from '@/lib/mongo';
-import { login, currentUser, signToken, cookieHeader, clearCookie, toMe, hashPass, checkPass, seedAdmin, type User } from '@/lib/auth';
+import { login, currentUser, signToken, readToken, cookieHeader, clearCookie, toMe, hashPass, checkPass, seedAdmin, type User } from '@/lib/auth';
 import { logAct } from '@/lib/activity';
 
 // GET → who is logged in · POST {op:'login'|'logout'|'password'}
@@ -12,8 +12,9 @@ export async function GET(req: Request) {
     await seedAdmin(db);
     const u = await currentUser(db, req);
     if (!u) return Response.json({ error: 'login' }, { status: 401 });
-    // the owner is reminded to change the first password
-    return Response.json({ ...toMe(u), weakPass: checkPass('1234', u.pass) });
+    // a fresh login (cookie + a copy the page keeps, see 'resume') on every visit → it never runs out while used
+    const tok = signToken(u);
+    return Response.json({ ...toMe(u), token: tok }, { headers: { 'set-cookie': cookieHeader(tok) } });
   } catch (e) {
     return Response.json({ error: (e as Error).message }, { status: 500 });
   }
@@ -36,7 +37,16 @@ export async function POST(req: Request) {
       if (!u) { failed(key); return Response.json({ error: 'ইমেইল বা পাসওয়ার্ড ভুল' }, { status: 401 }); }
       fails.delete(key);
       await logAct(db, u, { kind: 'login', action: 'লগইন', label: '🔑 লগইন করেছেন', lines: [u.email] });
-      return Response.json({ ok: true, me: toMe(u) }, { headers: { 'set-cookie': cookieHeader(signToken(u)) } });
+      const tok = signToken(u);
+      return Response.json({ ok: true, me: toMe(u), token: tok }, { headers: { 'set-cookie': cookieHeader(tok) } });
+    }
+    // the phone's browser lost the cookie (some in-app browsers do): log in again from the copy the page kept
+    if (body.op === 'resume') {
+      const t = readToken(String(body.token || ''));
+      const u = t && await db.collection<User>('users').findOne({ _id: t.u });
+      if (!t || !u || !u.active || u.ver !== t.v) return Response.json({ error: 'login' }, { status: 401 });
+      const tok = signToken(u);
+      return Response.json({ ok: true, token: tok }, { headers: { 'set-cookie': cookieHeader(tok) } });
     }
     const u = await currentUser(db, req);
     if (body.op === 'logout') {
