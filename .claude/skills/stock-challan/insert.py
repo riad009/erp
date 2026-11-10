@@ -20,15 +20,33 @@ challan.json:
 }
 A size that is missing in that মার্কা is added (asked about first). A চালান নং already on that day stops the script.
 """
-import json, sys, time, random, string, datetime, urllib.request
+import json, os, sys, time, random, string, datetime, urllib.request, http.cookiejar
 
-API = "https://erp-psi-woad.vercel.app/api/db"
+SITE = os.environ.get("KHATA_SITE", "https://erp-psi-woad.vercel.app")
+API = SITE + "/api/db"
 BN = str.maketrans("0123456789", "০১২৩৪৫৬৭৮৯")
+
+# the site needs a login: KHATA_EMAIL / KHATA_PASS (the owner's admin login; never write it into this repo)
+_open = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(http.cookiejar.CookieJar()))
+
+
+def _post(url, body):
+    req = urllib.request.Request(url, data=json.dumps(body).encode(), headers={"content-type": "application/json"})
+    return json.loads(_open.open(req, timeout=60).read())
+
+
+def login():
+    email, pw = os.environ.get("KHATA_EMAIL"), os.environ.get("KHATA_PASS")
+    if not email or not pw:
+        sys.exit("set KHATA_EMAIL and KHATA_PASS (an admin login of the site) first")
+    try:
+        _post(SITE + "/api/auth", {"op": "login", "email": email, "pass": pw})
+    except urllib.error.HTTPError as e:
+        sys.exit(f"login failed: {e.read().decode()}")
 
 
 def q(body):
-    req = urllib.request.Request(API, data=json.dumps(body).encode(), headers={"content-type": "application/json"})
-    return json.loads(urllib.request.urlopen(req, timeout=60).read())
+    return _post(API, body)
 
 
 def uid(prefix="m"):
@@ -37,6 +55,7 @@ def uid(prefix="m"):
 
 def main():
     spec = json.load(open(sys.argv[1], encoding="utf-8"))
+    login()
     write = "--write" in sys.argv
     date, car, vno = spec["date"], str(spec["car"]).translate(BN), str(spec["vno"])
     rate = float(spec.get("rate") or 0)

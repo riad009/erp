@@ -1,12 +1,12 @@
 # Khata App — notes for Claude (read this first)
 
 Bangla bookkeeping app for **কাজী রোমান এন্ড ব্রাদার্স** (steel coil / sheet trader, Dhaka).
-Tabs: স্টক · দৈনিক · মেমো · খতিয়ান · বাকি লিস্ট · কোম্পানি · লেবার · ড্যাশবোর্ড · সেটিং.
+Tabs (this order on phone AND computer — owner's wish): দৈনিক · মেমো · স্টক · খতিয়ান · বাকি লিস্ট · কোম্পানি · লেবার · ড্যাশবোর্ড · সেটিং · অ্যাক্টিভিটি · অ্যাডমিন (+ 👤 account button last).
 
 ## How the owner wants to work
 - Talk in **easy English**, short answers; the app UI is **Bangla** (Bangla digits ০-৯).
 - He sends a screenshot + a short request → make the change → **test on computer (1440) and phone (390)** → tell him in a few lines what changed.
-- After any change: `npm run dev`, open http://localhost:3000, check the page, no console errors.
+- After any change: `npm run dev`, open http://localhost:3000, log in, check the page, no console errors. Test against a local MongoDB (`.env.local` `MONGO_URI=mongodb://127.0.0.1:…`, `MONGO_DB=khata_test`), never the live one (Atlas is not reachable from the cloud sandbox anyway).
 - **Always publish every change right away**: commit and `git push origin main` — Vercel auto-deploys `main` to the live site https://erp-psi-woad.vercel.app in ~1 min. Never leave a change only on this computer. Then tell him to refresh.
 
 ## Where the code is (step 1 of the move to Next.js)
@@ -20,10 +20,16 @@ Tabs: স্টক · দৈনিক · মেমো · খতিয়ান �
 ## Data
 - **MongoDB** via `app/api/db/route.ts` + `lib/store.ts` (+ `lib/mongo.ts`, env `MONGO_URI`, `MONGO_DB` default `khata`). The app still uses its old paths; `lib/store.ts` maps them to clearly named collections, one record per item, fields stored directly:
   `stock_days` (days/<date>) · `stock_markas` + `stock_sizes` (settings/cats; sizes stored as `height`, `width`, `open_kg`, `buy_rate`, `mark` (only K = green now; the old B red mark was removed on purpose — don't bring it back), `marka_id`, `position` = order added) · `parties` (ledgers) · `companies` · `expenses` (khoroch) · `cash_opening` (amdani/sabek, one per date) · `settings` (`sale_rates`, `labour_rate`).
-  The first layout (`{_id, data}` in days/ledgers/settings…) is moved over automatically on the first request (`migrateOldLayout`). Open `/api/db` to see record counts.
+  The first layout (`{_id, data}` in days/ledgers/settings…) is moved over automatically on the first request (`migrateOldLayout`). Open `/api/db` (logged in) to see record counts.
 - Browser side: `public/khata/db.js` gives the same small API the app had on claude.ai (`collection(n).get()`, `doc('col/id').get()/set()/delete()`); `getDB()` in index.html uses it. On an empty database it first uploads that browser's localStorage. If the server can't be reached → `null` → app works from localStorage only.
 - Sync safety: a failed online save shows "⚠️ অনলাইনে সেভ হয়নি" (`saveFailed`); on load, entries/parties that are in this browser's copy but not online (last 21 days) are kept in `kg-khata-unsynced` and a bottom bar offers "⬆ অনলাইনে তুলুন" (merges them in, renumbers a clashing memo no.) or "বাদ দিন". No online connection → "⚠️ অনলাইনে যুক্ত নেই" bar.
-- **No password** on the site (owner removed it on purpose) — anyone with the link can read/write. Don't add one back unless he asks.
+- **Login (owner asked for it, Nov 2026):** `proxy.ts` sends anyone without the `khata_s` cookie to `/login` (`app/login/page.tsx`); API calls get 401 and `db.js` then opens /login.
+  - `lib/auth.ts`: users in the `users` collection (`email`, `name`, `pass` = scrypt hash, `role` admin|user, `perms` = tab ids + `activity` + `undo`, `active`, `ver`). Cookie = signed {user, ver, expiry} (secret = `AUTH_SECRET` or derived from `MONGO_URI`); every API call re-checks the user, so a new password / switched-off user ends old logins. 8 wrong tries → 10 min wait.
+  - First super admin is seeded on an empty `users` collection: admin@gmail.com / 1234 (owner's choice; app nags him to change it via 👤 → পাসওয়ার্ড বদলান). Never put another real password in the repo (it is public).
+  - Client: `/api/auth` GET → `window.__me`, `window.__allowedTabs`; tabs he may not see are hidden (`body.auth-wait` hides everything until then). Permissions are per tab (client-side); admin-only things (users, email, `import`) are checked on the server.
+- **👑 অ্যাডমিন tab** (`/api/admin`, admin only): create / edit / switch off / delete users, tick which পাতা each may see; ✉️ প্রতিদিনের ইমেইল settings (on/off, recipient list, sender Gmail + Gmail **app password**, stored in `settings` `_id:'email_config'`; env `SMTP_USER`/`SMTP_PASS`/`SMTP_HOST`/`SMTP_PORT` override), "এখনই একটা পাঠান (টেস্ট)".
+- **Nightly email** (`vercel.json` cron `59 17 * * *` = 11:59 pm Dhaka → `/api/cron/daily-email`, `lib/report.ts`): Bangla summary in the body + 2 JSON files: `khata-<date>-today.json` (that day's stock, memos, জমা, চালান, খরচ, activity) and `khata-<date>-full-database.json` (same format as backup.json → /import.html). At most once a day (`lastSent`); with `CRON_SECRET` set on Vercel only Vercel can call it.
+- **📝 অ্যাক্টিভিটি tab** (`/api/activity`, `lib/activity.ts`, collection `activity`): every `/api/db` set/delete is logged with the user's name, a Bangla summary (＋/－/✎ lines) and the record as it was before (`before`). Also login/logout, user changes, email sent, import. ↶ ফেরান restores `before` (asks first when later changes on the same record would also go; the undo itself is logged and can be undone); × মুছুন (tap twice) removes the log line. Undone entry ids go into localStorage `kg-khata-undone` so the "অনলাইনে তুলুন" bar doesn't bring them back. Blank stock days the app opens by itself are not logged.
 - localStorage is still written too (cache / offline). Keys: `kg-khata-days-v1` (stock days `[{id:'YYYY-MM-DD', opening, due, entries[], outs[]}]`),
   `kg-khata-ledger-v1` (parties `[{id, name, address, opening, openJoma, openKhoroch, entries[]}]` — opening = আগের জের (অবশিষ্ট), openJoma/openKhoroch = old paper-book জমা/খরচ, added into the totals; openDate = date on the paper khatian; memo entry = `{id, memoNo, date, credit, debit, kg, items[{t,kg,rate}], picks[{item,cat,t,kg,cost}], status:'pending'|'confirmed', confirmedOn, labour…}`),
   `kg-khata-company-v1` (companies + চালান/রসিদ), `kg-khata-khoroch-v1` (`{date: [{id,desc,amt}]}`), `kg-khata-sabek-v1`,
@@ -64,13 +70,13 @@ Tabs: স্টক · দৈনিক · মেমো · খতিয়ান �
 - Fonts: Noto Sans Bengali (clear ১), Baloo Da 2 for numbers, Tiro Bangla headings.
 
 ## Challan photos → স্টক
-- When the owner sends a mill delivery challan photo + গাড়ি নং + date, follow the **`stock-challan` skill** (`.claude/skills/stock-challan/SKILL.md`): read it → show a Bangla table → after his "yes" run `insert.py` (writes the live DB: stock day + company খতিয়ান, adds missing sizes, refuses a duplicate চালান নং). ANN = নরম (kK), TRI = হার্ড (kE), RW Coil = হার্ড (kE), GLG = জাকের; 650X914 → 65 × 914; net kg, not gross.
+- When the owner sends a mill delivery challan photo + গাড়ি নং + date, follow the **`stock-challan` skill** (`.claude/skills/stock-challan/SKILL.md`): read it → show a Bangla table → after his "yes" run `insert.py` (writes the live DB: stock day + company খতিয়ান, adds missing sizes, refuses a duplicate চালান নং; needs `KHATA_EMAIL`/`KHATA_PASS` env = an admin login). ANN = নরম (kK), TRI = হার্ড (kE), RW Coil = হার্ড (kE), GLG = জাকের; 650X914 → 65 × 914; net kg, not gross.
 
 ## Roadmap (do in this order, one small step at a time)
 1. ✅ Run the existing app inside Next.js (this repo).
 2. Backup / restore buttons inside the app (JSON download/upload).
 3. ✅ Online database (MongoDB instead of Supabase) → data on every device.
-4. Login (owner / staff roles).
+4. ✅ Login (super admin + users with per-tab permissions), activity log with undo, nightly email.
 5. Move tabs one by one into React components under `app/` (start with বাকি লিস্ট — smallest), sharing one data layer.
 
 <!-- BEGIN:nextjs-agent-rules -->

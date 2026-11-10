@@ -58,6 +58,7 @@ cat > "$SCRATCH/challan.json" <<'EOF'
  "lines":[{"marka":"kK","h":90,"w":914,"kg":7940,"ci":"SFG.ANN.CRC.900X914"},
           {"marka":"kK","h":65,"w":1000,"kg":17375,"ci":"SFG.ANN.CRC.650X1000"}]}
 EOF
+export KHATA_EMAIL=… KHATA_PASS=…   # the owner's admin login (ask him if you don't have it; never commit it)
 python3 .claude/skills/stock-challan/insert.py "$SCRATCH/challan.json"          # dry run
 python3 .claude/skills/stock-challan/insert.py "$SCRATCH/challan.json" --write  # real
 ```
@@ -80,8 +81,9 @@ If he later says "yes insert this N no car" for a গাড়ি that is alread
 - **Small fixes** (wrong গাড়ি নং, kg, size): he can use **✎** on the গাড়ি line himself. Or edit via the API: get `days/<date>` and `companies/<id>`, change the matching entries (same `vno` / `ce`) in **both**, then set both back.
 - **দর later**: on each company entry set `rate` and `amount = round(kg/1000 × rate)`.
 
-## API (no password)
-`POST https://erp-psi-woad.vercel.app/api/db` with JSON:
+## API (needs a login)
+First `POST https://erp-psi-woad.vercel.app/api/auth` `{"op":"login","email":…,"pass":…}` and keep the `khata_s` cookie (insert.py does this). Then
+`POST https://erp-psi-woad.vercel.app/api/db` with JSON (each change shows in the app's 📝 অ্যাক্টিভিটি under that user's name):
 - `{"op":"get","path":"days/2026-10-20"}`
 - `{"op":"set","path":…,"data":…}`
 - `{"op":"list","col":"companies"}`

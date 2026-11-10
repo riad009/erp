@@ -3106,19 +3106,153 @@ body.addmodal-on{overflow:hidden}
 .tstock .ahr.tot{border-top:1px solid #F3B8C2;margin-top:2px;padding-top:2px;font-weight:700;color:#8A1C2C}
 .tstock .ahr.st b{color:#475467}
 @media (max-width: 700px){ .tstock .ahl{min-width:0;padding:5px 6px} .tstock .ahb{white-space:normal;font-size:11.5px} .tstock .ahr{font-size:11.5px;gap:6px} }
+
+/* ===== menu order: দৈনিক → মেমো → স্টক → খতিয়ান → rest (same on phone and computer) ===== */
+@media (min-width: 900px){
+  html body .tabs .nav-brand{order:0} html body .tabs .nav-grp.g1{order:1}
+  html body .tabs button[data-tab="amdani"]{order:2} html body .tabs button[data-tab="memo"]{order:3} html body .tabs button[data-tab="stock"]{order:4}
+  html body .tabs .nav-grp.g2{order:5} html body .tabs button[data-tab="ledger"]{order:6} html body .tabs button[data-tab="baki"]{order:7}
+  html body .tabs button[data-tab="company"]{order:8} html body .tabs button[data-tab="labour"]{order:9}
+  html body .tabs .nav-grp.g3{order:10} html body .tabs button[data-tab="dash"]{order:11} html body .tabs button[data-tab="settings"]{order:12}
+  html body .tabs button[data-tab="activity"]{order:13} html body .tabs button[data-tab="admin"]{order:14}
+  html body .tabs .ubtn{order:15} html body .tabs .nav-foot{order:16}
+  .tabs{overflow-y:auto}
+}
+.tabs button[hidden]{display:none!important}
+/* until we know who is logged in, no tab shows (a staff member never sees a tab that is not theirs) */
+body.auth-wait .tabs button[data-tab], body.auth-wait main{visibility:hidden}
+/* 👤 my account: last item in the menu */
+.tabs .ubtn{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;flex:0 0 auto;min-width:84px;padding:7px 10px;border-radius:9px;
+  border:1.5px dashed #B9C8DE;background:#fff;color:#1F4AA8;font-family:"Noto Sans Bengali","Hind Siliguri",sans-serif;font-size:14px;font-weight:700;text-decoration:none;line-height:1.15}
+.tabs .ubtn .ti{font-size:19px}
+.tabs .ubtn .un{max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+@media (min-width: 900px){
+  .tabs .ubtn{flex-direction:row;justify-content:flex-start;gap:12px;width:100%;margin-top:10px;padding:10px 14px;border-radius:12px;font-size:15px}
+  .tabs .ubtn .ti{width:24px;text-align:center}
+  .tabs .ubtn .un{max-width:none}
+  .tabs .ubtn:hover{background:#F3F6FB}
+}
+/* pop-up used by the account / user / undo screens */
+.au-bg{position:fixed;inset:0;z-index:300;background:rgba(15,23,42,.45);display:flex;align-items:center;justify-content:center;padding:16px}
+.au{width:100%;max-width:480px;max-height:calc(100dvh - 32px);overflow:auto;background:#fff;border-radius:16px;padding:20px 18px 18px;box-shadow:0 24px 60px rgba(15,23,42,.3);
+  font-family:"Noto Sans Bengali","Hind Siliguri",sans-serif;color:#1B2347}
+.au h3{margin:0 0 4px;font-size:19px;display:flex;align-items:center;gap:8px}
+.au h3 .x{margin-left:auto;border:0;background:#F1F4F9;border-radius:9px;width:34px;height:34px;font-size:16px;cursor:pointer;color:#475467}
+.au .sub{margin:0 0 12px;color:#66728A;font-size:13.5px}
+.au label.f{display:block;font-size:13.5px;font-weight:700;margin:12px 0 5px}
+.au input[type=text],.au input[type=email],.au input[type=password],.au textarea{width:100%;box-sizing:border-box;padding:11px 12px;font-size:16px;border:1.5px solid #CFD8E6;border-radius:10px;background:#FAFBFD;color:#1B2347;font-family:inherit}
+.au input:focus,.au textarea:focus{outline:none;border-color:#1F4AA8;background:#fff}
+.au .acts{display:flex;gap:10px;margin-top:18px}
+.au .acts button{flex:1;padding:12px;border-radius:11px;font-size:16px;font-weight:800;font-family:inherit;cursor:pointer;border:1.5px solid #CFD8E6;background:#fff;color:#344054}
+.au .acts button.p{background:#1F4AA8;border-color:#1F4AA8;color:#fff}
+.au .acts button.r{background:#C0152F;border-color:#C0152F;color:#fff}
+.au .err{margin:12px 0 0;padding:9px 12px;border-radius:10px;background:#FFF1F3;border:1px solid #F3B8C2;color:#A0182E;font-size:14px;font-weight:700}
+.au .err:empty{display:none}
+.au .me{display:flex;align-items:center;gap:12px;padding:12px;border-radius:12px;background:#F4F7FC;border:1px solid #E1E8F3;margin-bottom:6px}
+.au .me .av{width:44px;height:44px;border-radius:50%;background:#1F4AA8;color:#fff;display:grid;place-items:center;font-size:20px;font-weight:800;flex:none}
+.au .me b{display:block;font-size:16px} .au .me small{color:#66728A;font-size:13px;word-break:break-all}
+.au .perm{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.au .perm label{display:flex;align-items:center;gap:8px;padding:9px 10px;border:1.5px solid #DCE3EE;border-radius:10px;font-size:14.5px;cursor:pointer;background:#fff}
+.au .perm label:has(input:checked){border-color:#1F4AA8;background:#EEF3FC;color:#1F4AA8;font-weight:700}
+.au .perm input{width:18px;height:18px;accent-color:#1F4AA8;flex:none}
+.au .perm .all{grid-column:1 / -1;justify-content:center;border-style:dashed;color:#1F4AA8;font-weight:700}
+.au .au-tgl{display:flex;align-items:center;gap:10px;margin-top:14px;font-size:15px;font-weight:700;cursor:pointer}
+.au .au-tgl input{width:20px;height:20px;accent-color:#1F7A3D}
+@media (max-width: 420px){ .au{padding:16px 14px} .au .perm label{padding:8px;font-size:14px} }
+
+/* ===== 📝 অ্যাক্টিভিটি + 👑 অ্যাডমিন ===== */
+#activity,#admin{--ink:#1B2347;--muted:#5E6B85;--blue:#1F4AA8;--line:#DCE3EE;color:var(--ink);font-family:"Noto Sans Bengali","Hind Siliguri",sans-serif}
+#activity header .book,#admin header .book{font-family:"Tiro Bangla",serif;font-size:13.5px;color:var(--muted);margin:0}
+#activity header h1,#admin header h1{font-family:"Tiro Bangla","Noto Sans Bengali",serif;font-size:28px;color:var(--blue);margin:2px 0 12px}
+.ac-tools{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:4px 0 14px}
+.ac-tools select,.ac-tools input{font-family:inherit;font-size:15px;padding:9px 10px;border:1.5px solid #C7D6EB;border-radius:10px;background:#fff;color:var(--ink);min-width:0}
+.ac-chips{display:flex;gap:6px;flex-wrap:wrap}
+.ac-chips button{padding:8px 12px;border-radius:999px;border:1.5px solid #C7D6EB;background:#fff;color:#344054;font-family:inherit;font-size:14px;font-weight:700;cursor:pointer}
+.ac-chips button[aria-pressed="true"]{background:#1F4AA8;border-color:#1F4AA8;color:#fff}
+.ac-day{margin:18px 0 8px;font-family:"Tiro Bangla",serif;font-size:16px;color:var(--muted);display:flex;align-items:center;gap:10px}
+.ac-day::after{content:"";flex:1;border-top:1.5px dashed #D3DCEA}
+.ac-list{display:flex;flex-direction:column;gap:8px}
+.ac-row{display:grid;grid-template-columns:62px minmax(0,1fr) auto;gap:4px 12px;align-items:start;padding:11px 14px;background:#fff;border:1px solid var(--line);border-radius:12px}
+.ac-row.undone{background:#FAFAFB;opacity:.75}
+.ac-row .tm{font-family:"Baloo Da 2",sans-serif;font-weight:700;font-size:15px;color:#475467;padding-top:2px}
+.ac-row .who{display:flex;flex-wrap:wrap;align-items:center;gap:6px;font-size:14px}
+.ac-row .who .nm{font-weight:800;color:var(--ink)}
+.ac-row .bdg{padding:1px 8px;border-radius:999px;font-size:12px;font-weight:800;background:#EEF2F7;color:#475467}
+.ac-row .bdg.add{background:#E7F6EC;color:#1F7A3D} .ac-row .bdg.chg{background:#EAF0FC;color:#1F4AA8}
+.ac-row .bdg.del{background:#FFECEF;color:#C0152F} .ac-row .bdg.und{background:#FFF4E0;color:#A0610B}
+.ac-row .lb{margin-top:3px;font-weight:700;font-size:15px;word-break:break-word}
+.ac-row ul{list-style:none;margin:4px 0 0;padding:0;font-size:13.5px;color:#475467;line-height:1.6}
+.ac-row li{word-break:break-word}
+.ac-row li.p{color:#1F7A3D} .ac-row li.m{color:#C0152F} .ac-row li.e{color:#1F4AA8}
+.ac-row .und{margin-top:5px;font-size:12.5px;font-weight:700;color:#A0610B}
+.ac-row .bt{display:flex;flex-direction:column;gap:6px;align-items:stretch}
+.ac-row .bt button{padding:7px 10px;border-radius:9px;font-family:inherit;font-size:13px;font-weight:800;cursor:pointer;white-space:nowrap;border:1.5px solid #C7D6EB;background:#fff;color:#1F4AA8}
+.ac-row .bt button.dl{color:#C0152F;border-color:#F3B8C2}
+.ac-row .bt button.dl.sure{background:#C0152F;color:#fff;border-color:#C0152F}
+.ac-more{display:block;margin:14px auto 0;padding:10px 22px;border-radius:11px;border:1.5px solid #1F4AA8;background:#fff;color:#1F4AA8;font-family:inherit;font-weight:800;font-size:15px;cursor:pointer}
+.ac-empty{padding:26px;text-align:center;color:var(--muted);background:#fff;border:1.5px dashed #D3DCEA;border-radius:12px}
+@media (max-width: 600px){
+  .ac-row{grid-template-columns:minmax(0,1fr) auto;padding:10px 12px}
+  .ac-row .tm{grid-column:1 / -1;font-size:13.5px;padding:0}
+  .ac-tools > *{flex:1 1 140px}
+}
+.ad-warn{padding:12px 14px;border-radius:12px;background:#FFF6E5;border:1.5px solid #F2C46D;color:#7A4B00;font-weight:700;margin-bottom:14px;display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center}
+.ad-warn button{padding:7px 12px;border-radius:9px;border:0;background:#A0610B;color:#fff;font-family:inherit;font-weight:800;cursor:pointer}
+.ad-sec{background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:16px}
+.ad-sec h2{margin:0 0 4px;font-size:18px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.ad-sec h2 .nb{margin-left:auto;padding:9px 14px;border-radius:10px;border:0;background:#1F7A3D;color:#fff;font-family:inherit;font-size:14.5px;font-weight:800;cursor:pointer}
+.ad-sec .sub{margin:0 0 12px;color:var(--muted);font-size:13.5px}
+.ad-users{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:10px}
+.ad-u{border:1.5px solid var(--line);border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:8px;background:#FBFCFE}
+.ad-u.off{opacity:.6}
+.ad-u .hd{display:flex;align-items:center;gap:10px}
+.ad-u .av{width:38px;height:38px;border-radius:50%;background:#1F4AA8;color:#fff;display:grid;place-items:center;font-weight:800;flex:none}
+.ad-u.admin .av{background:#A0610B}
+.ad-u .hd b{display:block;font-size:15.5px} .ad-u .hd small{color:var(--muted);font-size:12.5px;word-break:break-all}
+.ad-u .rl{margin-left:auto;align-self:flex-start;padding:2px 9px;border-radius:999px;font-size:12px;font-weight:800;background:#EAF0FC;color:#1F4AA8;white-space:nowrap}
+.ad-u.admin .rl{background:#FFF1DC;color:#A0610B}
+.ad-u .rl.off{background:#FFECEF;color:#C0152F}
+.ad-u .ps{display:flex;flex-wrap:wrap;gap:5px}
+.ad-u .ps i{font-style:normal;padding:2px 8px;border-radius:999px;background:#fff;border:1px solid #D3DCEA;font-size:12.5px;color:#344054}
+.ad-u .bt{display:flex;gap:8px;margin-top:2px}
+.ad-u .bt button{flex:1;padding:8px;border-radius:9px;border:1.5px solid #C7D6EB;background:#fff;color:#1F4AA8;font-family:inherit;font-weight:800;font-size:14px;cursor:pointer}
+.ad-u .bt button.dl{color:#C0152F;border-color:#F3B8C2}
+.ad-u .bt button.dl.sure{background:#C0152F;color:#fff}
+.ad-em label.f{display:block;font-size:14px;font-weight:700;margin:12px 0 5px}
+.ad-em input[type=text],.ad-em input[type=email],.ad-em input[type=password]{width:100%;box-sizing:border-box;padding:10px 12px;font-size:16px;border:1.5px solid #CFD8E6;border-radius:10px;background:#FAFBFD;font-family:inherit;color:var(--ink)}
+.ad-em .row2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 12px}
+.ad-em .tos{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}
+.ad-em .tos span{display:inline-flex;align-items:center;gap:6px;padding:5px 6px 5px 11px;border-radius:999px;background:#EAF0FC;color:#1F4AA8;font-weight:700;font-size:14px;word-break:break-all}
+.ad-em .tos span button{border:0;background:#fff;border-radius:50%;width:22px;height:22px;cursor:pointer;color:#C0152F;font-weight:800;flex:none}
+.ad-em .add{display:flex;gap:8px}
+.ad-em .add button{padding:0 16px;border-radius:10px;border:1.5px solid #1F4AA8;background:#fff;color:#1F4AA8;font-family:inherit;font-weight:800;cursor:pointer;white-space:nowrap}
+.ad-em .ad-tgl{display:flex;align-items:center;gap:10px;font-weight:800;font-size:15.5px;cursor:pointer;padding:10px 12px;border-radius:10px;background:#F4F7FC}
+.ad-em .ad-tgl input{width:20px;height:20px;accent-color:#1F7A3D}
+.ad-em .help{margin:8px 0 0;font-size:13px;color:var(--muted);line-height:1.6}
+.ad-em .help a{color:#1F4AA8}
+.ad-em .acts{display:flex;flex-wrap:wrap;gap:10px;margin-top:16px}
+.ad-em .acts button{flex:1 1 160px;padding:12px;border-radius:11px;font-family:inherit;font-size:15.5px;font-weight:800;cursor:pointer;border:1.5px solid #1F4AA8;background:#fff;color:#1F4AA8}
+.ad-em .acts button.p{background:#1F4AA8;color:#fff}
+.ad-em .last{margin:12px 0 0;font-size:13.5px;color:var(--muted)}
+.ad-em .msg{margin:12px 0 0;font-weight:700;font-size:14px}
+.ad-em .msg.ok{color:#1F7A3D} .ad-em .msg.bad{color:#C0152F}
+@media (max-width: 600px){ .ad-em .row2{grid-template-columns:minmax(0,1fr)} .ad-sec{padding:14px 12px} .ad-users{grid-template-columns:minmax(0,1fr)} }
 </style>
 </head>
-<body>
+<body class="auth-wait">
 <nav class="tabs" role="tablist">
+  <button role="tab" data-tab="amdani" aria-selected="false"><span class="ti" id="calTab"></span>দৈনিক</button>
+  <button role="tab" data-tab="memo" aria-selected="false"><span class="ti">🧾</span>মেমো</button>
   <button role="tab" data-tab="stock" aria-selected="true"><span class="ti">🚚</span>স্টক</button>
   <button role="tab" data-tab="ledger" aria-selected="false"><span class="ti">📒</span>খতিয়ান</button>
   <button role="tab" data-tab="baki" aria-selected="false"><span class="ti">📋</span>বাকি লিস্ট</button>
   <button role="tab" data-tab="company" aria-selected="false"><span class="ti">🏭</span>কোম্পানি</button>
-  <button role="tab" data-tab="amdani" aria-selected="false"><span class="ti" id="calTab"></span>দৈনিক</button>
-  <button role="tab" data-tab="memo" aria-selected="false"><span class="ti">🧾</span>মেমো</button>
   <button role="tab" data-tab="labour" aria-selected="false"><span class="ti">👷</span>লেবার</button>
   <button role="tab" data-tab="dash" aria-selected="false"><span class="ti">📊</span>ড্যাশবোর্ড</button>
   <button role="tab" data-tab="settings" aria-selected="false"><span class="ti">⚙️</span>সেটিং</button>
+  <button role="tab" data-tab="activity" aria-selected="false" hidden><span class="ti">📝</span>অ্যাক্টিভিটি</button>
+  <button role="tab" data-tab="admin" aria-selected="false" hidden><span class="ti">👑</span>অ্যাডমিন</button>
+  <a href="#" class="ubtn" id="uBtn" role="button" aria-label="আমার অ্যাকাউন্ট"><span class="ti">👤</span><span class="un">আমি</span></a>
 </nav>
 <main class="wrap" id="stock"><p class="loading">খাতা খোলা হচ্ছে…</p></main>
 <main class="lwrap" id="ledger" hidden><p class="lempty">খতিয়ান খোলা হচ্ছে…</p></main>
@@ -3129,6 +3263,8 @@ body.addmodal-on{overflow:hidden}
 <main class="wrap coy" id="company" hidden><p class="loading">কোম্পানি খতিয়ান খোলা হচ্ছে…</p></main>
 <main class="wrap" id="settings" hidden><p class="loading">সেটিং খোলা হচ্ছে…</p></main>
 <main class="wrap" id="dash" hidden><p class="loading">ড্যাশবোর্ড খোলা হচ্ছে…</p></main>
+<main class="wrap" id="activity" hidden><p class="loading">অ্যাক্টিভিটি খোলা হচ্ছে…</p></main>
+<main class="wrap" id="admin" hidden><p class="loading">অ্যাডমিন প্যানেল খোলা হচ্ছে…</p></main>
 <script src="/khata/db.js"></script>
 <script>
 // same page header everywhere: title on the left, date pill on the right (same place, same look on every tab)
@@ -4979,6 +5115,9 @@ function getDB(){
   const keepUnsynced = () => { try{ localStorage.setItem('kg-khata-unsynced', JSON.stringify(unsynced)); }catch(_){} };
   function findUnsynced(local){
     const byId = new Map(accs.map(a => [a.id, a])), have = new Set(unsynced.map(u => u.e ? u.e.id : u.party.id)), recent = Date.now() - 21 * 864e5;
+    // removed on purpose with ↶ ফেরান in অ্যাক্টিভিটি → not "unsynced"
+    let undone = new Set(); try{ undone = new Set(JSON.parse(localStorage.getItem('kg-khata-undone') || '[]')); }catch(_){}
+    undone.forEach(id => have.add(id));
     local.forEach(la => {
       const sa = byId.get(la.id);
       if(!sa){ if((la.entries||[]).length && (la.created||0) > recent && !have.has(la.id)) unsynced.push({party: la}); return; }
@@ -7545,12 +7684,304 @@ setTimeout(() => { try{ if(window.__ledger && window.__ledger.autoSend) window._
   window.addEventListener('focus', check);
 })();
 
+/* ================= 🔑 লগইন: who is using the app, which tabs they may see, 👤 account menu ================= */
+(function(){
+  const BD = '০১২৩৪৫৬৭৮৯', toBn = s => String(s).replace(/[0-9]/g, d => BD[d]);
+  const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const post = async (url, body) => {
+    const r = await fetch(url, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)});
+    const j = await r.json().catch(() => ({}));
+    if(r.status === 401 && url !== '/api/auth'){ location.href = '/login?next=' + encodeURIComponent(location.pathname); throw new Error('login'); }
+    if(!r.ok) throw new Error(j.error || ('HTTP ' + r.status));
+    return j;
+  };
+  window.__post = post;
+  // small pop-up: returns {el, close}
+  window.__auPop = (html, onClose) => {
+    const bg = document.createElement('div'); bg.className = 'au-bg';
+    bg.innerHTML = `<div class="au" role="dialog" aria-modal="true">${html}</div>`;
+    document.body.appendChild(bg);
+    const close = () => { bg.remove(); document.removeEventListener('keydown', key); if(onClose) onClose(); };
+    const key = e => { if(e.key === 'Escape') close(); };
+    document.addEventListener('keydown', key);
+    bg.addEventListener('mousedown', e => { if(e.target === bg) close(); });
+    bg.querySelectorAll('[data-close]').forEach(b => b.onclick = close);
+    return {el: bg.querySelector('.au'), close};
+  };
+  const ALL = ['amdani','memo','stock','ledger','baki','company','labour','dash','settings','activity','admin'];
+  function apply(me){
+    window.__me = me;
+    const ok = me.role === 'admin' ? ALL : ALL.filter(t => t !== 'admin' && (me.perms || []).includes(t));
+    window.__allowedTabs = ok;
+    document.querySelectorAll('.tabs button[data-tab]').forEach(b => { b.hidden = !ok.includes(b.dataset.tab); });
+    const un = document.querySelector('#uBtn .un'); if(un) un.textContent = me.name.split(' ')[0] || 'আমি';
+    document.body.classList.remove('auth-wait');
+    if(window.showTab){ let cur = 'stock'; try{ cur = localStorage.getItem('kg-khata-tab') || cur; }catch(_){} window.showTab(cur); }
+    if(me.weakPass && !sessionStorage.getItem('kg-weak-told')){
+      sessionStorage.setItem('kg-weak-told', '1');
+      setTimeout(() => { if(typeof kToast === 'function') kToast('<b>🔒 পাসওয়ার্ড বদলান</b><span>এখনো শুরুর পাসওয়ার্ড (১২৩৪) আছে। 👤 মেনু থেকে বদলে নিন।</span>', 9000); }, 1200);
+    }
+  }
+  (async () => {
+    try{
+      const r = await fetch('/api/auth', {cache:'no-store'});
+      if(r.status === 401){ location.href = '/login?next=' + encodeURIComponent(location.pathname); return; }
+      const me = await r.json();
+      if(!r.ok) throw new Error(me.error);
+      try{ localStorage.setItem('kg-khata-me', JSON.stringify(me)); }catch(_){}
+      apply(me);
+    }catch(e){
+      // no internet: use who was here last time
+      let me = null; try{ me = JSON.parse(localStorage.getItem('kg-khata-me')); }catch(_){}
+      if(me) apply(me); else location.href = '/login';
+    }
+  })();
+
+  function changePass(){
+    const p = __auPop(`<h3>🔒 পাসওয়ার্ড বদলান <button class="x" data-close aria-label="বন্ধ">✕</button></h3>
+      <label class="f">এখনকার পাসওয়ার্ড</label><input type="password" id="cpO" autocomplete="current-password">
+      <label class="f">নতুন পাসওয়ার্ড</label><input type="password" id="cpN" autocomplete="new-password">
+      <label class="f">নতুন পাসওয়ার্ড আবার</label><input type="password" id="cpN2" autocomplete="new-password">
+      <p class="err" id="cpE"></p>
+      <div class="acts"><button data-close>বাতিল</button><button class="p" id="cpGo">✓ বদলান</button></div>`);
+    const $ = id => p.el.querySelector('#' + id);
+    $('cpO').focus();
+    $('cpGo').onclick = async () => {
+      if($('cpN').value !== $('cpN2').value){ $('cpE').textContent = 'নতুন পাসওয়ার্ড দুইবার একই হয়নি'; return; }
+      try{ await post('/api/auth', {op:'password', old:$('cpO').value, pass:$('cpN').value}); p.close(); if(typeof kToast === 'function') kToast('<b>✓ পাসওয়ার্ড বদলানো হয়েছে</b>', 4000); if(window.__me) window.__me.weakPass = false; }
+      catch(e){ $('cpE').textContent = e.message; }
+    };
+  }
+  const ub = document.getElementById('uBtn');
+  if(ub) ub.onclick = e => {
+    e.preventDefault();
+    const me = window.__me || {};
+    const p = __auPop(`<h3>👤 আমার অ্যাকাউন্ট <button class="x" data-close aria-label="বন্ধ">✕</button></h3>
+      <div class="me"><div class="av">${esc((me.name||'?').trim()[0] || '?')}</div><div><b>${esc(me.name)}</b><small>${esc(me.email)} · ${me.role === 'admin' ? 'সুপার অ্যাডমিন' : 'ইউজার'}</small></div></div>
+      <div class="acts"><button id="uPw">🔒 পাসওয়ার্ড বদলান</button><button class="r" id="uOut">🚪 বের হন</button></div>`);
+    p.el.querySelector('#uPw').onclick = () => { p.close(); changePass(); };
+    p.el.querySelector('#uOut').onclick = async () => {
+      try{ await post('/api/auth', {op:'logout'}); }catch(_){}
+      try{ localStorage.removeItem('kg-khata-me'); }catch(_){}
+      location.href = '/login';
+    };
+  };
+})();
+
+/* ================= 📝 অ্যাক্টিভিটি: who did what, with ↶ ফেরান (undo) and × মুছুন ================= */
+(function(){
+  const root = document.getElementById('activity');
+  const BD = '০১২৩৪৫৬৭৮৯', toBn = s => String(s).replace(/[0-9]/g, d => BD[d]);
+  const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const M = ['জানুয়ারি','ফেব্রুয়ারি','মার্চ','এপ্রিল','মে','জুন','জুলাই','আগস্ট','সেপ্টেম্বর','অক্টোবর','নভেম্বর','ডিসেম্বর'];
+  const W = ['রবিবার','সোমবার','মঙ্গলবার','বুধবার','বৃহস্পতিবার','শুক্রবার','শনিবার'];
+  const dayKey = ts => { const d = new Date(ts); return d.getFullYear() + '-' + d.getMonth() + '-' + d.getDate(); };
+  const dayTxt = ts => { const d = new Date(ts); return `${W[d.getDay()]}, ${toBn(d.getDate())} ${M[d.getMonth()]} ${toBn(d.getFullYear())}`; };
+  const timeTxt = ts => { const d = new Date(ts); let h = d.getHours(); const ap = h < 12 ? 'AM' : 'PM'; h = h % 12 || 12; return toBn(h + ':' + String(d.getMinutes()).padStart(2,'0')) + ' ' + ap; };
+  const f = {user:'', kind:'', date:''};
+  let rows = [], users = [], more = false, busy = false;
+
+  async function load(append){
+    if(busy) return; busy = true;
+    try{
+      const j = await __post('/api/activity', {op:'list', ...f, before: append && rows.length ? rows[rows.length-1].ts : undefined});
+      rows = append ? rows.concat(j.rows) : j.rows; users = j.users; more = j.more;
+    }catch(e){ if(!append) rows = []; if(typeof kToast === 'function') kToast('<b>⚠️ অ্যাক্টিভিটি আনা যায়নি</b><span>' + esc(e.message) + '</span>', 5000); }
+    busy = false; paint();
+  }
+  const badge = a => {
+    const c = a.kind === 'undo' ? 'und' : a.action === 'নতুন' ? 'add' : a.action === 'মুছে ফেলা' ? 'del' : a.kind === 'data' ? 'chg' : '';
+    return `<span class="bdg ${c}">${esc(a.action)}</span>`;
+  };
+  const line = t => { const c = t[0] === '＋' ? 'p' : t[0] === '－' ? 'm' : t[0] === '✎' ? 'e' : ''; return `<li class="${c}">${esc(t)}</li>`; };
+  function paint(){
+    const me = window.__me || {}, canUndo = me.role === 'admin' || (me.perms||[]).includes('undo');
+    let last = '', html = '';
+    rows.forEach(a => {
+      const k = dayKey(a.ts);
+      if(k !== last){ if(last) html += '</div>'; html += `<h3 class="ac-day">${dayTxt(a.ts)}</h3><div class="ac-list">`; last = k; }
+      html += `<div class="ac-row ${a.undone ? 'undone' : ''}" data-id="${a._id}">
+        <div class="tm">${timeTxt(a.ts)}</div>
+        <div><div class="who"><span class="nm">👤 ${esc(a.uname)}</span>${badge(a)}</div>
+          <div class="lb">${esc(a.label)}</div>
+          ${(a.lines||[]).length ? `<ul>${a.lines.map(line).join('')}</ul>` : ''}
+          ${a.undone ? `<div class="und">↶ ফেরানো হয়েছে — ${esc(a.undone.uname)}, ${timeTxt(a.undone.ts)}</div>` : ''}</div>
+        <div class="bt">${canUndo && a.canUndo ? `<button type="button" class="un">↶ ফেরান</button>` : ''}${canUndo ? `<button type="button" class="dl">× মুছুন</button>` : ''}</div>
+      </div>`;
+    });
+    if(last) html += '</div>';
+    root.innerHTML = `${uHead('📝 অ্যাক্টিভিটি', 'কে কখন কী করেছে')}
+      <div class="ac-tools">
+        <select id="acU" aria-label="ইউজার"><option value="">👤 সব ইউজার</option>${users.map(u => `<option value="${esc(u.id)}" ${f.user === u.id ? 'selected' : ''}>${esc(u.name)}</option>`).join('')}</select>
+        <input type="date" id="acD" value="${f.date}" aria-label="তারিখ">
+        <div class="ac-chips">${[['','সব'],['data','ডেটা বদল'],['other','লগইন ও অন্যান্য']].map(([k,l]) => `<button type="button" data-k="${k}" aria-pressed="${f.kind===k}">${l}</button>`).join('')}</div>
+      </div>
+      ${rows.length ? html : `<p class="ac-empty">${busy ? 'আনা হচ্ছে…' : 'কোনো অ্যাক্টিভিটি নেই।'}</p>`}
+      ${more ? `<button type="button" class="ac-more" id="acMore">আরো দেখুন ↓</button>` : ''}`;
+    root.querySelector('#acU').onchange = e => { f.user = e.target.value; load(); };
+    root.querySelector('#acD').onchange = e => { f.date = e.target.value; load(); };
+    root.querySelectorAll('[data-k]').forEach(b => b.onclick = () => { f.kind = b.dataset.k; load(); });
+    const mb = root.querySelector('#acMore'); if(mb) mb.onclick = () => load(true);
+    root.querySelectorAll('.ac-row').forEach(r => {
+      const a = rows.find(x => x._id === r.dataset.id);
+      const ub = r.querySelector('.un'); if(ub) ub.onclick = () => undo(a);
+      const db = r.querySelector('.dl');
+      if(db) db.onclick = async () => {
+        if(!db.classList.contains('sure')){ db.classList.add('sure'); db.textContent = 'নিশ্চিত?'; setTimeout(() => { db.classList.remove('sure'); db.textContent = '× মুছুন'; }, 3000); return; }
+        try{ await __post('/api/activity', {op:'delete', id:a._id}); rows = rows.filter(x => x !== a); paint(); }
+        catch(e){ kToast('<b>⚠️ মোছা যায়নি</b><span>' + esc(e.message) + '</span>', 5000); }
+      };
+    });
+  }
+  async function undo(a){
+    const go = await kDialog({icon:'↶', title:'আগের অবস্থায় ফেরাবেন?', html:`<p><b>${esc(a.label)}</b></p><p>এই কাজের আগে যেমন ছিল, তেমন হয়ে যাবে।</p>`, ok:'↶ ফেরান', cancel:'না'});
+    if(!go) return;
+    try{
+      let j = await __post('/api/activity', {op:'undo', id:a._id});
+      if(j.needConfirm){
+        const go2 = await kDialog({icon:'⚠️', title:'পরের কাজও ফিরে যাবে', tone:'warn', html:`<p>এর পরে এই একই রেকর্ডে আরো <b>${toBn(j.needConfirm)}টা</b> কাজ হয়েছে। ফেরালে সেগুলোও বাদ যাবে।</p>`, ok:'তবুও ফেরান', cancel:'না'});
+        if(!go2) return;
+        j = await __post('/api/activity', {op:'undo', id:a._id, confirm:true});
+      }
+      // these entries are gone on purpose: this browser must not offer to "upload" them again
+      try{ const u = JSON.parse(localStorage.getItem('kg-khata-undone') || '[]').concat(j.gone || []); localStorage.setItem('kg-khata-undone', JSON.stringify(u.slice(-500))); }catch(_){}
+      kToast('<b>✓ ফেরানো হয়েছে</b><span>পাতা নতুন করে খুলছে…</span>', 3000);
+      setTimeout(() => location.reload(), 900);
+    }catch(e){ kToast('<b>⚠️ ফেরানো যায়নি</b><span>' + esc(e.message) + '</span>', 6000); }
+  }
+  window.__actRender = () => load();
+})();
+
+/* ================= 👑 অ্যাডমিন: users + what each may see, the nightly email ================= */
+(function(){
+  const root = document.getElementById('admin');
+  const BD = '০১২৩৪৫৬৭৮৯', toBn = s => String(s).replace(/[0-9]/g, d => BD[d]);
+  const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  let users = [], features = [], em = null, tos = [];
+  const fname = id => (features.find(x => x[0] === id) || [id, id])[1];
+
+  async function load(){
+    try{
+      const [u, e] = await Promise.all([__post('/api/admin', {op:'users'}), __post('/api/admin', {op:'email'})]);
+      users = u.users; features = u.features; em = e; tos = e.to.slice();
+    }catch(e){ root.innerHTML = uHead('👑 অ্যাডমিন প্যানেল', '') + `<p class="ac-empty">${esc(e.message)}</p>`; return; }
+    paint();
+  }
+  function paint(){
+    const me = window.__me || {};
+    root.innerHTML = `${uHead('👑 অ্যাডমিন প্যানেল', 'ইউজার, অনুমতি আর দিনের ইমেইল')}
+      ${me.weakPass ? `<div class="ad-warn">⚠️ সুপার অ্যাডমিনের পাসওয়ার্ড এখনো ১২৩৪ — যে কেউ ঢুকতে পারবে। <button type="button" id="adPw">পাসওয়ার্ড বদলান</button></div>` : ''}
+      <section class="ad-sec">
+        <h2>👥 ইউজার <small style="color:#66728A;font-weight:600;font-size:14px">(${toBn(users.length)} জন)</small><button type="button" class="nb" id="adNew">＋ নতুন ইউজার</button></h2>
+        <p class="sub">প্রতিটা ইউজার কোন কোন পাতা দেখতে পারবে, তা ✎ দিয়ে ঠিক করুন।</p>
+        <div class="ad-users">${users.map(u => `
+          <div class="ad-u ${u.role === 'admin' ? 'admin' : ''} ${u.active ? '' : 'off'}" data-id="${esc(u.id)}">
+            <div class="hd"><div class="av">${esc((u.name||'?').trim()[0] || '?')}</div><div><b>${esc(u.name)}</b><small>${esc(u.email)}</small></div>
+              <span class="rl ${u.active ? '' : 'off'}">${u.role === 'admin' ? '👑 সুপার অ্যাডমিন' : u.active ? 'ইউজার' : 'বন্ধ'}</span></div>
+            <div class="ps">${u.role === 'admin' ? '<i>সব কিছু</i>' : (u.perms.length ? u.perms.map(p => `<i>${esc(fname(p))}</i>`).join('') : '<i>কিছুই না</i>')}</div>
+            <div class="bt"><button type="button" class="ed">✎ বদলান</button>${u.role === 'admin' ? '' : '<button type="button" class="dl">× মুছুন</button>'}</div>
+          </div>`).join('')}</div>
+      </section>
+      <section class="ad-sec ad-em">
+        <h2>✉️ প্রতিদিনের ইমেইল</h2>
+        <p class="sub">প্রতিদিন রাত ১১:৫৯-এ পুরো হিসাব ইমেইলে যাবে — ২টা ফাইল: <b>আজকের হিসাব</b> আর <b>পুরো ডেটাবেস</b> (সব দিনের)।</p>
+        <label class="ad-tgl"><input type="checkbox" id="emOn" ${em.enabled ? 'checked' : ''}> প্রতিদিন ইমেইল পাঠানো চালু</label>
+        <label class="f">কোন কোন ইমেইলে যাবে</label>
+        <div class="tos" id="emTos">${tos.map((t, i) => `<span>${esc(t)}<button type="button" data-i="${i}" aria-label="বাদ দিন">×</button></span>`).join('') || '<small style="color:#66728A">এখনো কোনো ইমেইল নেই</small>'}</div>
+        <div class="add"><input type="email" id="emAdd" placeholder="name@gmail.com" inputmode="email"><button type="button" id="emAddB">＋ যোগ</button></div>
+        <div class="row2">
+          <div><label class="f">পাঠানোর Gmail</label><input type="email" id="emFrom" value="${esc(em.from)}" placeholder="yourshop@gmail.com"></div>
+          <div><label class="f">Gmail অ্যাপ পাসওয়ার্ড ${em.hasPass ? '<small style="color:#1F7A3D">(দেওয়া আছে ✓)</small>' : ''}</label><input type="password" id="emPass" placeholder="${em.hasPass ? 'বদলাতে চাইলে নতুনটা দিন' : '১৬ অক্ষরের কোড'}" autocomplete="new-password"></div>
+        </div>
+        <p class="help">${em.envSmtp ? 'সার্ভারে আলাদা ইমেইল সেটিং আছে — সেটাই ব্যবহার হবে।' : 'Gmail-এর আসল পাসওয়ার্ড নয় — Google অ্যাকাউন্টে 2-Step Verification চালু করে <a href="https://myaccount.google.com/apppasswords" target="_blank" rel="noopener">myaccount.google.com/apppasswords</a> থেকে একটা "অ্যাপ পাসওয়ার্ড" বানিয়ে এখানে দিন।'}</p>
+        <div class="acts"><button type="button" class="p" id="emSave">✓ সেভ করুন</button><button type="button" id="emNow">✉️ এখনই একটা পাঠান (টেস্ট)</button></div>
+        <p class="last">${em.lastSent ? 'শেষ পাঠানো: ' + toBn(em.lastSent.split('-').reverse().join('/')) : 'এখনো পাঠানো হয়নি'}</p>
+        <p class="msg" id="emMsg"></p>
+      </section>`;
+    const $ = id => root.querySelector('#' + id);
+    const pw = $('adPw'); if(pw) pw.onclick = () => document.getElementById('uBtn').click();
+    $('adNew').onclick = () => edit(null);
+    root.querySelectorAll('.ad-u').forEach(c => {
+      const u = users.find(x => x.id === c.dataset.id);
+      c.querySelector('.ed').onclick = () => edit(u);
+      const d = c.querySelector('.dl');
+      if(d) d.onclick = async () => {
+        if(!d.classList.contains('sure')){ d.classList.add('sure'); d.textContent = 'নিশ্চিত?'; setTimeout(() => { d.classList.remove('sure'); d.textContent = '× মুছুন'; }, 3000); return; }
+        try{ await __post('/api/admin', {op:'deleteUser', id:u.id}); load(); } catch(e){ kToast('<b>⚠️ ' + esc(e.message) + '</b>', 5000); }
+      };
+    });
+    const keep = () => ({on:$('emOn').checked, from:$('emFrom').value, pass:$('emPass').value});
+    const repaint = () => { const k = keep(); paint(); root.querySelector('#emOn').checked = k.on; root.querySelector('#emFrom').value = k.from; root.querySelector('#emPass').value = k.pass; };
+    root.querySelectorAll('#emTos button').forEach(b => b.onclick = () => { tos.splice(+b.dataset.i, 1); repaint(); });
+    const addTo = () => {
+      const v = $('emAdd').value.trim().toLowerCase();
+      if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)){ msg('ইমেইল ঠিক নেই', false); return; }
+      if(!tos.includes(v)) tos.push(v);
+      repaint(); root.querySelector('#emAdd').focus();
+    };
+    $('emAddB').onclick = addTo;
+    $('emAdd').onkeydown = e => { if(e.key === 'Enter'){ e.preventDefault(); addTo(); } };
+    const msg = (t, ok) => { const m = root.querySelector('#emMsg'); m.textContent = t; m.className = 'msg ' + (ok ? 'ok' : 'bad'); };
+    const save = async () => {
+      const typed = $('emAdd').value.trim(); if(typed && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(typed) && !tos.includes(typed.toLowerCase())) tos.push(typed.toLowerCase());
+      await __post('/api/admin', {op:'saveEmail', enabled:$('emOn').checked, to:tos, from:$('emFrom').value, appPass:$('emPass').value});
+    };
+    $('emSave').onclick = async () => {
+      try{ await save(); await load(); msg('✓ সেভ হয়েছে', true); }
+      catch(e){ msg('⚠️ ' + e.message, false); }
+    };
+    $('emNow').onclick = async e => {
+      const b = e.currentTarget; b.disabled = true; b.textContent = '⏳ পাঠানো হচ্ছে…';
+      try{
+        await save();
+        const j = await __post('/api/admin', {op:'sendNow'});
+        await load();
+        if(j.ok) msg('✓ পাঠানো হয়েছে → ' + j.to.join(', '), true); else msg('⚠️ যায়নি: ' + (j.error || j.skipped), false);
+      }catch(err){ msg('⚠️ ' + err.message, false); b.disabled = false; b.textContent = '✉️ এখনই একটা পাঠান (টেস্ট)'; }
+    };
+  }
+  function edit(u){
+    const isNew = !u, isAdmin = u && u.role === 'admin';
+    const perms = new Set(u ? u.perms : ['amdani','memo','stock','ledger','baki','company','labour','dash']);
+    const p = __auPop(`<h3>${isNew ? '＋ নতুন ইউজার' : '✎ ইউজার বদলান'} <button class="x" data-close aria-label="বন্ধ">✕</button></h3>
+      <label class="f">নাম</label><input type="text" id="euN" value="${esc(u ? u.name : '')}" placeholder="যেমন: রফিক">
+      <label class="f">ইমেইল (লগইনের জন্য)</label><input type="email" id="euE" value="${esc(u ? u.email : '')}" placeholder="name@gmail.com" autocomplete="off">
+      <label class="f">${isNew ? 'পাসওয়ার্ড' : 'নতুন পাসওয়ার্ড <small style="color:#66728A;font-weight:600">(বদলাতে না চাইলে খালি রাখুন)</small>'}</label><input type="text" id="euP" autocomplete="new-password" placeholder="${isNew ? 'অন্তত ৪ অক্ষর' : ''}">
+      ${isAdmin ? '<p class="sub" style="margin-top:12px">👑 সুপার অ্যাডমিন সব কিছু দেখতে পারে।</p>' : `
+      <label class="f">কোন কোন পাতা দেখতে পারবে</label>
+      <div class="perm">${features.map(([id, name]) => `<label><input type="checkbox" value="${id}" ${perms.has(id) ? 'checked' : ''}>${esc(name)}</label>`).join('')}
+        <label class="all"><input type="checkbox" id="euAll" hidden>✓ সব বাছাই / সব বাদ</label></div>
+      <label class="au-tgl"><input type="checkbox" id="euOn" ${!u || u.active ? 'checked' : ''}> চালু (বন্ধ করলে লগইন করতে পারবে না)</label>`}
+      <p class="err" id="euErr"></p>
+      <div class="acts"><button data-close>বাতিল</button><button class="p" id="euGo">✓ সেভ করুন</button></div>`);
+    const $ = id => p.el.querySelector('#' + id);
+    $('euN').focus();
+    const boxes = () => [...p.el.querySelectorAll('.perm input[value]')];
+    const all = $('euAll');
+    if(all) all.parentElement.onclick = e => { e.preventDefault(); const on = boxes().some(b => !b.checked); boxes().forEach(b => b.checked = on); };
+    $('euGo').onclick = async () => {
+      const user = {id: u ? u.id : '', name:$('euN').value, email:$('euE').value, pass:$('euP').value,
+        perms: boxes().filter(b => b.checked).map(b => b.value), active: $('euOn') ? $('euOn').checked : true};
+      try{
+        const j = await __post('/api/admin', {op:'saveUser', user});
+        p.close();
+        if(j.relogin){ location.href = '/login'; return; }
+        kToast(`<b>✓ ${isNew ? 'ইউজার তৈরি হয়েছে' : 'সেভ হয়েছে'}</b>${isNew ? `<span>${esc(user.email)} — এই ইমেইল আর পাসওয়ার্ড দিয়ে লগইন করবে।</span>` : ''}`, 5000);
+        load();
+      }catch(e){ $('euErr').textContent = e.message; }
+    };
+  }
+  window.__adminRender = load;
+})();
+
 /* tabs */
 (function(){
-  const tabs = document.querySelectorAll('.tabs button');
-  const titles = {stock:'গাড়ি স্টক', ledger:'খতিয়ান', amdani:'দৈনিক হিসাব', memo:'মেমো', labour:'লেবার খরচ', dash:'ড্যাশবোর্ড', settings:'সেটিং', company:'কোম্পানি খতিয়ান', baki:'বাকি লিস্ট'};
+  const tabs = document.querySelectorAll('.tabs button[data-tab]');
+  const titles = {stock:'গাড়ি স্টক', ledger:'খতিয়ান', amdani:'দৈনিক হিসাব', memo:'মেমো', labour:'লেবার খরচ', dash:'ড্যাশবোর্ড', settings:'সেটিং', company:'কোম্পানি খতিয়ান', baki:'বাকি লিস্ট', activity:'অ্যাক্টিভিটি', admin:'অ্যাডমিন'};
   function show(name){
-    if(!titles[name]) name = 'stock';
+    // only the tabs this user may see (set by the login module)
+    const ok = window.__allowedTabs;
+    if(!titles[name] || (ok && !ok.includes(name))) name = ok ? (['amdani','memo','stock','ledger','baki','company','labour','dash','settings','activity','admin'].find(t => ok.includes(t)) || 'stock') : 'stock';
     tabs.forEach(t=>t.setAttribute('aria-selected', t.dataset.tab===name));
     Object.keys(titles).forEach(k=>{ document.getElementById(k).hidden = k!==name; });
     document.body.classList.toggle('on-ledger', name==='ledger');
@@ -7563,6 +7994,8 @@ setTimeout(() => { try{ if(window.__ledger && window.__ledger.autoSend) window._
     if(name==='settings' && window.__settingsRender) window.__settingsRender();
     if(name==='company' && window.__companyRender) window.__companyRender();
     if(name==='baki' && window.__bakiRender) window.__bakiRender();
+    if(name==='activity' && window.__actRender) window.__actRender();
+    if(name==='admin' && window.__adminRender) window.__adminRender();
     const at = document.querySelector('.tabs button[aria-selected="true"]'); if(at && at.scrollIntoView) at.scrollIntoView({inline:'center', block:'nearest'});
   }
   window.showTab = show;

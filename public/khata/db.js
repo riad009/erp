@@ -5,6 +5,8 @@
   const call = async body => {
     const r = await fetch('/api/db', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)});
     const j = await r.json().catch(() => ({}));
+    // logged out (or the login was ended by the admin) → login page
+    if(r.status === 401){ location.href = '/login?next=' + encodeURIComponent(location.pathname); throw new Error('login'); }
     if(!r.ok) throw new Error(j.error || ('HTTP ' + r.status));
     return j;
   };
