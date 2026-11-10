@@ -7846,10 +7846,6 @@ setTimeout(() => { try{ if(window.__ledger && window.__ledger.autoSend) window._
     const un = document.querySelector('#uBtn .un'); if(un) un.textContent = me.name.split(' ')[0] || 'আমি';
     document.body.classList.remove('auth-wait');
     if(window.showTab){ let cur = 'stock'; try{ cur = localStorage.getItem('kg-khata-tab') || cur; }catch(_){} window.showTab(cur); }
-    if(me.weakPass && !sessionStorage.getItem('kg-weak-told')){
-      sessionStorage.setItem('kg-weak-told', '1');
-      setTimeout(() => { if(typeof kToast === 'function') kToast('<b>🔒 পাসওয়ার্ড বদলান</b><span>এখনো শুরুর পাসওয়ার্ড (১২৩৪) আছে। 👤 মেনু থেকে বদলে নিন।</span>', 9000); }, 1200);
-    }
   }
   (async () => {
     try{
@@ -8050,7 +8046,6 @@ setTimeout(() => { try{ if(window.__ledger && window.__ledger.autoSend) window._
   function paint(){
     const me = window.__me || {};
     root.innerHTML = `${uHead('👑 অ্যাডমিন প্যানেল', 'ইউজার, অনুমতি আর দিনের ইমেইল')}
-      ${me.weakPass ? `<div class="ad-warn">⚠️ সুপার অ্যাডমিনের পাসওয়ার্ড এখনো ১২৩৪ — যে কেউ ঢুকতে পারবে। <button type="button" id="adPw">পাসওয়ার্ড বদলান</button></div>` : ''}
       <section class="ad-sec">
         <h2>👥 ইউজার <small style="color:#66728A;font-weight:600;font-size:14px">(${toBn(users.length)} জন)</small><button type="button" class="nb" id="adNew">＋ নতুন ইউজার</button></h2>
         <p class="sub">প্রতিটা ইউজার কোন কোন পাতা দেখতে পারবে, তা ✎ দিয়ে ঠিক করুন।</p>
