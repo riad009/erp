@@ -1,0 +1,19 @@
+{
+  "name": "কাজী রোমান এন্ড ব্রাদার্স — হিসাব খাতা",
+  "short_name": "হিসাব খাতা",
+  "description": "স্টক, খতিয়ান, দৈনিক, মেমো — বাংলা হিসাব খাতা",
+  "id": "/khata/",
+  "start_url": "/khata/index.html",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "lang": "bn",
+  "background_color": "#FFFFFF",
+  "theme_color": "#1F4AA8",
+  "icons": [
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/maskable-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "/icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

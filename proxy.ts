@@ -14,5 +14,6 @@ export function proxy(req: NextRequest) {
 
 export const config = {
   // everything except the login page, login API, the nightly email call and Next's own files
-  matcher: ['/((?!login|api/auth|api/cron|_next/|favicon\\.ico).*)'],
+  // (+ the app files a phone needs before login: manifest, icons, offline helper, Android app check)
+  matcher: ['/((?!login|api/auth|api/cron|_next/|favicon\\.ico|manifest\\.webmanifest|sw\\.js|icons/|\\.well-known/).*)'],
 };

@@ -1,0 +1,8 @@
+[{
+  "relation": ["delegate_permission/common.handle_all_urls"],
+  "target": {
+    "namespace": "android_app",
+    "package_name": "com.krb.khata",
+    "sha256_cert_fingerprints": ["61:81:1D:FD:77:DB:56:AA:9A:EF:E0:83:B7:4B:EB:F8:66:93:C5:8D:D9:FE:7E:0F:04:92:A8:A9:09:8F:A7:A1"]
+  }
+}]
