@@ -3140,6 +3140,25 @@ body.addmodal-on{overflow:hidden}
   #company.coy .cy-paper th small{font-size:9.5px}
   #company.coy .cy-paper tr.op td.ds2,#company.coy .cy-paper tfoot td:first-child{position:static;box-shadow:none}
 }
+/* the table box scrolls on its own: column names stay on top, মোট stays at the bottom */
+#company.coy .cy-tw{overflow:auto;overscroll-behavior:contain;background-attachment:local}
+#company.coy .cy-paper thead th{position:sticky;top:0;z-index:2;box-shadow:0 2px 0 var(--cy)}
+#company.coy .cy-paper tfoot td{position:sticky;bottom:0;z-index:2;background:#C5E4CB;box-shadow:0 -2px 0 var(--cy)}
+#company.coy .cy-paper{border-collapse:separate;border-spacing:0}
+/* the memo pop-up holder takes no room when no memo is open (it made every page scroll ~900px extra) */
+#lhost:empty{display:none!important}
+@media (min-width: 900px){ #company.coy{min-height:0!important;padding-bottom:14px!important} #company.coy .cy-note{margin-bottom:0} }
+@media (min-width: 900px){
+  /* টাকা জমা box: টাকা | রসিদ নং side by side → shorter cards, more room for the table */
+  #company.coy .cy-pay{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);column-gap:12px;align-content:start}
+  #company.coy .cy-pay > *{grid-column:1 / -1}
+  #company.coy .cy-pay > .lbl{grid-column:1;grid-row:2}
+  #company.coy .cy-pay > #qAmt{grid-column:1;grid-row:3;align-self:end}
+  #company.coy .cy-pay > .cy-q2{grid-column:2;grid-row:2 / span 2;align-self:end;margin:0}
+  #company.coy .cy-sum{display:flex;flex-direction:column}
+  #company.coy .cy-sum .cy-mini{margin-top:auto}
+  #company.coy .cy-top{align-items:stretch}
+}
 /* ===== menu order: দৈনিক → মেমো → স্টক → খতিয়ান → rest (same on phone and computer) ===== */
 @media (min-width: 900px){
   html body .tabs .nav-brand{order:0} html body .tabs .nav-grp.g1{order:1}
@@ -4799,11 +4818,29 @@ function getDB(){
   function save(c){ lsSave(); if(db && c) db.doc('companies/'+c.id).set(clone(c)).catch(()=>{}); }
   const root = document.getElementById('company');
   const isoToday = () => { const t = new Date(); return t.getFullYear()+'-'+String(t.getMonth()+1).padStart(2,'0')+'-'+String(t.getDate()).padStart(2,'0'); };
+  // the table scrolls by itself (not the page): it fills the screen and starts at the newest rows + মোট
+  let twMem = null;
+  function fitTable(){
+    const tw = root.querySelector('.cy-tw'); if(!tw) return;
+    const wide = window.innerWidth >= 900;
+    const top = wide ? tw.getBoundingClientRect().top + window.scrollY : (parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--tabsH')) || 0);
+    if(!wide){ tw.style.maxHeight = Math.max(320, window.innerHeight - top - 12) + 'px'; return; }
+    // computer: table ends at the bottom of the screen, leaving room for what comes below it (note, padding) → the page itself doesn't scroll
+    tw.style.maxHeight = 'none';
+    const below = document.documentElement.scrollHeight - (tw.getBoundingClientRect().bottom + window.scrollY);
+    tw.style.maxHeight = Math.max(320, window.innerHeight - top - Math.max(0, below) - 2) + 'px';
+  }
   function render(){
     if(!root || root.hidden) return;
+    const old = root.querySelector('.cy-tw'), c0 = co();
+    const mem = old && twMem && twMem.co === (c0 && c0.id) ? {top: old.scrollTop, bottom: old.scrollHeight - old.scrollTop - old.clientHeight < 40} : null;
     root.innerHTML = uHead('🏭 কোম্পানি খতিয়ান', 'মাল আসা (চালান) ও টাকা দেওয়া (রসিদ)') + html(isoToday());
     bind();
+    fitTable();
+    const tw = root.querySelector('.cy-tw');
+    if(tw){ tw.scrollTop = !mem || mem.bottom ? tw.scrollHeight : mem.top; twMem = {co: (co()||{}).id}; }
   }
+  window.addEventListener('resize', () => { if(root && !root.hidden) fitTable(); });
   function rerender(){ render(); }
   (async () => {
     db = await getDB(); if(!db) return;
