@@ -13,3 +13,11 @@ public/data/backup.json
 .env*
 !.env.example
 *.tsbuildinfo
+
+# Android app build output + private signing key (never in git)
+android/.gradle/
+android/app/build/
+android/build/
+android/local.properties
+*.jks
+*.keystore

@@ -72,6 +72,11 @@ Tabs (this order on phone AND computer — owner's wish): দৈনিক · ম
   - খরচ column has a 💰 বিবিধ খরচ (খুচরা) card: items saved in the same day's khoroch list with `misc:true`; the main খরচ list shows them as one auto line "বিবিধ খরচ (খুচরা)" = their sum (totals already include them).
 - Fonts: Noto Sans Bengali (clear ১), Baloo Da 2 for numbers, Tiro Bangla headings.
 
+## 📱 Android app (APK)
+- `android/` = Trusted Web Activity (androidbrowserhelper) opening the live site full screen; package `com.krb.khata`, name "হিসাব খাতা", minSdk 24. The site part: `public/manifest.webmanifest`, `public/icons/`, `public/sw.js` (offline helper: pages network-first with a cached copy, so the app opens without internet; `/api` untouched), `public/.well-known/assetlinks.json` (SHA-256 of the signing key — must match, or the browser bar shows). `proxy.ts` lets these through without login.
+- The signing key (`khata-release.jks` + password) is private, kept by the owner, never in git. Build steps: `android/README.md`. Maven Central via Google's mirror in settings.gradle (repo.maven.apache.org rate-limits the sandbox).
+- iPhone: no APK possible; "Add to Home Screen" in Safari uses the same manifest/icons/offline helper.
+
 ## Challan photos → স্টক
 - When the owner sends a mill delivery challan photo + গাড়ি নং + date, follow the **`stock-challan` skill** (`.claude/skills/stock-challan/SKILL.md`): read it → show a Bangla table → after his "yes" run `insert.py` (writes the live DB: stock day + company খতিয়ান, adds missing sizes, refuses a duplicate চালান নং; needs `KHATA_EMAIL`/`KHATA_PASS` env = an admin login). ANN = নরম (kK), TRI = হার্ড (kE), RW Coil = হার্ড (kE), GLG = জাকের; 650X914 → 65 × 914; net kg, not gross.
 

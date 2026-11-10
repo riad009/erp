@@ -1,0 +1,10 @@
+// Maven Central through Google's mirror first (the main address rate-limits some build machines)
+pluginManagement {
+    repositories { google(); maven { url 'https://maven-central.storage-download.googleapis.com/maven2' }; maven { url 'https://repo1.maven.org/maven2' } }
+}
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+    repositories { google(); maven { url 'https://maven-central.storage-download.googleapis.com/maven2' }; maven { url 'https://repo1.maven.org/maven2' } }
+}
+rootProject.name = "KhataApp"
+include ':app'

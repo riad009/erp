@@ -1,0 +1,43 @@
+// হিসাব খাতা — Android app: opens https://erp-psi-woad.vercel.app full screen (Trusted Web Activity).
+// Build: see android/README.md. The signing key is NOT in this repo (it is private).
+plugins { id 'com.android.application' }
+
+def site = 'erp-psi-woad.vercel.app'
+
+android {
+    namespace 'com.krb.khata'
+    compileSdk 36
+
+    defaultConfig {
+        applicationId 'com.krb.khata'
+        minSdk 24   // Android 7.0 and newer
+        targetSdk 36
+        versionCode 1
+        versionName '1.0'
+        manifestPlaceholders = [hostName: site, launchUrl: "https://${site}/khata/index.html"]
+        resValue 'string', 'asset_statements', """[{ "relation": ["delegate_permission/common.handle_all_urls"], "target": { "namespace": "web", "site": "https://${site}" } }]"""
+    }
+
+    signingConfigs {
+        release {
+            storeFile file(System.getenv('KHATA_KEYSTORE') ?: 'khata-release.jks')
+            storePassword System.getenv('KHATA_KEYSTORE_PASS')
+            keyAlias 'khata'
+            keyPassword System.getenv('KHATA_KEYSTORE_PASS')
+        }
+    }
+    buildTypes {
+        release {
+            minifyEnabled false
+            signingConfig signingConfigs.release
+        }
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
+
+dependencies {
+    implementation 'com.google.androidbrowserhelper:androidbrowserhelper:2.7.4'
+}
