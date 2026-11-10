@@ -1,7 +1,7 @@
 import { getMongo } from '@/lib/mongo';
 import { COLLECTIONS, getDoc, setDoc, deleteDoc, listDocs, wipeAll, migrateOldLayout, LISTABLE } from '@/lib/store';
 import { currentUser } from '@/lib/auth';
-import { logAct, describe, actionOf, sameData, type Act } from '@/lib/activity';
+import { logAct, describe, actionOf, sameData, effectsOf, type Act } from '@/lib/activity';
 
 // Small doc store used by public/khata/index.html (same API it had on claude.ai):
 //   collection(name).get()  → {op:'list', col}
@@ -39,7 +39,17 @@ export async function POST(req: Request) {
       const empty = (d: Record<string, unknown> | null) => !!d && !((d.entries as unknown[]) || []).length && !((d.outs as unknown[]) || []).length;
       if (path.startsWith('days/') && ((!before && empty(after)) || (!after && empty(before)))) return;
       const { label, lines } = describe(path, before, after);
-      await logAct(db, me, { kind: 'data', action: actionOf(before, after), label, lines, path, before, existed: old.exists, cid: req.headers.get('x-khata-client') || undefined });
+      // names for the "what else changed" lines
+      let sizes: Map<string, string> | null = null;
+      const sizeName = (id: unknown) => sizes?.get(String(id)) || 'মাল';
+      if (/^(ledgers|days)\//.test(path)) {
+        const cats = (await getDoc(db, 'settings/cats')).data as { list?: { name: string; items?: { id: string; h?: unknown; w?: unknown }[] }[] } | null;
+        sizes = new Map((cats?.list || []).flatMap(m => (m.items || []).map(it => [String(it.id), `${m.name} ${String(it.h ?? '')} × ${String(it.w ?? '')}`.replace(/[0-9]/g, d => '০১২৩৪৫৬৭৮৯'[+d])] as [string, string])));
+      }
+      const coNames = new Map<string, string>();
+      if (path.startsWith('days/')) for (const c of await db.collection<{ _id: string; name?: string }>('companies').find({}, { projection: { name: 1 } }).toArray()) coNames.set(c._id, c.name || '');
+      const { effects, links } = effectsOf(path, before, after, sizeName, id => coNames.get(String(id)) || 'কোম্পানি');
+      await logAct(db, me, { kind: 'data', action: actionOf(before, after), label, lines, path, before, existed: old.exists, cid: req.headers.get('x-khata-client') || undefined, effects, links });
     };
     switch (body.op) {
       case 'ping': {

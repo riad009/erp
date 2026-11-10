@@ -17,6 +17,7 @@ export type Act = {
   undone?: { ts: number; uname: string; by?: string; cascade?: boolean };   // later ফেরানো (cascade = went with an earlier one)
   undoOf?: { id: string; ts: number; uname: string; label: string };          // on a ফেরানো line: the line it reverted
   snapshot?: Record<string, unknown[]>; restorable?: boolean;                // on a 🗑 সব মুছে ফেলা line
+  effects?: string[]; links?: Link[];                                         // what else this change did in the app (owner's wish)
 };
 
 const BD = '০১২৩৪৫৬৭৮৯';
@@ -41,6 +42,90 @@ function entryText(col: string, e: Data): string {
 }
 
 const same = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
+
+// ---- effects: what one save also changed elsewhere (স্টক, খতিয়ানের বাকি, দৈনিকের নগদ, কোম্পানির অবশিষ্ট) + buttons to open those pages
+export type Link = { t: 'party' | 'memo' | 'stock' | 'daily' | 'company'; id?: string; eid?: string; date?: string; label: string };
+const N = (v: unknown) => Number(v) || 0;
+const byId = (a: unknown) => new Map(((Array.isArray(a) ? a : []) as Data[]).map(x => [String(x.id), x]));
+const signedTk = (n: number) => (n < 0 ? '−' : '') + '৳' + money(Math.abs(n));
+
+export function effectsOf(path: string, before: Data | null, after: Data | null, sizeName: (id: unknown) => string, coName: (id: unknown) => string) {
+  const [col, id] = path.split('/');
+  const fx: string[] = [], links: Link[] = [];
+  const b = before || {}, a = after || {};
+  if (col === 'ledgers') {
+    const name = String(a.name || b.name || '');
+    const bal = (d: Data) => N(d.opening) + ((d.entries as Data[]) || []).reduce((t, e) => t + N(e.credit) - N(e.debit), 0);
+    const B = byId(b.entries), A = byId(a.entries), dates = new Set<string>();
+    const changed = [...new Set([...B.keys(), ...A.keys()])].filter(k => !same(B.get(k), A.get(k)));
+    for (const k of changed) {
+      const o = B.get(k), n = A.get(k), e = (n || o) as Data, date = String(e.date || '');
+      if (N(e.credit) > 0) {   // a memo
+        const oP = new Map(((o?.picks as Data[]) || []).map(p => [String(p.item), N(p.kg)]));
+        const nP = new Map(((n?.picks as Data[]) || []).map(p => [String(p.item), N(p.kg)]));
+        for (const it of new Set([...oP.keys(), ...nP.keys()])) {
+          const d = (nP.get(it) || 0) - (oP.get(it) || 0);
+          if (d) fx.push(`📦 স্টক: ${sizeName(it)} — ${d > 0 ? 'মাল গেছে −' : 'মাল ফিরে এসেছে +'}${kg(Math.abs(d))}`);
+        }
+        if (!oP.size && !nP.size && N(n?.kg) !== N(o?.kg)) fx.push(`📦 স্টক: মাল ${kg(Math.abs(N(n?.kg) - N(o?.kg)))} ${N(n?.kg) > N(o?.kg) ? 'গেছে' : 'ফিরে এসেছে'}`);
+        if (n && N(n.labour) !== N(o?.labour)) fx.push(o ? `👷 লেবার খরচ: ৳${money(o.labour)} → ৳${money(n.labour)}` : `👷 লেবার খরচ: ৳${money(n.labour)}`);
+        if (!n && N(o?.labour)) fx.push(`👷 লেবার খরচ বাদ: ৳${money(o?.labour)}`);
+        fx.push(`📅 দৈনিক (${bnDate(date)}): বিক্রয়ে ${!o ? 'যোগ হয়েছে' : !n ? 'থেকে বাদ গেছে' : 'বদলেছে'} — মেমো ${bn(e.memoNo ?? '')}`);
+        if (n) links.push({ t: 'memo', id, eid: k, label: `🧾 মেমো ${bn(e.memoNo ?? '')} দেখুন` });
+        links.push({ t: 'stock', date: String(e.confirmedOn || date), label: '📦 স্টক দেখুন' });
+      } else if (N(e.debit) > 0 || N(o?.debit) > 0) {   // a জমা
+        const d = N(n?.debit) - N(o?.debit);
+        if (d) fx.push(`💵 দৈনিক (${bnDate(date)}): আমদানি ${d > 0 ? '+' : '−'}৳${money(Math.abs(d))} → হাতে নগদ ${d > 0 ? 'বেড়েছে' : 'কমেছে'} ৳${money(Math.abs(d))}`);
+        dates.add(date);
+      }
+    }
+    const bb = bal(b), ab = bal(a);
+    if (before && after && bb !== ab) fx.unshift(`📒 ${name}-এর খতিয়ান: বাকি ${signedTk(bb)} → ${signedTk(ab)}`);
+    else if (!before && after && ab) fx.unshift(`📒 ${name}-এর খতিয়ান: বাকি ${signedTk(ab)}`);
+    if (after) links.unshift({ t: 'party', id, label: `📒 ${name}-এর খতিয়ান` });
+    for (const d of dates) links.push({ t: 'daily', date: d, label: `📅 দৈনিক ${bnDate(d)}` });
+  }
+  if (col === 'days') {
+    const sum = (x: unknown) => ((x as Data[]) || []).reduce((t, e) => t + N(e.kg), 0);
+    const inD = sum(a.entries) - sum(b.entries), outD = sum(a.outs) - sum(b.outs);
+    const B = byId(b.entries), A = byId(a.entries);
+    const per = new Map<string, number>();
+    for (const e of (a.entries as Data[]) || []) per.set(String(e.item), (per.get(String(e.item)) || 0) + N(e.kg));
+    for (const e of (b.entries as Data[]) || []) per.set(String(e.item), (per.get(String(e.item)) || 0) - N(e.kg));
+    for (const o of (a.outs as Data[]) || []) per.set(String(o.item), (per.get(String(o.item)) || 0) - N(o.kg));
+    for (const o of (b.outs as Data[]) || []) per.set(String(o.item), (per.get(String(o.item)) || 0) + N(o.kg));
+    for (const [it, d] of per) if (d) fx.push(`📦 ${sizeName(it)}: ${d > 0 ? '+' : '−'}${kg(Math.abs(d))}`);
+    const net = inD - outD;
+    if (net) fx.unshift(`📊 সর্বমোট স্টক ${net > 0 ? 'বেড়েছে +' : 'কমেছে −'}${kg(Math.abs(net))}`);
+    const cos = new Set<string>();
+    for (const [k, e] of A) if (!same(B.get(k), e) && e.co) cos.add(String(e.co));
+    for (const [k, e] of B) if (!A.has(k) && e.co) cos.add(String(e.co));
+    for (const c of cos) { fx.push(`🏭 ${coName(c)}-এর খতিয়ানে চালান ${A.size >= B.size ? 'যোগ / বদল' : 'বাদ'} হয়েছে`); links.push({ t: 'company', id: c, label: `🏭 ${coName(c)}` }); }
+    links.unshift({ t: 'stock', date: id, label: `📦 স্টক ${bnDate(id)}` });
+  }
+  if (col === 'companies') {
+    const name = String(a.name || b.name || '');
+    const obo = (d: Data) => N(d.opening) + ((d.entries as Data[]) || []).reduce((t, e) => t + (e.type === 'rec' ? N(e.amount) : -N(e.amount)), 0);
+    if (obo(b) !== obo(a)) fx.push(`🏭 ${name}: অবশিষ্ট ${signedTk(obo(b))} → ${signedTk(obo(a))}${obo(a) < 0 ? ' (কোম্পানি পাবে)' : ''}`);
+    const B = byId(b.entries), A = byId(a.entries);
+    for (const [k, e] of A) if (!B.has(k) && e.type === 'inv' && e.fromStock) fx.push(`📦 এই চালানের মাল স্টকে যোগ হয়েছে (${bnDate(String(e.date))})`);
+    if (after) links.push({ t: 'company', id, label: `🏭 ${name}` });
+  }
+  if (col === 'khoroch') {
+    const sum = (x: unknown) => ((x as Data[]) || []).reduce((t, e) => t + N(e.amt), 0);
+    const d = sum(a.items) - sum(b.items);
+    if (d) fx.push(`💵 দৈনিক (${bnDate(id)}): খরচ ${d > 0 ? '+' : '−'}৳${money(Math.abs(d))} → হাতে নগদ ${d > 0 ? 'কমেছে' : 'বেড়েছে'} ৳${money(Math.abs(d))}`);
+    links.push({ t: 'daily', date: id, label: `📅 দৈনিক ${bnDate(id)}` });
+  }
+  if (path === 'amdani/sabek') {
+    const bm = (b.map || {}) as Data, am = (a.map || {}) as Data;
+    for (const k of new Set([...Object.keys(bm), ...Object.keys(am)])) if (!same(bm[k], am[k])) {
+      fx.push(`💵 ${bnDate(k)}-এর হাতে নগদ বদলেছে (সাবেক জমা ৳${money(bm[k])} → ৳${money(am[k])})`);
+      links.push({ t: 'daily', date: k, label: `📅 দৈনিক ${bnDate(k)}` });
+    }
+  }
+  return { effects: fx.slice(0, 14), links: links.slice(0, 6) };
+}
 
 // compare two lists of {id …}: what was added, removed, changed
 function listDiff(col: string, a: unknown, b: unknown, out: string[]) {

@@ -3254,6 +3254,12 @@ body.auth-wait .tabs button[data-tab], body.auth-wait main{visibility:hidden}
 .ac-row li.p{color:#1F7A3D} .ac-row li.m{color:#C0152F} .ac-row li.e{color:#1F4AA8}
 .ac-row .und{margin-top:8px;padding:7px 10px;border-radius:9px;background:#FFE9EC;color:#A3122A;font-size:13px;line-height:1.5}
 .ac-row .und .by{display:block;font-size:12px;font-weight:700;color:#7A1A2A}
+.ac-row .fx{margin-top:7px;padding:7px 10px;border-radius:9px;background:#F1F6FF;border:1px solid #D6E2F7;font-size:13px;color:#24406E}
+.ac-row .fx b{font-size:12.5px}
+.ac-row .fx ul{margin:3px 0 0;color:#24406E}
+.ac-row .lk{display:flex;flex-wrap:wrap;gap:6px;margin-top:7px}
+.ac-row .lk button{padding:5px 10px;border-radius:999px;border:1.5px solid #C7D6EB;background:#fff;color:#1F4AA8;font-family:inherit;font-size:12.5px;font-weight:800;cursor:pointer}
+.ac-row.undone .fx{opacity:.7}
 .ac-row .uof{margin-top:6px;padding:6px 10px;border-radius:9px;background:#FFF4E0;color:#7A4B00;font-size:12.5px}
 .ac-row .go{margin-left:8px;padding:2px 8px;border-radius:999px;border:1px solid currentColor;background:#fff;color:inherit;font-family:inherit;font-size:11.5px;font-weight:800;cursor:pointer}
 .ad-wipe{border-color:#F3B8C2}
@@ -4243,6 +4249,12 @@ function getDB(){
     // new day: open today's page carrying yesterday's total; jump there if you were on the last day
     rollover: () => { if(!viewId) return; const wasLast = viewId === lastDay().id; ensureToday(); if(wasLast) viewId = lastDay().id; render(); },
     removeByLink: ce => { for(const d of days){ const i = (d.entries||[]).findIndex(e => e.ce === ce); if(i >= 0){ d.entries.splice(i,1); saveDay(d,true); if(viewId) render(); return true; } } return false; },
+    // অ্যাক্টিভিটি link: open this date's স্টক page (sub-tab: types | delivery | queue)
+    openDay: (date, sub) => {
+      if(findDay(date)) viewId = date;
+      if(sub){ sSub = sub; try{ localStorage.setItem('kg-khata-ssub', sSub); }catch(_){} }
+      editIndex = -1; if(window.showTab) window.showTab('stock'); render();
+    },
     // live sync: another phone / computer changed this record (data = null → deleted)
     remote: (path, data) => {
       const [col, id] = path.split('/');
@@ -5159,6 +5171,7 @@ function getDB(){
   function remove(coId, eid){ const c = findCo(coId); if(!c) return; c.entries = (c.entries||[]).filter(x => x.id !== eid); save(c); render(); }
   window.__company = {html, bind, badge, list: () => cos, create, addInv, updateInv, remove, lastRate, name: id => (findCo(id)||{}).name, inv: (coId, eid) => ((findCo(coId)||{}).entries||[]).find(x => x.id === eid) || null};
   window.__companyRender = render;
+  window.__company.open = id => { if(findCo(id)){ cur = id; ui.editId = null; lsSave(); } if(window.showTab) window.showTab('company'); };
   window.__company.remote = (path, data) => {
     const id = path.split('/')[1], i = cos.findIndex(c => c.id === id);
     if(data){ data = clone(data); if(i >= 0) cos[i] = data; else cos.push(data); }
@@ -6865,7 +6878,8 @@ function getDB(){
       if(window.__extrasRefresh) window.__extrasRefresh();     // লেবার / মেমো lists update right away
       if(window.__stock) window.__stock.render();
     },
-    open: id => { curId = id; try{localStorage.setItem(LSCUR,id);}catch(_){}; form = {mode:'new', type:'credit', editId:null}; render(); if(window.showTab) window.showTab('ledger'); }
+    open: id => { curId = id; try{localStorage.setItem(LSCUR,id);}catch(_){}; form = {mode:'new', type:'credit', editId:null}; render(); if(window.showTab) window.showTab('ledger'); },
+    openDaily: date => { aDate = date || todayId(); if(window.showTab) window.showTab('amdani'); renderAmdani(); }
   };
   start();
 })();
@@ -8068,6 +8082,8 @@ window.__appBack = () => {
         <div><div class="who"><span class="nm">👤 ${esc(a.uname)}</span>${badge(a)}</div>
           <div class="lb">${esc(a.label)}</div>
           ${(a.lines||[]).length ? `<ul>${a.lines.map(line).join('')}</ul>` : ''}
+          ${(a.effects||[]).length ? `<div class="fx"><b>🔗 এর ফলে যা বদলেছে:</b><ul>${a.effects.map(t => `<li>${esc(t)}</li>`).join('')}</ul></div>` : ''}
+          ${(a.links||[]).length && !a.undone ? `<div class="lk">${a.links.map((l, i) => `<button type="button" data-lk="${i}">${esc(l.label)} ›</button>`).join('')}</div>` : ''}
           ${a.undone ? `<div class="und">⚠️ ${a.kind === 'wipe' ? `<b>এই মোছা ফেরানো হয়েছে</b> — মুছে ফেলা সব ডেটা আবার ফিরে এসেছে`
               : a.undone.cascade ? `<b>এই কাজটা বাতিল হয়ে গেছে</b> — এর আগের একটা কাজ ফেরানোর সময় এটাও আগের অবস্থায় গেছে। এখানে যা লেখা, তা এখন আর নেই।`
               : `<b>এই কাজটা পরে ফেরানো হয়েছে</b> — আগের অবস্থায় ফিরিয়ে নেওয়া হয়েছে। এখানে যা লেখা, তা এখন আর নেই।`}
@@ -8097,6 +8113,7 @@ window.__appBack = () => {
     });
     root.querySelectorAll('.ac-row').forEach(r => {
       const a = rows.find(x => x._id === r.dataset.id);
+      r.querySelectorAll('[data-lk]').forEach(b => b.onclick = () => openLink(a.links[+b.dataset.lk]));
       const ub = r.querySelector('.un'); if(ub) ub.onclick = () => undo(a);
       const db = r.querySelector('.dl');
       if(db) db.onclick = async () => {
@@ -8105,6 +8122,18 @@ window.__appBack = () => {
         catch(e){ kToast('<b>⚠️ মোছা যায়নি</b><span>' + esc(e.message) + '</span>', 5000); }
       };
     });
+  }
+  // the buttons under "এর ফলে যা বদলেছে": open that page
+  function openLink(l){
+    if(!l) return;
+    const allowed = t => !window.__allowedTabs || window.__allowedTabs.includes(t);
+    const no = () => kToast('<b>এই পাতা দেখার অনুমতি নেই</b>', 3000);
+    if(l.t === 'party'){ if(!allowed('ledger')) return no(); window.__ledger.open(l.id); }
+    else if(l.t === 'memo'){ if(!allowed('memo') && !allowed('ledger')) return no(); if(window.showMemo) window.showMemo(l.id, l.eid); }
+    else if(l.t === 'stock'){ if(!allowed('stock')) return no(); window.__stock.openDay(l.date, 'delivery'); }
+    else if(l.t === 'daily'){ if(!allowed('amdani')) return no(); window.__ledger.openDaily(l.date); }
+    else if(l.t === 'company'){ if(!allowed('company')) return no(); window.__company.open(l.id); }
+    window.scrollTo(0, 0);
   }
   async function undo(a){
     const go = await kDialog({icon:'↶', title:'আগের অবস্থায় ফেরাবেন?', html:`<p><b>${esc(a.label)}</b></p><p>এই কাজের আগে যেমন ছিল, তেমন হয়ে যাবে।</p>`, ok:'↶ ফেরান', cancel:'না'});
