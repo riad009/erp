@@ -3107,6 +3107,39 @@ body.addmodal-on{overflow:hidden}
 .tstock .ahr.st b{color:#475467}
 @media (max-width: 700px){ .tstock .ahl{min-width:0;padding:5px 6px} .tstock .ahb{white-space:normal;font-size:11.5px} .tstock .ahr{font-size:11.5px;gap:6px} }
 
+
+/* 🏭 কোম্পানি খতিয়ান like the paper book: তারিখ | বিবরণ | জমা | খরচ | অবশিষ্ট (oldest on top) */
+#company.coy .cy-t.cy-paper th:nth-child(1){width:10%}
+#company.coy .cy-t.cy-paper th:nth-child(2){width:42%}
+#company.coy .cy-t.cy-paper th:nth-child(n+3){width:16%}
+#company.coy .cy-paper td.cdt b{font-size:14.5px;white-space:nowrap}
+#company.coy .cy-paper td.ds2{font-family:"Noto Sans Bengali","Hind Siliguri",sans-serif;font-size:13.5px;font-weight:500;color:#2F4D39;line-height:1.45}
+#company.coy .cy-paper td.ds2 b{display:block;font-weight:700;font-size:14px;color:var(--cyd)}
+#company.coy .cy-paper tr.op td.ds2 b{display:inline;margin-right:8px;font-family:"Tiro Bangla",serif;font-size:15px}
+#company.coy .cy-paper td.ds2 .fx{display:block;font-family:"Baloo Da 2","Noto Sans Bengali",sans-serif;font-weight:700;font-size:15px;color:#1F5E3A}
+#company.coy .cy-paper td.ds2 .fx i{font-style:normal;font-family:"Noto Sans Bengali",sans-serif;font-size:12px;color:#8A6D1F}
+#company.coy .cy-paper td.ds2 .car{display:inline-block;margin-left:6px;font-size:12px;color:#4E6B57}
+#company.coy .cy-paper td.bal{color:var(--cyd)}
+#company.coy .cy-paper td.bal .neg{color:var(--cyr)}
+#company.coy .cy-paper td.bal small{display:block;font-size:11px;color:var(--cyr);font-family:"Tiro Bangla",serif}
+#company.coy .cy-paper th small{font-family:"Noto Sans Bengali",sans-serif}
+#company.coy .cy-paper td.ds2 .dm{display:none}
+/* phone: date goes on top of বিবরণ so জমা | খরচ | অবশিষ্ট fit on the screen (no sideways scroll) */
+@media (max-width: 899px){
+  #company.coy .cy-tw::after{display:none}
+  #company.coy .cy-t.cy-paper{min-width:0}
+  #company.coy .cy-t.cy-paper th:nth-child(1),#company.coy .cy-paper td.cdt{display:none}
+  #company.coy .cy-t.cy-paper th:nth-child(2){width:auto;position:static;box-shadow:none}
+  #company.coy .cy-t.cy-paper th:nth-child(n+3){width:21%}
+  #company.coy .cy-paper td.ds2 .dm{display:block;background:none!important;box-shadow:none!important;border:0!important;padding:0!important;width:auto!important;font-family:"Baloo Da 2",sans-serif;font-weight:800;font-size:13.5px;color:var(--cyd)}
+  #company.coy .cy-paper td.ds2{font-size:12.5px;padding:6px 4px}
+  #company.coy .cy-paper td.ds2 b{font-size:12.5px}
+  #company.coy .cy-paper td.ds2 .fx{font-size:13.5px}
+  #company.coy .cy-paper td.n{font-size:13px;padding:7px 3px}
+  #company.coy .cy-paper th{font-size:12.5px;padding:6px 3px}
+  #company.coy .cy-paper th small{font-size:9.5px}
+  #company.coy .cy-paper tr.op td.ds2,#company.coy .cy-paper tfoot td:first-child{position:static;box-shadow:none}
+}
 /* ===== menu order: দৈনিক → মেমো → স্টক → খতিয়ান → rest (same on phone and computer) ===== */
 @media (min-width: 900px){
   html body .tabs .nav-brand{order:0} html body .tabs .nav-grp.g1{order:1}
@@ -3766,7 +3799,7 @@ function getDB(){
     const inv = {}; C.list().forEach(c => (c.entries||[]).forEach(e => { if(e.type === 'inv' && Number(e.rate) > 0) inv[e.id] = Number(e.rate); }));
     let best = null;
     days.forEach(d => (d.entries||[]).forEach(e => { if(e.item === id && e.ce && inv[e.ce]){ const k = d.id + '|' + String(e.ts||0).padStart(15,'0'); if(!best || k > best.k) best = {k, r:inv[e.ce]}; } }));
-    return best ? Math.round(best.r / 1000 * 100) / 100 : null;
+    return best ? Math.round(best.r * 100) / 100 : null;   // চালান দর is per কেজি
   }
   function costOf(id){ const f = findItem(id); if(!f) return null; if(Number(f.it.cost) > 0) return Number(f.it.cost); return autoCost(id); }
   window.__marka = {
@@ -4395,7 +4428,7 @@ function getDB(){
         <div class="xrows" id="xRows"></div>
         <button type="button" class="xmore" id="xMore">＋ আরো মাল (এই গাড়িতে)</button>
         <div><label for="car">গাড়ি নং</label><input id="car" inputmode="numeric" autocomplete="off" value="${toBn(nextCar(cur))}"></div>
-        <div class="cof"><label for="coRate">দর (প্রতি টন)</label><input id="coRate" class="num" inputmode="decimal" value="${lastCo && C ? (C.lastRate(lastCo) ? toBn(C.lastRate(lastCo)) : '') : ''}" placeholder="১,০১,০০০"></div>
+        <div class="cof"><label for="coRate">দর (প্রতি কেজি)</label><input id="coRate" class="num" inputmode="decimal" value="${lastCo && C ? (C.lastRate(lastCo) ? toBn(C.lastRate(lastCo)) : '') : ''}" placeholder="যেমন ৯৩"></div>
         <div class="cof"><label for="coVno">চালান নং</label><input id="coVno" autocomplete="off" placeholder="যেমন ৮৪৯৮৭"></div>
         <p class="cocalc cof" id="coCalc"></p>
         <button id="addBtn" type="button">${carEdit ? '✓ সেভ করুন' : 'যোগ করুন'}</button>
@@ -4576,7 +4609,7 @@ function getDB(){
     const paintCo = () => {
       const k = parseNum(kg.value), r = parseNum(coRate.value);
       const xs = [...document.querySelectorAll('#xRows .xkg')].reduce((a, x) => a + (parseNum(x.value) > 0 ? parseNum(x.value) : 0), 0);
-      coCalc.textContent = box.classList.contains('withco') && k > 0 && r > 0 && !xs ? `${toBn((k/1000).toLocaleString('en-IN',{maximumFractionDigits:3}))} টন × ${bn(r)} = ${bn(Math.round(k/1000*r))} ৳ (কোম্পানির খতিয়ানে ডেবিট)` : '';
+      coCalc.textContent = box.classList.contains('withco') && k > 0 && r > 0 && !xs ? `${bn(k)} কেজি × ${bn(r)} = ${bn(Math.round(k*r))} ৳ (কোম্পানির খতিয়ানে খরচ)` : '';
     };
     [kg, coRate].forEach(x => x.addEventListener('input', paintCo)); paintCo();
     if(coSel) coSel.onchange = () => {
@@ -4606,7 +4639,7 @@ function getDB(){
       }
       const coId = coSel ? coSel.value : '';
       const withCo = coId && coId !== '__new' && C, rate = parseNum(coRate.value);
-      if(withCo && !(rate > 0) && !carEdit){ hint.textContent = 'কোম্পানির দর (প্রতি টন) লিখুন।'; hint.className = 'hint err'; coRate.focus(); return; }
+      if(withCo && !(rate > 0) && !carEdit){ hint.textContent = 'কোম্পানির দর (প্রতি কেজি) লিখুন।'; hint.className = 'hint err'; coRate.focus(); return; }
       cur.entries = cur.entries||[];
       const ts = Date.now(), olds = carEdit ? carEdit.map(i => cur.entries[i]).filter(Boolean) : [], rows = [];
       if(carEdit) olds.forEach(o => { if(o.co && o.ce && C) C.remove(o.co, o.ce); });   // old চালান lines go, new ones are written below
@@ -4769,10 +4802,11 @@ function getDB(){
     }catch(_){}
   })();
 
-  // oldest → newest, running ক্লোজিং = আগের জের + ডেবিট − ক্রেডিট
+  // oldest → newest. bal = কোম্পানির বাকি (চালান − জমা); the table shows অবশিষ্ট = −bal like the paper book:
+  // অবশিষ্ট = আগের জের (c.opening, + = টাকা আগে দেওয়া) + জমা (টাকা দিয়েছি) − খরচ (মাল এসেছে)
   function compute(c){
     const es = [...(c.entries||[])].sort((a,b) => a.date<b.date ? -1 : a.date>b.date ? 1 : (a.ts||0)-(b.ts||0));
-    let bal = Number(c.opening)||0, tD = 0, tC = 0, kg = 0;
+    let bal = -(Number(c.opening)||0), tD = 0, tC = 0, kg = 0;
     const rows = es.map(e => {
       const d = e.type === 'inv' ? Number(e.amount)||0 : 0, cr = e.type === 'rec' ? Number(e.amount)||0 : 0;
       bal += d - cr; tD += d; tC += cr; if(e.type === 'inv') kg += Number(e.kg)||0;
@@ -4781,6 +4815,8 @@ function getDB(){
     return {rows, tD, tC, kg, bal};
   }
   const balTxt = b => b < 0 ? `<small>অগ্রিম</small>${bn(-b)}` : bn(b);
+  // অবশিষ্ট (+ = টাকা আগে দেওয়া আছে, − = কোম্পানি পাবে)
+  const oboTxt = o => o < 0 ? `<span class="neg">−${bn(-o)}</span><small>বাকি</small>` : bn(o);
 
   const mm = n => toBn(Number(n) < 10 ? Number(n).toFixed(2) : n);
   function badge(){ const c = co(); if(!c) return 'কোম্পানি যোগ করুন'; const b = compute(c).bal; return (b < 0 ? 'অগ্রিম ' + bn(-b) : 'বাকি ' + bn(b)) + ' ৳'; }
@@ -4835,38 +4871,40 @@ function getDB(){
         </div>
 
         <div class="cy-tw">
-          <table class="cy-t">
+          <table class="cy-t cy-paper">
             <thead><tr>
-              <th>তারিখ ও বিবরণ</th>
-              <th class="n">ডেবিট<small>মাল এসেছে</small></th>
-              <th class="n">ক্রেডিট<small>টাকা দিয়েছি</small></th>
-              <th class="n">ক্লোজিং<small>বাকি</small></th>
+              <th class="cdt">তারিখ</th>
+              <th>বিবরণ</th>
+              <th class="n">জমা<small>টাকা দিয়েছি</small></th>
+              <th class="n">খরচ<small>মাল এসেছে</small></th>
+              <th class="n">অবশিষ্ট<small>ব্যালান্স</small></th>
             </tr></thead>
             <tbody>
-              ${[...k.rows].reverse().map(({e, d, cr, bal}) => `
-              <tr class="r ${e.id===ui.editId?'sel':''}" data-id="${e.id}" tabindex="0">
-                <td class="cdt"><b>${shortD(e.date)}</b>
-                  <small class="tg ${e.type}">${e.type==='inv' ? 'চালান' : 'রসিদ'}${e.vno ? ' #' + esc(e.vno) : ''}</small>
-                  ${e.type==='inv'
-                    ? `<span class="ds">${esc(e.item || 'মাল')}${e.mt ? ' (' + (e.mt==='hard' ? 'হার্ড' : 'সফট') + ')' : ''}${e.mili ? ' · ' + mm(e.mili) + ' মিলি' : ''}${e.size ? (e.mili ? ' × ' : ' · ') + toBn(e.size) : ''}${e.len ? ' × ' + toBn(e.len) : ''}<br>${bn(e.kg)} কেজি${e.rate ? ' @ ' + bn(e.rate) + '/টন' : ''}${e.car ? ' · 🚚 গাড়ি ' + esc(toBn(e.car)) : ''}</span>`
-                    : (e.note ? `<span class="ds">${esc(e.note)}</span>` : '')}
-                </td>
-                <td class="n">${d ? bn(d) : ''}</td>
-                <td class="n">${cr ? bn(cr) : ''}</td>
-                <td class="n bal ${bal<0?'adv':''}">${balTxt(bal)}</td>
-              </tr>`).join('')}
               <tr class="op">
-                <td class="cdt"><b>আগের জের ${ui.openEdit ? '' : '<button type="button" class="cy-ib sm" id="cyOpenEd" aria-label="আগের জের বদলান">✎</button>'}</b><small class="ds">শুরুর বাকি</small></td>
+                <td class="cdt"></td><td class="ds2"><b>আগের জের</b>${ui.openEdit ? 'শুরুর অবশিষ্ট (আগে টাকা দেওয়া থাকলে +, বাকি থাকলে −)' : 'আগের পাতা থেকে আনা <button type="button" class="cy-ib sm" id="cyOpenEd" aria-label="আগের জের বদলান">✎</button>'}</td>
                 <td></td><td></td>
                 <td class="n bal">${ui.openEdit
                   ? `<input id="cyOpenIn" class="num" inputmode="decimal" value="${c.opening ? bn(c.opening) : ''}" aria-label="আগের জের"><button type="button" class="cy-ib ok" id="cyOpenOk">✓</button>`
-                  : bn(c.opening||0)}</td>
+                  : oboTxt(Number(c.opening)||0)}</td>
               </tr>
+              ${k.rows.map(({e, d, cr, bal}) => `
+              <tr class="r ${e.id===ui.editId?'sel':''}" data-id="${e.id}" tabindex="0">
+                <td class="cdt"><b>${shortD(e.date)}</b></td>
+                <td class="ds2"><span class="dm">${shortD(e.date)}</span>${e.type==='inv'
+                  ? `<b>${e.size ? '(' + toBn(e.size) + (e.len ? ' × ' + toBn(e.len) : '') + ') ' : ''}${esc(e.item || 'মাল')}${e.mt ? ' (' + (e.mt==='hard' ? 'হার্ড' : 'সফট') + ')' : ''}${e.mili ? ' · ' + mm(e.mili) + ' মিলি' : ''}</b>
+                     <span class="fx">= ${bn(e.kg)}${e.rate ? ' × ' + bn(e.rate) : ' কেজি <i>(দর নেই)</i>'}</span>
+                     <small class="tg inv">চালান${e.vno ? ' #' + esc(e.vno) : ''}</small>${e.car ? `<small class="car">🚚 গাড়ি ${esc(toBn(e.car))}</small>` : ''}`
+                  : `<b>টাকা জমা</b>${e.note ? `<span class="fx">${esc(e.note)}</span>` : ''}<small class="tg rec">রসিদ${e.vno ? ' #' + esc(e.vno) : ''}</small>`}
+                </td>
+                <td class="n">${cr ? bn(cr) : ''}</td>
+                <td class="n">${d ? bn(d) : ''}</td>
+                <td class="n bal">${oboTxt(-bal)}</td>
+              </tr>`).join('')}
             </tbody>
-            <tfoot><tr><td>মোট</td><td class="n">${bn(k.tD)}</td><td class="n">${bn(k.tC)}</td><td class="n bal ${k.bal<0?'adv':''}">${balTxt(k.bal)}</td></tr></tfoot>
+            <tfoot><tr><td class="cdt"></td><td>মোট</td><td class="n">${bn(k.tC)}</td><td class="n">${bn(k.tD)}</td><td class="n bal">${oboTxt(-k.bal)}</td></tr></tfoot>
           </table>
         </div>
-        <p class="cy-note">লাইনে চাপ দিলে বদলানো / মুছা যাবে। ক্লোজিং = আগের জের + ডেবিট − ক্রেডিট।</p>
+        <p class="cy-note">লাইনে চাপ দিলে বদলানো / মুছা যাবে। অবশিষ্ট = আগের জের + জমা − খরচ (− মানে কোম্পানি টাকা পাবে)।</p>
         ${ed ? `<div class="cy-sheet-bg" id="cySheetBg">` + editSheet(c, ed, dateIso) + `</div>` : ''}`;
   }
 
@@ -4888,7 +4926,7 @@ function getDB(){
             <label ${linked?'hidden':''}>মিলি<input id="cyMili" class="num" inputmode="decimal" value="${ed && ed.mili ? toBn(ed.mili) : ''}" placeholder="০.৮০"></label>
             <label ${linked?'hidden':''}>সাইজ<input id="cySize" class="num" inputmode="decimal" value="${ed ? (ed.size ? toBn(ed.size) : '') : (last.size ? toBn(last.size) : '')}" placeholder="১২৫০"></label>
             <label ${linked?'hidden':''}>ওজন (কেজি)<input id="cyKg" class="num" inputmode="decimal" value="${v('kg',1)}" placeholder="১০,৮৩০"></label>
-            <label>দর (প্রতি টন)<input id="cyRate" class="num" inputmode="decimal" value="${ed ? v('rate',1) : (last.rate ? bn(last.rate) : '')}" placeholder="১,০১,০০০"></label>
+            <label>দর (প্রতি কেজি)<input id="cyRate" class="num" inputmode="decimal" value="${ed ? v('rate',1) : (last.rate ? bn(last.rate) : '')}" placeholder="যেমন ৯৩"></label>
             <label class="w2">টাকা (ডেবিট)<input id="cyAmt" class="num" inputmode="decimal" value="${v('amount',1)}"></label>
             <p class="cy-calc w2" id="cyCalc"></p>` : `
             <label class="w2">টাকা (ক্রেডিট)<input id="cyAmt" class="num" inputmode="decimal" value="${v('amount',1)}"></label>
@@ -4965,7 +5003,7 @@ function getDB(){
     const paint = () => {
       if(!kg) return null;
       const k = num(kg.value), r = num(rt.value);
-      if(k > 0 && r > 0){ const a = Math.round(k / 1000 * r); calc.textContent = `${bn(k/1000)} টন × ${bn(r)} = ${bn(a)} ৳`; return a; }
+      if(k > 0 && r > 0){ const a = Math.round(k * r); calc.textContent = `${bn(k)} কেজি × ${bn(r)} = ${bn(a)} ৳`; return a; }
       calc.textContent = ''; return null;
     };
     if(kg){ [kg, rt].forEach(x => x.addEventListener('input', () => { const a = paint(); if(a != null){ amt.value = bn(a); amt.dispatchEvent(new Event('input')); } })); paint(); }
@@ -5025,12 +5063,12 @@ function getDB(){
   function create(name){ const c = {id:uid(), name, opening:0, entries:[], created:Date.now()}; cos.push(c); cur = c.id; save(c); render(); return c.id; }
   function addInv(o){
     const c = findCo(o.coId); if(!c) return null;
-    const e = {id:uid(), ts:Date.now(), type:'inv', date:o.date, kg:o.kg, mili:o.mili||0, size:o.size||0, len:o.len||0, item:o.item||'', mt:o.mt||'', rate:o.rate, amount:Math.round(o.kg/1000*o.rate), vno:o.vno||'', car:o.car||'', fromStock:true};
+    const e = {id:uid(), ts:Date.now(), type:'inv', date:o.date, kg:o.kg, mili:o.mili||0, size:o.size||0, len:o.len||0, item:o.item||'', mt:o.mt||'', rate:o.rate, amount:Math.round(o.kg*o.rate), vno:o.vno||'', car:o.car||'', fromStock:true};
     c.entries = c.entries || []; c.entries.push(e); save(c); render(); return e.id;
   }
   function updateInv(coId, eid, p){
     const c = findCo(coId); if(!c) return; const e = (c.entries||[]).find(x => x.id === eid); if(!e) return;
-    Object.assign(e, p); if(e.rate) e.amount = Math.round(e.kg/1000*e.rate); save(c); render();
+    Object.assign(e, p); if(e.rate) e.amount = Math.round(e.kg*e.rate); save(c); render();
   }
   function remove(coId, eid){ const c = findCo(coId); if(!c) return; c.entries = (c.entries||[]).filter(x => x.id !== eid); save(c); render(); }
   window.__company = {html, bind, badge, list: () => cos, create, addInv, updateInv, remove, lastRate, name: id => (findCo(id)||{}).name, inv: (coId, eid) => ((findCo(coId)||{}).entries||[]).find(x => x.id === eid) || null};

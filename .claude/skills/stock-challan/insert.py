@@ -13,7 +13,7 @@ challan.json:
   "company": "Karnafully Steel Mills",  # matched by name; created if missing
   "company_address": "",                # only used when the company is new
   "time": "15:30",                      # optional, Dhaka time (shown as the entry time)
-  "rate": 0,                            # দর per টন (0 = not known yet)
+  "rate": 0,                            # দর per কেজি (0 = not known yet)
   "lines": [                            # in the same order as the challan
     {"marka": "kK", "h": 90, "w": 914, "kg": 7940, "ci": "SFG.ANN.CRC.900X914", "coil": ""}
   ]
@@ -101,7 +101,7 @@ def main():
         day.setdefault("entries", []).append(row)
         co.setdefault("entries", []).append({"id": ce, "ts": ts, "type": "inv", "date": date, "kg": kg, "mili": 0,
             "size": ln["h"], "len": int(ln["w"]), "item": ln["mname"], "mt": "", "rate": rate,
-            "amount": round(kg / 1000 * rate), "vno": vno, "car": car, "fromStock": True})
+            "amount": round(kg * rate), "vno": vno, "car": car, "fromStock": True})
 
     print(f"{date} · গাড়ি {car} · {co['name']}{' (NEW company)' if new_co else ''} · চালান {vno} · দর {rate:g}")
     for ln in lines:

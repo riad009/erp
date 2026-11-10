@@ -44,7 +44,7 @@ Reply in easy English with a Bangla-digit table:
 | ১ | নরম মাল (কাজী মার্কা) — ANN | ৯০ × ৯১৪ (new size) | ৭,৯৪০ |
 | | | **মোট** | **২৫,৩১৫** ✓ |
 
-- Add a line that it goes into the company খতিয়ান with **দর ০**, unless he gave a দর (per টন).
+- Add a line that it goes into the company খতিয়ান with **দর ০**, unless he gave a দর (per কেজি, e.g. ৯৩; amount = kg × দর).
 - Ask only real questions: an unclear number, a new item code, or a cut-off line.
 - End with: Reply **"yes"** and I'll insert it.
 - Insert straight away only when his message itself already says "insert" **and** nothing is unclear.
@@ -79,7 +79,7 @@ If he later says "yes insert this N no car" for a গাড়ি that is alread
 
 ## Fixing later
 - **Small fixes** (wrong গাড়ি নং, kg, size): he can use **✎** on the গাড়ি line himself. Or edit via the API: get `days/<date>` and `companies/<id>`, change the matching entries (same `vno` / `ce`) in **both**, then set both back.
-- **দর later**: on each company entry set `rate` and `amount = round(kg/1000 × rate)`.
+- **দর later**: on each company entry set `rate` (per কেজি) and `amount = round(kg × rate)`.
 
 ## API (needs a login)
 First `POST https://erp-psi-woad.vercel.app/api/auth` `{"op":"login","email":…,"pass":…}` and keep the `khata_s` cookie (insert.py does this). Then
