@@ -65,6 +65,7 @@ export function describe(path: string, before: Data | null, after: Data | null):
   else if (path === 'settings/labour') label = '👷 লেবার রেট';
   else if (path === 'settings/drafts') label = '📝 খসড়া মেমো';
   else if (path === 'amdani/sabek') label = '💰 সাবেক জমা';
+  else if (path === 'settings/ui') label = '🎨 মেমোর ধরন (সেটিং)';
 
   if (before && after) {
     if (col === 'ledgers' || col === 'companies') listDiff(col, before.entries, after.entries, lines);
@@ -80,6 +81,7 @@ export function describe(path: string, before: Data | null, after: Data | null):
     }
     if (path === 'settings/drafts') lines.push(`খসড়া ${bn(((before.list || []) as unknown[]).length)} → ${bn(((after.list || []) as unknown[]).length)}`);
     if (path === 'settings/labour') lines.push(`রেট ${bn(before.rate)} → ${bn(after.rate)}`);
+    if (path === 'settings/ui') { const t = (v: unknown) => v === 'digital' ? 'ডিজিটাল' : 'কাগজ'; lines.splice(0, lines.length, `মেমো দেখানো: ${t(after.memoStyle)} · নতুন মেমো ফর্ম: ${t(after.memoForm)}`); }
     if (path === 'amdani/sabek') {
       const a = (before.map || {}) as Data, b = (after.map || {}) as Data;
       for (const k of new Set([...Object.keys(a), ...Object.keys(b)])) if (!same(a[k], b[k])) lines.push(`${bnDate(k)}: ৳${money(a[k])} → ৳${money(b[k])}`);

@@ -7264,10 +7264,22 @@ document.addEventListener('input', e=>{
   // মেমো তালিকা: show sizes / profit (you choose at the top of the list)
   let mview = {sizes:true, profit:true}; try{ Object.assign(mview, JSON.parse(localStorage.getItem('kg-khata-mview') || '{}')); }catch(_){}
   let mSumHide = false; try{ mSumHide = localStorage.getItem('kg-khata-msumhide') === '1'; }catch(_){}   // computer: hide the left side (সারাংশ) → list full width
+  // কাগজ / ডিজিটাল is saved online (settings/ui) so the phone and the computer show the same
+  const keepUi = () => { try{ localStorage.setItem('kg-khata-memostyle', memoStyle); localStorage.setItem('kg-khata-memoform', memoForm); }catch(_){} };
+  const saveUi = () => { keepUi(); getDB().then(db => { if(db) db.doc('settings/ui').set({memoStyle, memoForm}).catch(()=>{}); }); };
+  window.__uiRemote = d => { if(!d) return; if(d.memoStyle) memoStyle = d.memoStyle; if(d.memoForm) memoForm = d.memoForm; keepUi(); };
+  (async () => {
+    const db = await getDB(); if(!db) return;
+    try{
+      const d = await db.doc('settings/ui').get();
+      if(d.exists){ window.__uiRemote(d.data()); if(typeof renderMemo === 'function') renderMemo(); if(window.__settingsRender) window.__settingsRender(); }
+      else{ let mine = false; try{ mine = !!(localStorage.getItem('kg-khata-memostyle') || localStorage.getItem('kg-khata-memoform')); }catch(_){} if(mine) saveUi(); }   // first time: this device's choice goes online
+    }catch(_){}
+  })();
   window.__memoFormStyle = () => memoForm;
-  window.__setMemoFormStyle = v => { memoForm = v; try{ localStorage.setItem('kg-khata-memoform', v); }catch(_){} };
+  window.__setMemoFormStyle = v => { memoForm = v; saveUi(); };
   window.__memoStyle = () => memoStyle;
-  window.__setMemoStyle = v => { memoStyle = v; try{ localStorage.setItem('kg-khata-memostyle', v); }catch(_){}; if(typeof renderMemo === 'function') renderMemo(); };
+  window.__setMemoStyle = v => { memoStyle = v; saveUi(); if(typeof renderMemo === 'function') renderMemo(); };
   function memoDigital(P, forPdf){
     const {a, e, sale, amt, before, after, items, kg} = P;
     const balTxt = b => b<0 ? 'অগ্রিম '+bn(-b) : bn(b);
@@ -7482,7 +7494,7 @@ document.addEventListener('input', e=>{
     });
     mroot.querySelectorAll('.msend').forEach(x => x.addEventListener('keydown', e => { if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); x.click(); } }));
     document.getElementById('mNew').onclick = () => L().newMemo(null, oneDay || null);
-    mroot.querySelectorAll('[data-ms]').forEach(b => b.onclick = () => { memoStyle = b.dataset.ms; try{ localStorage.setItem('kg-khata-memostyle', memoStyle); }catch(_){}; renderMemo(); });
+    mroot.querySelectorAll('[data-ms]').forEach(b => b.onclick = () => window.__setMemoStyle(b.dataset.ms));
     mroot.querySelectorAll('.mdr-open').forEach(b => b.onclick = () => L().openDraft(b.dataset.dr));
     mroot.querySelectorAll('.mdr-del').forEach(b => b.onclick = () => { if(!b.classList.contains('armed')){ b.classList.add('armed'); b.textContent = 'মুছবেন?'; setTimeout(() => { if(b.isConnected){ b.classList.remove('armed'); b.textContent = '×'; } }, 3500); return; } L().delDraft(b.dataset.drd); });
     if(document.getElementById('mDay')) document.getElementById('mDay').oninput = document.getElementById('mDay').onchange = e => { const v = e.target.value; if(!v) return; mst.p = 'custom'; mst.f = v; mst.t = v; try{ localStorage.setItem('kg-khata-memo', JSON.stringify(mst)); }catch(_){}; renderMemo(); };
@@ -7921,6 +7933,7 @@ setTimeout(() => { try{ if(window.__ledger && window.__ledger.autoSend) window._
         if(col === 'days' || path === 'settings/cats'){ if(window.__stock && window.__stock.remote) window.__stock.remote(path, data); }
         else if(col === 'companies'){ if(window.__company && window.__company.remote) window.__company.remote(path, data); }
         else if(path === 'settings/labour'){ if(window.__labourRemote) window.__labourRemote(data); }
+        else if(path === 'settings/ui'){ if(window.__uiRemote) window.__uiRemote(data); }
         else if(window.__ledger && window.__ledger.remote) window.__ledger.remote(path, data);
       }
       rows.forEach(r => seen.add(r.id));
