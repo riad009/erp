@@ -12,10 +12,9 @@ android {
         applicationId 'com.krb.khata'
         minSdk 24   // Android 7.0 and newer
         targetSdk 36
-        versionCode 1
-        versionName '1.0'
+        versionCode 2
+        versionName '1.1'
         manifestPlaceholders = [hostName: site, launchUrl: "https://${site}/khata/index.html"]
-        resValue 'string', 'asset_statements', """[{ "relation": ["delegate_permission/common.handle_all_urls"], "target": { "namespace": "web", "site": "https://${site}" } }]"""
     }
 
     signingConfigs {

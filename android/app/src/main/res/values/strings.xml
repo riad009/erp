@@ -1,4 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">হিসাব খাতা</string>
+    <!-- app → site link (the site's /.well-known/assetlinks.json is the other half). Quotes must stay escaped. -->
+    <string name="asset_statements" translatable="false">
+        [{
+            \"relation\": [\"delegate_permission/common.handle_all_urls\"],
+            \"target\": {\"namespace\": \"web\", \"site\": \"https://erp-psi-woad.vercel.app\"}
+        }]
+    </string>
 </resources>

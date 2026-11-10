@@ -14,7 +14,8 @@
 
         <!-- opens the live app; no Chrome on the phone → falls back to a built-in web view -->
         <activity
-            android:name="com.google.androidbrowserhelper.trusted.LauncherActivity"
+            android:name=".LauncherActivity"
+            android:alwaysRetainTaskState="true"
             android:exported="true"
             android:label="@string/app_name">
             <meta-data android:name="android.support.customtabs.trusted.DEFAULT_URL" android:value="${launchUrl}" />
@@ -42,7 +43,7 @@
         <activity android:name="com.google.androidbrowserhelper.trusted.FocusActivity" />
         <activity
             android:name="com.google.androidbrowserhelper.trusted.WebViewFallbackActivity"
-            android:configChanges="orientation|screenSize|keyboardHidden" />
+            android:configChanges="orientation|screenSize" />
 
         <provider
             android:name="androidx.core.content.FileProvider"
