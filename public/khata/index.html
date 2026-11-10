@@ -3159,6 +3159,13 @@ body.addmodal-on{overflow:hidden}
   #company.coy .cy-sum .cy-mini{margin-top:auto}
   #company.coy .cy-top{align-items:stretch}
 }
+/* 📴 no internet / ⏫ sending: small strip on top */
+.netbar{position:fixed;bottom:calc(12px + env(safe-area-inset-bottom, 0px));left:50%;transform:translateX(-50%);z-index:250;display:flex;flex-wrap:wrap;align-items:center;gap:2px 10px;width:max-content;max-width:calc(100vw - 20px);box-sizing:border-box;
+  padding:7px 14px;border-radius:12px;font-family:"Noto Sans Bengali","Hind Siliguri",sans-serif;font-size:13px;box-shadow:0 8px 22px rgba(12,24,48,.2)}
+.netbar b{font-size:14px}
+.netbar.off{background:#FFF1F2;border:1.5px solid #F2B8C0;color:#8A1C1C}
+.netbar.up{background:#EEF4FF;border:1.5px solid #B9CCF2;color:#1F4AA8}
+@media (min-width: 900px){ .netbar{left:calc(50% + var(--side, 224px) / 2)} }
 /* ===== menu order: দৈনিক → মেমো → স্টক → খতিয়ান → rest (same on phone and computer) ===== */
 @media (min-width: 900px){
   html body .tabs .nav-brand{order:0} html body .tabs .nav-grp.g1{order:1}
@@ -7907,6 +7914,14 @@ setTimeout(() => { try{ if(window.__ledger && window.__ledger.autoSend) window._
     return [...document.querySelectorAll('main:not([hidden]) input, main:not([hidden]) textarea')].some(i =>
       shown(i) && !/^(search|date|checkbox|radio|hidden|file|button|submit)$/.test(i.type) && i.value !== i.defaultValue);
   }
+  function applyRemote(path, data){
+    const col = path.split('/')[0];
+    if(col === 'days' || path === 'settings/cats'){ if(window.__stock && window.__stock.remote) window.__stock.remote(path, data); }
+    else if(col === 'companies'){ if(window.__company && window.__company.remote) window.__company.remote(path, data); }
+    else if(path === 'settings/labour'){ if(window.__labourRemote) window.__labourRemote(data); }
+    else if(path === 'settings/ui'){ if(window.__uiRemote) window.__uiRemote(data); }
+    else if(window.__ledger && window.__ledger.remote) window.__ledger.remote(path, data);
+  }
   function repaint(){
     const t = (document.querySelector('.tabs button[aria-selected="true"]') || {dataset:{}}).dataset.tab;
     const R = {stock: () => window.__stock && window.__stock.render(), amdani: window.__amdaniRender, memo: window.__memoRender, labour: window.__labourRender,
@@ -7923,14 +7938,11 @@ setTimeout(() => { try{ if(window.__ledger && window.__ledger.autoSend) window._
       const j = await K.changes(K.since);
       const rows = (j.rows || []).filter(r => !seen.has(r.id));
       if(rows.some(r => r.path === '*')){ location.reload(); return; }   // whole database was replaced
-      const paths = [...new Set(rows.map(r => r.path))];
+      // a record this browser still has to send is merged when it is sent (see db.js) — don't overwrite it here
+      const paths = [...new Set(rows.map(r => r.path))].filter(p => !K.pending(p));
       for(const path of paths){
-        const d = await db.doc(path).get(), data = d.exists ? d.data() : null, col = path.split('/')[0];
-        if(col === 'days' || path === 'settings/cats'){ if(window.__stock && window.__stock.remote) window.__stock.remote(path, data); }
-        else if(col === 'companies'){ if(window.__company && window.__company.remote) window.__company.remote(path, data); }
-        else if(path === 'settings/labour'){ if(window.__labourRemote) window.__labourRemote(data); }
-        else if(path === 'settings/ui'){ if(window.__uiRemote) window.__uiRemote(data); }
-        else if(window.__ledger && window.__ledger.remote) window.__ledger.remote(path, data);
+        const d = await db.doc(path).get();
+        applyRemote(path, d.exists ? d.data() : null);
       }
       rows.forEach(r => seen.add(r.id));
       K.since = j.now;
@@ -7940,6 +7952,31 @@ setTimeout(() => { try{ if(window.__ledger && window.__ledger.autoSend) window._
   }
   setInterval(tick, 6000);
   document.addEventListener('visibilitychange', () => { if(!document.hidden) setTimeout(tick, 300); });
+  // a save that waited offline was merged with someone else's change → show the joined record
+  if(window.__khataDB) window.__khataDB.onMerged = (path, data) => { applyRemote(path, data); repaint(); };
+
+  /* 📴 no internet: say so clearly; saves wait in this browser and go up by themselves */
+  let bar = null, wasOnline = true, wasPending = 0, toldOffline = false;
+  const bnN = n => String(n).replace(/[0-9]/g, d => '০১২৩৪৫৬৭৮৯'[d]);
+  function paintNet(st){
+    if(st.online && !st.pending){ if(bar){ bar.remove(); bar = null; } }
+    else{
+      if(!bar){ bar = document.createElement('div'); bar.id = 'netBar'; bar.setAttribute('role', 'status'); document.body.appendChild(bar); }
+      bar.className = 'netbar ' + (st.online ? 'up' : 'off');
+      bar.innerHTML = st.online
+        ? `<b>⏫ অনলাইনে তোলা হচ্ছে…</b><span>${bnN(st.pending)}টা সেভ বাকি</span>`
+        : `<b>📴 ইন্টারনেট নেই</b><span>${st.pending ? `${bnN(st.pending)}টা সেভ এই ডিভাইসে রাখা আছে — ইন্টারনেট এলে নিজে থেকে অনলাইনে উঠবে` : 'যা লিখবেন এই ডিভাইসে রাখা হবে, ইন্টারনেট এলে নিজে থেকে অনলাইনে উঠবে'}</span>`;
+    }
+    if(typeof kToast === 'function'){
+      if(!st.online && st.pending > 0 && !toldOffline){ toldOffline = true;
+        // a moment later, so the page's own "✓ যোগ হয়েছে" message doesn't hide it
+        setTimeout(() => kToast('<b>⚠️ ইন্টারনেট নেই — অনলাইনে সেভ হয়নি</b><span>এই ডিভাইসে রাখা হয়েছে। ইন্টারনেট এলে নিজে থেকে অনলাইনে উঠে যাবে।</span>', 9000), 1200); }
+      if(st.online && !st.pending && wasPending > 0) kToast('<b>✓ সব অনলাইনে উঠে গেছে</b>', 3500);
+    }
+    if(st.online) toldOffline = false;
+    wasOnline = st.online; wasPending = st.pending;
+  }
+  if(window.__khataDB && window.__khataDB.onStatus) window.__khataDB.onStatus(paintNet);
   window.addEventListener('focus', () => setTimeout(tick, 300));
   window.__syncNow = tick;
 })();

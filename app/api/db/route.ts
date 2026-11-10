@@ -57,7 +57,7 @@ export async function POST(req: Request) {
         const cid = req.headers.get('x-khata-client') || '';
         const rows = await acts.find({ ts: { $gt: since - 3000 }, kind: { $in: ['data', 'undo', 'import'] } }, { projection: { path: 1, ts: 1, kind: 1, cid: 1 } }).sort({ ts: 1 }).limit(500).toArray();
         const mine = rows.filter(r => !(r.kind === 'data' && cid && r.cid === cid));
-        return Response.json({ now, rows: mine.map(r => ({ id: r._id, path: r.kind === 'import' ? '*' : r.path })) });
+        return Response.json({ now, rows: mine.map(r => ({ id: r._id, path: r.kind === 'import' ? '*' : r.path, cid: r.cid || '' })) });
       }
       case 'list': {
         if (!LISTABLE.includes(body.col)) throw new Error('bad collection');
