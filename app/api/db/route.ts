@@ -49,7 +49,7 @@ export async function POST(req: Request) {
       const coNames = new Map<string, string>();
       if (path.startsWith('days/')) for (const c of await db.collection<{ _id: string; name?: string }>('companies').find({}, { projection: { name: 1 } }).toArray()) coNames.set(c._id, c.name || '');
       const { effects, links } = effectsOf(path, before, after, sizeName, id => coNames.get(String(id)) || 'কোম্পানি');
-      await logAct(db, me, { kind: 'data', action: actionOf(before, after), label, lines, path, before, existed: old.exists, cid: req.headers.get('x-khata-client') || undefined, effects, links });
+      await logAct(db, me, { kind: 'data', action: actionOf(before, after), label, lines, path, before, after, existed: old.exists, cid: req.headers.get('x-khata-client') || undefined, effects, links });
     };
     switch (body.op) {
       case 'ping': {
@@ -67,9 +67,17 @@ export async function POST(req: Request) {
         const since = Number(body.since) || 0, now = Date.now();
         if (!since) return Response.json({ now, paths: [] });
         const cid = req.headers.get('x-khata-client') || '';
-        const rows = await acts.find({ ts: { $gt: since - 3000 }, kind: { $in: ['data', 'undo', 'import', 'wipe'] } }, { projection: { path: 1, ts: 1, kind: 1, cid: 1 } }).sort({ ts: 1 }).limit(500).toArray();
-        const mine = rows.filter(r => !(r.kind === 'data' && cid && r.cid === cid));
-        return Response.json({ now, rows: mine.map(r => ({ id: r._id, path: r.kind === 'import' || r.kind === 'wipe' || r.path === '*' ? '*' : r.path, cid: r.cid || '' })) });
+        const from = since - 3000;
+        const rows = await acts.find({ $or: [{ ts: { $gt: from } }, { tts: { $gt: from } }], kind: { $in: ['data', 'undo', 'import', 'wipe'] } },
+          { projection: { path: 1, ts: 1, tts: 1, kind: 1, cid: 1 } }).sort({ ts: 1 }).limit(500).toArray();
+        const out = rows.flatMap(r => {
+          const p = r.kind === 'import' || r.kind === 'wipe' || r.path === '*' ? '*' : r.path, list = [];
+          if (r.ts > from && !(r.kind === 'data' && cid && r.cid === cid)) list.push({ id: r._id, path: p, cid: r.cid || '' });
+          // মুছুন / ফেরান on a card later (anyone, any page) → the record changed again
+          if (r.tts && r.tts > from) list.push({ id: `${r._id}:${r.tts}`, path: r.kind === 'wipe' ? '*' : p, cid: '' });
+          return list;
+        });
+        return Response.json({ now, rows: out });
       }
       case 'list': {
         if (!LISTABLE.includes(body.col)) throw new Error('bad collection');

@@ -18,6 +18,9 @@ export type Act = {
   undoOf?: { id: string; ts: number; uname: string; label: string };          // on a ফেরানো line: the line it reverted
   snapshot?: Record<string, unknown[]>; restorable?: boolean;                // on a 🗑 সব মুছে ফেলা line
   effects?: string[]; links?: Link[];                                         // what else this change did in the app (owner's wish)
+  after?: Data | null;                                                        // the record right after this save (for মুছুন / ফেরান)
+  state?: '' | 'off' | 'on'; tts?: number;                                    // মুছে ফেলা (red) / আবার ফেরানো (green), when it last flipped
+  toggles?: { ts: number; uname: string; to: 'off' | 'on' }[]; redoDoc?: Data | null;
 };
 
 const BD = '০১২৩৪৫৬৭৮৯';

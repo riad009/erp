@@ -3278,10 +3278,16 @@ body.auth-wait .tabs button[data-tab], body.auth-wait main{visibility:hidden}
 .ac-day::after{content:"";flex:1;border-top:1.5px dashed #D3DCEA}
 .ac-list{display:flex;flex-direction:column;gap:8px}
 .ac-row{display:grid;grid-template-columns:62px minmax(0,1fr) auto;gap:4px 12px;align-items:start;padding:11px 14px;background:#fff;border:1px solid var(--line);border-radius:12px}
-.ac-row.undone{background:#FFF7F7;border:2px dotted #D92D20;opacity:1}
-.ac-row.undone ul li{text-decoration:line-through;text-decoration-color:rgba(192,21,47,.55)}
-.ac-row.flash{animation:acFlash 1.6s ease}
-@keyframes acFlash{0%,60%{box-shadow:0 0 0 4px rgba(31,74,168,.35)}100%{box-shadow:none}}
+.ac-row.off{background:#FFF7F7;border:2px dotted #D92D20}
+.ac-row.off ul li{text-decoration:line-through;text-decoration-color:rgba(192,21,47,.55)}
+.ac-row.on{background:#F4FBF6;border:2px dotted #1F7A3D}
+.ac-row .stn{margin-top:7px;padding:7px 10px;border-radius:9px;font-size:13px;line-height:1.5}
+.ac-row .stn.off{background:#FFE9EC;color:#A3122A}
+.ac-row .stn.on{background:#E3F4E8;color:#17602F}
+.ac-row .stn .by{display:block;font-size:12px;font-weight:700;opacity:.85}
+.ac-row .fxb{margin-top:7px;padding:4px 10px;border-radius:999px;border:1px solid #D6E2F7;background:#F1F6FF;color:#24406E;font-family:inherit;font-size:12.5px;font-weight:700;cursor:pointer}
+.ac-row .bt .tgl.off{color:#C0152F;border-color:#F3B8C2}
+.ac-row .bt .tgl.on,.ac-row .bt .rst{color:#1F7A3D;border-color:#9BD0AC}
 .ac-row .tm{font-family:"Baloo Da 2",sans-serif;font-weight:700;font-size:15px;color:#475467;padding-top:2px}
 .ac-row .who{display:flex;flex-wrap:wrap;align-items:center;gap:6px;font-size:14px}
 .ac-row .who .nm{font-weight:800;color:var(--ink)}
@@ -3292,16 +3298,12 @@ body.auth-wait .tabs button[data-tab], body.auth-wait main{visibility:hidden}
 .ac-row ul{list-style:none;margin:4px 0 0;padding:0;font-size:13.5px;color:#475467;line-height:1.6}
 .ac-row li{word-break:break-word}
 .ac-row li.p{color:#1F7A3D} .ac-row li.m{color:#C0152F} .ac-row li.e{color:#1F4AA8}
-.ac-row .und{margin-top:8px;padding:7px 10px;border-radius:9px;background:#FFE9EC;color:#A3122A;font-size:13px;line-height:1.5}
-.ac-row .und .by{display:block;font-size:12px;font-weight:700;color:#7A1A2A}
 .ac-row .fx{margin-top:7px;padding:7px 10px;border-radius:9px;background:#F1F6FF;border:1px solid #D6E2F7;font-size:13px;color:#24406E}
 .ac-row .fx b{font-size:12.5px}
 .ac-row .fx ul{margin:3px 0 0;color:#24406E}
 .ac-row .lk{display:flex;flex-wrap:wrap;gap:6px;margin-top:7px}
 .ac-row .lk button{padding:5px 10px;border-radius:999px;border:1.5px solid #C7D6EB;background:#fff;color:#1F4AA8;font-family:inherit;font-size:12.5px;font-weight:800;cursor:pointer}
 .ac-row.undone .fx{opacity:.7}
-.ac-row .uof{margin-top:6px;padding:6px 10px;border-radius:9px;background:#FFF4E0;color:#7A4B00;font-size:12.5px}
-.ac-row .go{margin-left:8px;padding:2px 8px;border-radius:999px;border:1px solid currentColor;background:#fff;color:inherit;font-family:inherit;font-size:11.5px;font-weight:800;cursor:pointer}
 .ad-wipe{border-color:#F3B8C2}
 .ad-wipe h2{color:#A3122A}
 .wp-bk{padding:10px 14px;border-radius:10px;border:1.5px solid #1F4AA8;background:#fff;color:#1F4AA8;font-family:inherit;font-weight:800;font-size:14.5px;cursor:pointer;margin:0 0 12px}
@@ -8017,6 +8019,7 @@ window.__appBack = () => {
   document.addEventListener('visibilitychange', () => { if(!document.hidden) setTimeout(tick, 300); });
   // a save that waited offline was merged with someone else's change → show the joined record
   if(window.__khataDB) window.__khataDB.onMerged = (path, data) => { applyRemote(path, data); repaint(); };
+  window.__applyRemote = (path, data) => { applyRemote(path, data); repaint(); };
 
   /* 📴 no internet: say so clearly; saves wait in this browser and go up by themselves (quietly) */
   let bar = null, toldOffline = false;
@@ -8056,6 +8059,7 @@ window.__appBack = () => {
   const timeTxt = ts => { const d = new Date(ts); let h = d.getHours(); const ap = h < 12 ? 'AM' : 'PM'; h = h % 12 || 12; return toBn(h + ':' + String(d.getMinutes()).padStart(2,'0')) + ' ' + ap; };
   const f = {user:'', kind:'', date:''};
   let rows = [], users = [], more = false, busy = false;
+  const fxOpen = new Set();   // cards whose "এর ফলে যা বদলেছে" is open (closed by default — owner)
 
   async function load(append){
     if(busy) return; busy = true;
@@ -8066,7 +8070,7 @@ window.__appBack = () => {
     busy = false; paint();
   }
   const badge = a => {
-    const c = a.kind === 'undo' ? 'und' : a.action === 'নতুন' ? 'add' : (a.action === 'মুছে ফেলা' || a.kind === 'wipe') ? 'del' : a.kind === 'data' ? 'chg' : '';
+    const c = a.action === 'নতুন' ? 'add' : (a.action === 'মুছে ফেলা' || a.kind === 'wipe') ? 'del' : a.kind === 'data' ? 'chg' : '';
     return `<span class="bdg ${c}">${esc(a.action)}</span>`;
   };
   const line = t => { const c = t[0] === '＋' ? 'p' : t[0] === '－' ? 'm' : t[0] === '✎' ? 'e' : ''; return `<li class="${c}">${esc(t)}</li>`; };
@@ -8076,19 +8080,20 @@ window.__appBack = () => {
     rows.forEach(a => {
       const k = dayKey(a.ts);
       if(k !== last){ if(last) html += '</div>'; html += `<h3 class="ac-day">${dayTxt(a.ts)}</h3><div class="ac-list">`; last = k; }
-      html += `<div class="ac-row ${a.undone ? 'undone' : ''}" data-id="${a._id}">
+      // মুছুন → red dotted (this change is taken out) · ফেরান → green dotted (put back) — owner's way
+      const st = a.state || '', tg = (a.toggles || []).slice(-1)[0] || (a.undone ? {ts: a.undone.ts, uname: a.undone.uname, to: 'off'} : null);
+      html += `<div class="ac-row ${st}" data-id="${a._id}">
         <div class="tm">${timeTxt(a.ts)}</div>
         <div><div class="who"><span class="nm">👤 ${esc(a.uname)}</span>${badge(a)}</div>
           <div class="lb">${esc(a.label)}</div>
           ${(a.lines||[]).length ? `<ul>${a.lines.map(line).join('')}</ul>` : ''}
-          ${(a.effects||[]).length ? `<div class="fx"><b>🔗 এর ফলে যা বদলেছে:</b><ul>${a.effects.map(t => `<li>${esc(t)}</li>`).join('')}</ul></div>` : ''}
-          ${(a.links||[]).length && !a.undone ? `<div class="lk">${a.links.map((l, i) => `<button type="button" data-lk="${i}">${esc(l.label)} ›</button>`).join('')}</div>` : ''}
-          ${a.undone ? `<div class="und">⚠️ ${a.kind === 'wipe' ? `<b>এই মোছা ফেরানো হয়েছে</b> — মুছে ফেলা সব ডেটা আবার ফিরে এসেছে`
-              : a.undone.cascade ? `<b>এই কাজটা বাতিল হয়ে গেছে</b> — এর আগের একটা কাজ ফেরানোর সময় এটাও আগের অবস্থায় গেছে। এখানে যা লেখা, তা এখন আর নেই।`
-              : `<b>এই কাজটা পরে ফেরানো হয়েছে</b> — আগের অবস্থায় ফিরিয়ে নেওয়া হয়েছে। এখানে যা লেখা, তা এখন আর নেই।`}
-            <span class="by">${esc(a.undone.uname)} · ${dayTxt(a.undone.ts)}, ${timeTxt(a.undone.ts)}</span>${a.undone.by ? `<button type="button" class="go" data-go="${esc(a.undone.by)}">কোন লাইনে ফেরানো ↓</button>` : ''}</div>` : ''}
-          ${a.undoOf ? `<div class="uof">↶ যে কাজটা ফেরানো হলো: <b>${esc(a.undoOf.uname)}</b> · ${dayTxt(a.undoOf.ts)}, ${timeTxt(a.undoOf.ts)}<button type="button" class="go" data-go="${esc(a.undoOf.id)}">দেখুন ↓</button></div>` : ''}</div>
-        <div class="bt">${canUndo && a.canUndo ? `<button type="button" class="un">↶ ফেরান</button>` : ''}${canUndo ? `<button type="button" class="dl">× মুছুন</button>` : ''}</div>
+          ${st && tg ? `<div class="stn ${st}">${st === 'off'
+              ? `🗑 <b>মুছে ফেলা হয়েছে</b> — এই কাজটা এখন অ্যাপে নেই`
+              : `↶ <b>আবার ফেরানো হয়েছে</b> — এই কাজটা আবার অ্যাপে আছে`}<span class="by">${esc(tg.uname)} · ${dayTxt(tg.ts)}, ${timeTxt(tg.ts)}</span></div>` : ''}
+          ${(a.effects||[]).length || (a.links||[]).length ? `<button type="button" class="fxb" aria-expanded="${fxOpen.has(a._id)}">🔗 এর ফলে যা বদলেছে ${fxOpen.has(a._id) ? '▾' : '▸'}</button>` : ''}
+          ${fxOpen.has(a._id) ? `${(a.effects||[]).length ? `<div class="fx"><ul>${a.effects.map(t => `<li>${esc(t)}</li>`).join('')}</ul></div>` : ''}
+            ${(a.links||[]).length ? `<div class="lk">${a.links.map((l, i) => `<button type="button" data-lk="${i}">${esc(l.label)} ›</button>`).join('')}</div>` : ''}` : ''}</div>
+        <div class="bt">${canUndo && a.canToggle ? (st === 'off' ? `<button type="button" class="tgl on">↶ ফেরান</button>` : `<button type="button" class="tgl off">🗑 মুছুন</button>`) : ''}${canUndo && a.canRestore ? `<button type="button" class="rst">↶ ফেরান</button>` : ''}</div>
       </div>`;
     });
     if(last) html += '</div>';
@@ -8104,22 +8109,12 @@ window.__appBack = () => {
     root.querySelector('#acD').onchange = e => { f.date = e.target.value; load(); };
     root.querySelectorAll('[data-k]').forEach(b => b.onclick = () => { f.kind = b.dataset.k; load(); });
     const mb = root.querySelector('#acMore'); if(mb) mb.onclick = () => load(true);
-    // jump to the line a ফেরানো belongs to (if it is in the loaded list)
-    root.querySelectorAll('[data-go]').forEach(b => b.onclick = () => {
-      const t = root.querySelector(`.ac-row[data-id="${CSS.escape(b.dataset.go)}"]`);
-      if(!t){ kToast('<b>ওই লাইনটা এই লিস্টে নেই</b><span>নিচে "আরো দেখুন" চাপুন বা তারিখ বদলান।</span>', 4000); return; }
-      t.scrollIntoView({block:'center', behavior:'smooth'}); t.classList.remove('flash'); void t.offsetWidth; t.classList.add('flash');
-    });
     root.querySelectorAll('.ac-row').forEach(r => {
       const a = rows.find(x => x._id === r.dataset.id);
       r.querySelectorAll('[data-lk]').forEach(b => b.onclick = () => openLink(a.links[+b.dataset.lk]));
-      const ub = r.querySelector('.un'); if(ub) ub.onclick = () => undo(a);
-      const db = r.querySelector('.dl');
-      if(db) db.onclick = async () => {
-        if(!db.classList.contains('sure')){ db.classList.add('sure'); db.textContent = 'নিশ্চিত?'; setTimeout(() => { db.classList.remove('sure'); db.textContent = '× মুছুন'; }, 3000); return; }
-        try{ await __post('/api/activity', {op:'delete', id:a._id}); rows = rows.filter(x => x !== a); paint(); }
-        catch(e){ kToast('<b>⚠️ মোছা যায়নি</b><span>' + esc(e.message) + '</span>', 5000); }
-      };
+      const fb = r.querySelector('.fxb'); if(fb) fb.onclick = () => { fxOpen.has(a._id) ? fxOpen.delete(a._id) : fxOpen.add(a._id); paint(); };
+      const tb = r.querySelector('.tgl'); if(tb) tb.onclick = () => toggle(a);
+      const rb = r.querySelector('.rst'); if(rb) rb.onclick = () => toggle(a, true);
     });
   }
   // the buttons under "এর ফলে যা বদলেছে": open that page
@@ -8134,21 +8129,25 @@ window.__appBack = () => {
     else if(l.t === 'company'){ if(!allowed('company')) return no(); window.__company.open(l.id); }
     window.scrollTo(0, 0);
   }
-  async function undo(a){
-    const go = await kDialog({icon:'↶', title:'আগের অবস্থায় ফেরাবেন?', html:`<p><b>${esc(a.label)}</b></p><p>এই কাজের আগে যেমন ছিল, তেমন হয়ে যাবে।</p>`, ok:'↶ ফেরান', cancel:'না'});
-    if(!go) return;
+  // 🗑 মুছুন / ↶ ফেরান: the server takes this one change out / puts it back; the open pages update by themselves
+  async function toggle(a, restore){
+    const off = a.state === 'off';
+    if(!off){
+      const go = await kDialog({icon: restore ? '↶' : '🗑', title: restore ? 'মুছে ফেলা ডেটা ফেরাবেন?' : 'এই কাজটা মুছবেন?', tone: restore ? '' : 'warn',
+        html: `<p><b>${esc(a.label)}</b></p>${(a.lines||[]).slice(0, 4).map(t => `<p class="kd-sub">${esc(t)}</p>`).join('')}<p>${restore ? 'মুছে ফেলা সব ডেটা আবার ফিরে আসবে।' : 'এই কাজটা অ্যাপ থেকে বাদ যাবে (স্টক, খতিয়ান, দৈনিক — যেখানে যা বদলেছিল)। পরে ↶ ফেরান চাপলে আবার ফিরে আসবে।'}</p>`,
+        ok: restore ? '↶ ফেরান' : '🗑 মুছুন', cancel: 'না'});
+      if(!go) return;
+    }
     try{
-      let j = await __post('/api/activity', {op:'undo', id:a._id});
-      if(j.needConfirm){
-        const go2 = await kDialog({icon:'⚠️', title:'পরের কাজও ফিরে যাবে', tone:'warn', html:`<p>এর পরে এই একই রেকর্ডে আরো <b>${toBn(j.needConfirm)}টা</b> কাজ হয়েছে। ফেরালে সেগুলোও বাদ যাবে।</p>`, ok:'তবুও ফেরান', cancel:'না'});
-        if(!go2) return;
-        j = await __post('/api/activity', {op:'undo', id:a._id, confirm:true});
-      }
-      // these entries are gone on purpose: this browser must not offer to "upload" them again
+      const j = await __post('/api/activity', {op: restore ? 'restore' : 'toggle', id: a._id});
+      // entries taken out on purpose: this browser must not offer to "upload" them again
       try{ const u = JSON.parse(localStorage.getItem('kg-khata-undone') || '[]').concat(j.gone || []); localStorage.setItem('kg-khata-undone', JSON.stringify(u.slice(-500))); }catch(_){}
-      kToast('<b>✓ ফেরানো হয়েছে</b><span>পাতা নতুন করে খুলছে…</span>', 3000);
-      setTimeout(() => location.reload(), 900);
-    }catch(e){ kToast('<b>⚠️ ফেরানো যায়নি</b><span>' + esc(e.message) + '</span>', 6000); }
+      if((j.paths || []).includes('*')){ kToast('<b>✓ ফেরানো হয়েছে</b><span>পাতা নতুন করে খুলছে…</span>', 2500); setTimeout(() => location.reload(), 800); return; }
+      const db = await getDB();
+      for(const path of new Set(j.paths || [])){ try{ const d = await db.doc(path).get(); if(window.__applyRemote) window.__applyRemote(path, d.exists ? d.data() : null); }catch(_){} }
+      kToast(j.state === 'off' ? '<b>🗑 মুছে ফেলা হয়েছে</b><span>পরে ↶ ফেরান চাপলে আবার ফিরে আসবে।</span>' : '<b>↶ আবার ফেরানো হয়েছে</b>', 3000);
+      load();
+    }catch(e){ kToast('<b>⚠️ হয়নি</b><span>' + esc(e.message) + '</span>', 6000); }
   }
   window.__actRender = () => load();
 })();
