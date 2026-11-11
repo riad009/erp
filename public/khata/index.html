@@ -4380,10 +4380,10 @@ function getDB(){
           <span class="lbl">আগের মোট (T) <small class="from">${(() => { const k = days.findIndex(d => d.id === cur.id), pv = k > 0 ? days[k-1] : null; return pv ? shortD(pv.id) + ' এর শেষে স্টকে যা ছিল' : 'শুরুর স্টক (সাইজের শুরুর কেজি)'; })()}</small></span>
           <span class="val num">${bn(sk.prev)} <small>কেজি</small></span>
         </div>
-        <div class="row plus">
+        ${sSub === 'types' ? '' /* 📊 সর্বমোট মাল: no 'আজ মাল এসেছে' row (owner) */ : `<div class="row plus">
           <span class="lbl">${cur.id === todayId() ? 'আজ মাল এসেছে' : 'এই দিনে মাল এসেছে'} (+) <small class="from">${(() => { const n = new Set(entries.map((e, i) => e.car ? 'c:' + e.car : 'i:' + i)).size; return n ? toBn(n) + ' গাড়ি · ' + toBn(entries.length) + 'টা মাল' : 'এখনো কোনো মাল আসেনি'; })()}</small></span>
           <span class="val num in">+ ${bn(sk.now)} <small>কেজি</small></span>
-        </div>
+        </div>`}
         <div class="row minus">
           <span class="lbl">মাল গেছে (−) <small class="from">${(() => { const n = goodsLines().filter(x => x.done && x.day === cur.id).length + (cur.outs||[]).length; return n ? `এই দিনে ${toBn(n)} বার মাল গেছে (মেমো থেকে)` : 'মেমো করলে নিজে থেকে আসবে'; })()}</small></span>
           <span class="val num">− ${bn(sk.sold)} <small>কেজি</small></span>
