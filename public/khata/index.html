@@ -3983,7 +3983,6 @@ function getDB(){
         <div class="tt-main"><span>📦 মোট স্টক</span><b>${bn(allKg)} <small>কেজি</small></b></div>
         <div class="tt-parts">${perCat.map(x => `<span class="tt-p ${x.c.tone||''}">${esc(x.c.name)} <b>${bn(x.t)}</b></span>`).join('')}</div>
       </div>
-      <p class="ts-date">${bnDate(D)} · <span class="red">সবুজ +</span> = এই দিনে এসেছে · <b style="color:#C0152F">লাল −</b> = মেমোতে গেছে · মার্কায় চাপ দিলে বন্ধ হবে</p>
       ${tsMsg ? `<p class="ts-msg">${esc(tsMsg)}</p>` : ''}
       <div class="ts-search"><input id="tsQ" inputmode="decimal" autocomplete="off" placeholder="🔍 মিলি / সাইজ লিখে খুঁজুন: যেমন ৬৫ বা ১.২ বা ৬৫x৯১৪" value="${esc(tsQ)}">${tsQ ? `<button type="button" id="tsQx" aria-label="খোঁজা বন্ধ">×</button>` : ''}</div>
       ${tsQ && !cats.some(c => (c.items||[]).some(it => sizeMatch(it, tsQ))) ? `<p class="ts-none">"${esc(tsQ)}" — এই মিলি / সাইজের কোনো মাল নেই।</p>` : ''}
