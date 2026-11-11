@@ -3162,6 +3162,19 @@ body.addmodal-on{overflow:hidden}
 .netbar b{font-size:14px}
 .netbar.off{background:#FFF1F2;border:1.5px solid #F2B8C0;color:#8A1C1C}
 @media (min-width: 900px){ .netbar{left:calc(50% + var(--side, 224px) / 2)} }
+/* স্টক: T / D tally like the owner's paper (red pen) */
+#stock .grand.tdt{display:flex;flex-direction:column;justify-content:center;gap:6px;border-top:0}
+#stock .grand.tdt .tdr{display:grid;grid-template-columns:34px minmax(0,1fr) auto;align-items:baseline;gap:8px}
+#stock .grand.tdt .tl{font-family:"Atma","Baloo Da 2",sans-serif;font-size:24px;font-weight:700;color:#C3122F;line-height:1}
+#stock .grand.tdt .tdr.in .tl{color:#1F7A3D;font-size:20px}
+#stock .grand.tdt .lbl{font-size:15px;color:#475467;font-weight:600}
+#stock .grand.tdt .val{font-family:"Baloo Da 2",sans-serif;font-size:24px;font-weight:800;color:#C3122F;border:0!important;text-align:right;white-space:nowrap}
+#stock .grand.tdt .tdr.in .val{color:#1F7A3D;font-size:20px}
+#stock .grand.tdt .val small{font-family:"Noto Sans Bengali",sans-serif;font-size:13px;font-weight:600}
+#stock .grand.tdt .tdline{height:0;border-top:2.5px solid #C3122F;margin:2px 0 2px 0}
+#stock .grand.tdt .tdr.tot .lbl{font-size:16px;color:#1B2347;font-weight:800}
+#stock .grand.tdt .tdr.tot .val{font-size:clamp(28px,4vw,38px);line-height:1.1}
+@media (max-width: 600px){ #stock .grand.tdt .tdr{grid-template-columns:26px minmax(0,1fr) auto;gap:6px} #stock .grand.tdt .tl{font-size:20px} #stock .grand.tdt .val{font-size:20px} #stock .grand.tdt .lbl{font-size:13.5px} }
 /* ===== menu order: দৈনিক → মেমো → স্টক → খতিয়ান → rest (same on phone and computer) ===== */
 @media (min-width: 900px){
   html body .tabs .nav-brand{order:0} html body .tabs .nav-grp.g1{order:1}
@@ -4477,9 +4490,13 @@ function getDB(){
       ${histHtml()}
       `}
 
-      <div class="grand">
-        <div class="row"><span class="lbl">এই দিনের যোগ (${bn(new Set(entries.map((e, i) => e.car ? 'c:' + e.car : 'i:' + i)).size)} গাড়ি · ${bn(entries.length)}টা মাল)</span><span class="val num" id="sumVal">${bn(c.sum)} <small>কেজি</small></span></div>
-        <div class="total"><span class="lbl">সর্বমোট স্টক (T)</span><span class="val num" id="totVal">${bn(sk.tot)}</span></div>
+      <div class="grand tdt" aria-label="স্টকের হিসাব">
+        ${/* like the owner's paper book: T আগের দিনের মাল · D মাল গেছে · ─── · T এখন মোট */''}
+        <div class="tdr"><b class="tl">T</b><span class="lbl">আগের দিনের মাল</span><span class="val num">${bn(sk.prev)} <small>কেজি</small></span></div>
+        ${sk.now ? `<div class="tdr in"><b class="tl">＋</b><span class="lbl">${cur.id === todayId() ? 'আজ' : 'এই দিনে'} মাল এসেছে</span><span class="val num">${bn(sk.now)} <small>কেজি</small></span></div>` : ''}
+        <div class="tdr"><b class="tl">D</b><span class="lbl">মাল গেছে</span><span class="val num">${bn(sk.sold)} <small>কেজি</small></span></div>
+        <div class="tdline" aria-hidden="true"></div>
+        <div class="tdr tot"><b class="tl">T</b><span class="lbl">এখন মোট মাল</span><span class="val num" id="totVal">${bn(sk.tot)} <small>কেজি</small></span></div>
       </div>
 
       ${isLast
