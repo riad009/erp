@@ -1,7 +1,7 @@
 # Khata App — notes for Claude (read this first)
 
 Bangla bookkeeping app for **কাজী রোমান এন্ড ব্রাদার্স** (steel coil / sheet trader, Dhaka).
-Tabs (this order on phone AND computer — owner's wish): দৈনিক · মেমো · স্টক · খতিয়ান · বাকি লিস্ট · কোম্পানি · লেবার · ড্যাশবোর্ড · সেটিং · অ্যাক্টিভিটি · অ্যাডমিন (+ 👤 account button last).
+Tabs (this order on phone AND computer — owner's wish): দৈনিক · মেমো · স্টক · খতিয়ান · বাকি লিস্ট · কোম্পানি · মালের খতিয়ান · লেবার · ড্যাশবোর্ড · সেটিং · অ্যাক্টিভিটি · অ্যাডমিন (+ 👤 account button last).
 
 ## How the owner wants to work
 - Talk in **easy English**, short answers; the app UI is **Bangla** (Bangla digits ০-৯).
@@ -69,6 +69,7 @@ Tabs (this order on phone AND computer — owner's wish): দৈনিক · ম
 - Saving a memo = the goods leave the stock right away (no "মাল পাঠান / গেছে / ফেরান" buttons anywhere), even when a size is short (stock stops at ০).
 - লাভ = (বিক্রি দর − কেনা দর) × কেজি per size; কেনা দর = size ✎ value, else latest কোম্পানি চালান দর (per কেজি — owner changed it from per টন in Nov 2026; amount = কেজি × দর). লেবার is not profit. Memo stores the cost of that day.
 - 🏭 কোম্পানি খতিয়ান = like the owner's paper book: তারিখ | বিবরণ | জমা (টাকা দিয়েছি) | খরচ (মাল এসেছে) | অবশিষ্ট; আগের জের on top, oldest → newest, মোট last. অবশিষ্ট = আগের জের (`opening`, + = টাকা আগে দেওয়া) + জমা − খরচ (negative = কোম্পানি পাবে, red "বাকি"). চালান বিবরণ = "(৬০ × ৯১৪) মাল = কেজি × দর". On a phone the date sits on top of বিবরণ so all 3 money columns fit. The table box scrolls by itself (`fitTable`: fills the screen, page doesn't scroll on a computer), opens at the bottom (newest + মোট), column names and the মোট row stay fixed; a re-render keeps the scroll place. All চালান দর (stock মাল আসছে form + company form) are **per কেজি** (amount = কেজি × দর).
+- 📦 **মালের খতিয়ান** tab (`#malkhata`, under কোম্পানি; owner's paper stock book): 4 tiles (আগের জের · মোট এসেছে · মোট গেছে · এখন অবশিষ্ট) + table তারিখ | বিবরণ | মাল এসেছে (জমা) | মাল গেছে (খরচ) | অবশিষ্ট, oldest → newest. আগের জের = Σ sizes' শুরুর কেজি; one row per গাড়ি per day (গাড়ি নং, মার্কা(s) with kg, company · চালান); one row per day of sales (party names "A / B / C", হাতে বের, kg actually taken, "N কেজি স্টকে ছিল না" when billed over stock). Computed by `__stock.malLedger()` with the same never-below-০ walk as `itemStats`, so the last অবশিষ্ট = মোট স্টক. Scroll box like কোম্পানি (opens at the bottom, sticky head / মোট). Visible to users with the `malkhata` tick or with স্টক.
 - দৈনিক: 3 tiles (সাবেক জমা + নিট = হাতে নগদ), then আমদানি | খরচ | বিক্রয় columns; adding happens in pop-ups.
   - নতুন জমা has কার মাধ্যমে (`via`) + optional রেফারেন্স (`ref`) on the জমা entry, shown in আমদানি list and খতিয়ান. After a party is chosen a box shows its **আগের বাকি** and, once টাকা is typed, **জমার পর বাকি** (`#aPrevDue`).
   - খরচ column has a 💰 বিবিধ খরচ (খুচরা) card: items saved in the same day's khoroch list with `misc:true`; the main খরচ list shows them as one auto line "বিবিধ খরচ (খুচরা)" = their sum (totals already include them).

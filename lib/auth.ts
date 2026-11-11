@@ -11,7 +11,7 @@ const DAYS = 365;   // stay logged in (owner: "never ask again and again"); rene
 // every tab the owner can switch on / off per user (+ the activity list and its undo)
 export const FEATURES: [string, string][] = [
   ['stock', 'স্টক'], ['amdani', 'দৈনিক'], ['memo', 'মেমো'], ['ledger', 'খতিয়ান'], ['baki', 'বাকি লিস্ট'],
-  ['company', 'কোম্পানি'], ['labour', 'লেবার'], ['dash', 'ড্যাশবোর্ড'], ['settings', 'সেটিং'],
+  ['company', 'কোম্পানি'], ['malkhata', 'মালের খতিয়ান'], ['labour', 'লেবার'], ['dash', 'ড্যাশবোর্ড'], ['settings', 'সেটিং'],
   ['activity', 'অ্যাক্টিভিটি দেখা'], ['undo', 'অ্যাক্টিভিটি ফেরানো / মোছা'],
 ];
 const FEATURE_IDS = FEATURES.map(f => f[0]);

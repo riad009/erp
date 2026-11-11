@@ -3175,12 +3175,49 @@ body.addmodal-on{overflow:hidden}
 #stock .grand.tdt .tdr.tot .lbl{font-size:16px;color:#1B2347;font-weight:800}
 #stock .grand.tdt .tdr.tot .val{font-size:clamp(28px,4vw,38px);line-height:1.1}
 @media (max-width: 600px){ #stock .grand.tdt .tdr{grid-template-columns:26px minmax(0,1fr) auto;gap:6px} #stock .grand.tdt .tl{font-size:20px} #stock .grand.tdt .val{font-size:20px} #stock .grand.tdt .lbl{font-size:13.5px} }
+/* ===== 📦 মালের খতিয়ান ===== */
+#malkhata{--ink:#1B2347;--line:#C9D3E6;color:var(--ink);font-family:"Noto Sans Bengali","Hind Siliguri",sans-serif}
+#malkhata header .book{font-family:"Tiro Bangla",serif;font-size:13.5px;color:#5E6B85;margin:0}
+#malkhata header h1{font-family:"Tiro Bangla","Noto Sans Bengali",serif;font-size:28px;color:#1F4AA8;margin:2px 0 12px}
+.mk-sum{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:12px}
+.mk-sum>div{background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+.mk-sum span{display:block;font-size:13px;color:#5E6B85;font-weight:600}
+.mk-sum b{font-family:"Baloo Da 2",sans-serif;font-size:20px;font-weight:800}
+.mk-sum small{font-family:"Noto Sans Bengali",sans-serif;font-size:12px;font-weight:600;color:#5E6B85}
+.mk-sum .in b{color:#1F7A3D} .mk-sum .out b{color:#C0152F} .mk-sum .tot{border-color:#1F4AA8;background:#EEF3FC} .mk-sum .tot b{color:#1F4AA8}
+.mk-tw{background:#F2F7FF;border:2px solid #1F4AA8;border-radius:8px;overflow:auto;overscroll-behavior:contain}
+.mk-t{width:100%;border-collapse:separate;border-spacing:0;table-layout:fixed}
+.mk-t th{position:sticky;top:0;z-index:2;background:#D9E5F7;color:#1B2347;font-family:"Tiro Bangla",serif;font-size:14px;padding:8px 6px;text-align:left;border-bottom:2px solid #1F4AA8;border-right:1px solid var(--line)}
+.mk-t th small{display:block;font-family:"Noto Sans Bengali",sans-serif;font-size:10.5px;font-weight:600;color:#5E6B85}
+.mk-t th.d{width:12%} .mk-t th:nth-child(2){width:40%} .mk-t th.n{width:16%;text-align:right}
+.mk-t td{padding:8px 6px;border-bottom:1px solid var(--line);border-right:1px solid var(--line);vertical-align:top;font-size:14px}
+.mk-t th:last-child,.mk-t td:last-child{border-right:0}
+.mk-t td.d{font-family:"Baloo Da 2",sans-serif;font-weight:700;white-space:nowrap}
+.mk-t td.ds b{display:block;font-weight:700}
+.mk-t td.ds .ty{display:block;font-size:13px;color:#344054}
+.mk-t td.ds small{display:block;font-size:12px;color:#5E6B85}
+.mk-t td.ds .dm{display:none}
+.mk-t td.n{text-align:right;font-family:"Baloo Da 2",sans-serif;font-weight:800;font-size:15.5px;white-space:nowrap}
+.mk-t td.plus{color:#1F7A3D} .mk-t td.minus{color:#C0152F} .mk-t td.bal{color:#1B2347}
+.mk-t tr.op td{background:rgba(255,255,255,.6)}
+.mk-t tr.out td{background:#FFF8F8}
+.mk-t tfoot td{position:sticky;bottom:0;z-index:2;background:#D9E5F7;border-top:2px solid #1F4AA8;font-weight:800;font-family:"Tiro Bangla","Baloo Da 2",serif}
+.mk-note{margin:8px 0 0;font-size:12.5px;color:#5E6B85}
+@media (min-width: 900px){ #malkhata{padding-bottom:14px!important} }
+@media (max-width: 899px){
+  .mk-sum{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .mk-t th.d,.mk-t td.d{display:none}
+  .mk-t td.ds .dm{display:block;background:none!important;box-shadow:none!important;border:0!important;padding:0!important;font-family:"Baloo Da 2",sans-serif;font-weight:800;font-size:13px;color:#1B2347}
+  .mk-t th:nth-child(2){width:auto} .mk-t th.n{width:22%}
+  .mk-t th{font-size:12.5px;padding:6px 4px} .mk-t th small{font-size:9.5px}
+  .mk-t td{font-size:12.5px;padding:6px 4px} .mk-t td.n{font-size:13px}
+}
 /* ===== menu order: দৈনিক → মেমো → স্টক → খতিয়ান → rest (same on phone and computer) ===== */
 @media (min-width: 900px){
   html body .tabs .nav-brand{order:0} html body .tabs .nav-grp.g1{order:1}
   html body .tabs button[data-tab="amdani"]{order:2} html body .tabs button[data-tab="memo"]{order:3} html body .tabs button[data-tab="stock"]{order:4}
   html body .tabs .nav-grp.g2{order:5} html body .tabs button[data-tab="ledger"]{order:6} html body .tabs button[data-tab="baki"]{order:7}
-  html body .tabs button[data-tab="company"]{order:8} html body .tabs button[data-tab="labour"]{order:9}
+  html body .tabs button[data-tab="company"]{order:8} html body .tabs button[data-tab="malkhata"]{order:9} html body .tabs button[data-tab="labour"]{order:9}
   html body .tabs .nav-grp.g3{order:10} html body .tabs button[data-tab="dash"]{order:11} html body .tabs button[data-tab="settings"]{order:12}
   html body .tabs button[data-tab="activity"]{order:13} html body .tabs button[data-tab="admin"]{order:14}
   html body .tabs .ubtn{order:15} html body .tabs .nav-foot{order:16}
@@ -3340,6 +3377,7 @@ body.auth-wait .tabs button[data-tab], body.auth-wait main{visibility:hidden}
   <button role="tab" data-tab="ledger" aria-selected="false"><span class="ti">📒</span>খতিয়ান</button>
   <button role="tab" data-tab="baki" aria-selected="false"><span class="ti">📋</span>বাকি লিস্ট</button>
   <button role="tab" data-tab="company" aria-selected="false"><span class="ti">🏭</span>কোম্পানি</button>
+  <button role="tab" data-tab="malkhata" aria-selected="false"><span class="ti">📦</span>মালের খতিয়ান</button>
   <button role="tab" data-tab="labour" aria-selected="false"><span class="ti">👷</span>লেবার</button>
   <button role="tab" data-tab="dash" aria-selected="false"><span class="ti">📊</span>ড্যাশবোর্ড</button>
   <button role="tab" data-tab="settings" aria-selected="false"><span class="ti">⚙️</span>সেটিং</button>
@@ -3356,6 +3394,7 @@ body.auth-wait .tabs button[data-tab], body.auth-wait main{visibility:hidden}
 <main class="wrap coy" id="company" hidden><p class="loading">কোম্পানি খতিয়ান খোলা হচ্ছে…</p></main>
 <main class="wrap" id="settings" hidden><p class="loading">সেটিং খোলা হচ্ছে…</p></main>
 <main class="wrap" id="dash" hidden><p class="loading">ড্যাশবোর্ড খোলা হচ্ছে…</p></main>
+<main class="wrap" id="malkhata" hidden><p class="loading">মালের খতিয়ান খোলা হচ্ছে…</p></main>
 <main class="wrap" id="activity" hidden><p class="loading">অ্যাক্টিভিটি খোলা হচ্ছে…</p></main>
 <main class="wrap" id="admin" hidden><p class="loading">অ্যাডমিন প্যানেল খোলা হচ্ছে…</p></main>
 <script src="/khata/db.js"></script>
@@ -4218,6 +4257,39 @@ function getDB(){
     // new day: open today's page carrying yesterday's total; jump there if you were on the last day
     rollover: () => { if(!viewId) return; const wasLast = viewId === lastDay().id; ensureToday(); if(wasLast) viewId = lastDay().id; render(); },
     removeByLink: ce => { for(const d of days){ const i = (d.entries||[]).findIndex(e => e.ce === ce); if(i >= 0){ d.entries.splice(i,1); saveDay(d,true); if(viewId) render(); return true; } } return false; },
+    // 📦 মালের খতিয়ান: আগের জের, then day by day — each গাড়ি in (+) and that day's sales out (−), running অবশিষ্ট.
+    // Same walk as itemStats (a size never goes below ০), so the last অবশিষ্ট = মোট স্টক.
+    malLedger: () => {
+      const open = cats.reduce((t, c) => t + (c.items||[]).reduce((u, it) => u + (Number(it.open)||0), 0), 0);
+      const ev = {}, add = (id, day, k, v) => { if(!findItem(id)) return; const e = ev[id] || (ev[id] = {}); const x = e[day] || (e[day] = {in:0, out:0}); x[k] += v; };
+      const ins = {}, sales = {};   // per day
+      days.forEach(d => {
+        (d.entries||[]).forEach((e, i) => {
+          const f = findItem(e.item); if(!f) return; const kg = Number(e.kg)||0; add(e.item, d.id, 'in', kg);
+          const key = e.car ? 'c:' + e.car : 'i:' + i, g = (ins[d.id] || (ins[d.id] = {}))[key] || (ins[d.id][key] = {car: e.car || '', kg: 0, ts: e.ts || 0, types: {}, co: e.co || '', vno: e.vno || ''});
+          g.kg += kg; g.types[f.c.name] = (g.types[f.c.name] || 0) + kg;
+        });
+        (d.outs||[]).forEach(o => { if(!findItem(o.item)) return; add(o.item, d.id, 'out', Number(o.kg)||0); const s0 = sales[d.id] || (sales[d.id] = {who: [], hand: 0}); s0.hand += Number(o.kg)||0; });
+      });
+      const L = window.__ledger;
+      if(L) L.accs().forEach(a => (a.entries||[]).forEach(e => {
+        if(e.status !== 'confirmed' || !Array.isArray(e.picks)) return;
+        const on = e.confirmedOn || e.date; let any = false;
+        e.picks.forEach(pk => { if(!findItem(pk.item)) return; add(pk.item, on, 'out', Number(pk.kg)||0); any = true; });
+        if(any){ const s0 = sales[on] || (sales[on] = {who: [], hand: 0}); if(!s0.who.includes(a.name)) s0.who.push(a.name); }
+      }));
+      // what really left each day (never more than was in stock)
+      const taken = {}, over = {};
+      Object.keys(ev).forEach(id => { const f = findItem(id); let bal = Number(f.it.open)||0;
+        Object.keys(ev[id]).sort().forEach(day => { const v = ev[id][day], t = Math.min(v.out, Math.max(0, bal + v.in));
+          taken[day] = (taken[day]||0) + t; over[day] = (over[day]||0) + (v.out - t); bal = bal + v.in - t; }); });
+      const rows = []; let bal = open;
+      [...new Set([...Object.keys(ins), ...Object.keys(sales)])].sort().forEach(day => {
+        Object.values(ins[day] || {}).sort((x, y) => x.ts - y.ts).forEach(g => { bal += g.kg; rows.push({day, type:'in', ...g, bal}); });
+        if(sales[day] && (taken[day] || over[day])){ bal -= taken[day] || 0; rows.push({day, type:'out', who: sales[day].who, hand: sales[day].hand, kg: taken[day] || 0, over: over[day] || 0, bal}); }
+      });
+      return {open, rows, bal};
+    },
     // অ্যাক্টিভিটি link: open this date's স্টক page (sub-tab: types | delivery | queue)
     openDay: (date, sub) => {
       if(findDay(date)) viewId = date;
@@ -7820,10 +7892,11 @@ setTimeout(() => { try{ if(window.__ledger && window.__ledger.autoSend) window._
     bg.querySelectorAll('[data-close]').forEach(b => b.onclick = close);
     return {el: bg.querySelector('.au'), close};
   };
-  const ALL = ['amdani','memo','stock','ledger','baki','company','labour','dash','settings','activity','admin'];
+  const ALL = ['amdani','memo','stock','ledger','baki','company','malkhata','labour','dash','settings','activity','admin'];
   function apply(me){
     window.__me = me;
-    const ok = me.role === 'admin' ? ALL : ALL.filter(t => t !== 'admin' && (me.perms || []).includes(t));
+    const pm = me.perms || [];
+    const ok = me.role === 'admin' ? ALL : ALL.filter(t => t !== 'admin' && (pm.includes(t) || (t === 'malkhata' && pm.includes('stock'))));
     window.__allowedTabs = ok;
     document.querySelectorAll('.tabs button[data-tab]').forEach(b => { b.hidden = !ok.includes(b.dataset.tab); });
     const un = document.querySelector('#uBtn .un'); if(un) un.textContent = me.name.split(' ')[0] || 'আমি';
@@ -7915,7 +7988,7 @@ window.__appBack = () => {
   function repaint(){
     const t = (document.querySelector('.tabs button[aria-selected="true"]') || {dataset:{}}).dataset.tab;
     const R = {stock: () => window.__stock && window.__stock.render(), amdani: window.__amdaniRender, memo: window.__memoRender, labour: window.__labourRender,
-      dash: window.__dashRender, company: window.__companyRender, baki: window.__bakiRender, settings: window.__settingsRender};
+      dash: window.__dashRender, company: window.__companyRender, baki: window.__bakiRender, settings: window.__settingsRender, malkhata: window.__malkhataRender};
     try{ if(R[t]) R[t](); }catch(e){ console.warn('live sync repaint', e); }
   }
   async function tick(){
@@ -8182,7 +8255,7 @@ window.__appBack = () => {
   }
   function edit(u){
     const isNew = !u, isAdmin = u && u.role === 'admin';
-    const perms = new Set(u ? u.perms : ['amdani','memo','stock','ledger','baki','company','labour','dash']);
+    const perms = new Set(u ? u.perms : ['amdani','memo','stock','ledger','baki','company','malkhata','labour','dash']);
     const p = __auPop(`<h3>${isNew ? '＋ নতুন ইউজার' : '✎ ইউজার বদলান'} <button class="x" data-close aria-label="বন্ধ">✕</button></h3>
       <label class="f">নাম</label><input type="text" id="euN" value="${esc(u ? u.name : '')}" placeholder="যেমন: রফিক">
       <label class="f">ইমেইল (লগইনের জন্য)</label><input type="email" id="euE" value="${esc(u ? u.email : '')}" placeholder="name@gmail.com" autocomplete="off">
@@ -8250,14 +8323,72 @@ window.__appBack = () => {
   window.__adminRender = load;
 })();
 
+/* ================= 📦 মালের খতিয়ান: like the paper stock book — তারিখ | বিবরণ | এসেছে | গেছে | অবশিষ্ট ================= */
+(function(){
+  const root = document.getElementById('malkhata');
+  const BD = '০১২৩৪৫৬৭৮৯', toBn = s => String(s).replace(/[0-9]/g, d => BD[d]);
+  const bn = n => toBn(Math.round(Number(n)||0).toLocaleString('en-IN'));
+  const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const shortD = iso => { const [y,m,d] = String(iso).split('-'); return toBn(d + '/' + m + '/' + String(y).slice(2)); };
+  const short = nm => String(nm).replace(/\s*\(([^)]*)\)\s*$/, ' ($1)');
+  let keep = null;   // scroll place between repaints
+  function fit(){
+    const tw = root.querySelector('.mk-tw'); if(!tw) return;
+    const wide = window.innerWidth >= 900;
+    const top = wide ? tw.getBoundingClientRect().top + window.scrollY : (parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--tabsH')) || 0);
+    if(!wide){ tw.style.maxHeight = Math.max(320, window.innerHeight - top - 12) + 'px'; return; }
+    tw.style.maxHeight = 'none';
+    const below = document.documentElement.scrollHeight - (tw.getBoundingClientRect().bottom + window.scrollY);
+    tw.style.maxHeight = Math.max(320, window.innerHeight - top - Math.max(0, below) - 2) + 'px';
+  }
+  function render(){
+    if(!root || root.hidden) return;
+    const S = window.__stock; if(!S || !S.malLedger){ root.innerHTML = '<p class="loading">খোলা হচ্ছে…</p>'; return; }
+    const old = root.querySelector('.mk-tw');
+    if(old) keep = {top: old.scrollTop, bottom: old.scrollHeight - old.scrollTop - old.clientHeight < 40};
+    const {open, rows, bal} = S.malLedger();
+    const inT = rows.filter(r => r.type === 'in').reduce((t, r) => t + r.kg, 0), outT = rows.filter(r => r.type === 'out').reduce((t, r) => t + r.kg, 0);
+    const C = window.__company;
+    root.innerHTML = uHead('📦 মালের খতিয়ান', 'স্টকের খাতা — মাল এলো, মাল গেল, কত রইল') + `
+      <div class="mk-sum">
+        <div><span>আগের জের</span><b>${bn(open)} <small>কেজি</small></b></div>
+        <div class="in"><span>মোট এসেছে</span><b>+${bn(inT)} <small>কেজি</small></b></div>
+        <div class="out"><span>মোট গেছে</span><b>−${bn(outT)} <small>কেজি</small></b></div>
+        <div class="tot"><span>এখন অবশিষ্ট</span><b>${bn(bal)} <small>কেজি</small></b></div>
+      </div>
+      <div class="mk-tw">
+        <table class="mk-t">
+          <thead><tr><th class="d">তারিখ</th><th>বিবরণ</th><th class="n">মাল এসেছে<small>জমা (কেজি)</small></th><th class="n">মাল গেছে<small>খরচ (কেজি)</small></th><th class="n">অবশিষ্ট<small>কেজি</small></th></tr></thead>
+          <tbody>
+            <tr class="op"><td class="d"></td><td class="ds"><b>আগের জের</b> <small>সব সাইজের শুরুর কেজি</small></td><td></td><td></td><td class="n bal">${bn(open)}</td></tr>
+            ${rows.map(r => r.type === 'in' ? `
+            <tr class="in"><td class="d">${shortD(r.day)}</td>
+              <td class="ds"><span class="dm">${shortD(r.day)}</span><b>${r.car ? '🚚 গাড়ি-' + esc(toBn(r.car)) : '🚚 মাল এসেছে'}</b>${Object.entries(r.types).map(([k, v]) => `<span class="ty">${esc(short(k))}${Object.keys(r.types).length > 1 ? ' — ' + bn(v) : ''}</span>`).join('')}${r.co && C ? `<small>🏭 ${esc(C.name(r.co) || '')}${r.vno ? ' · চালান ' + esc(toBn(r.vno)) : ''}</small>` : ''}</td>
+              <td class="n plus">${bn(r.kg)}</td><td></td><td class="n bal">${bn(r.bal)}</td></tr>` : `
+            <tr class="out"><td class="d">${shortD(r.day)}</td>
+              <td class="ds"><span class="dm">${shortD(r.day)}</span><b>${r.who.length ? r.who.map(esc).join(' / ') : ''}${r.hand ? (r.who.length ? ' / ' : '') + 'হাতে বের' : ''}</b><small>মাল বিক্রি${r.over ? ` · ${bn(r.over)} কেজি স্টকে ছিল না` : ''}</small></td>
+              <td></td><td class="n minus">${bn(r.kg)}</td><td class="n bal">${bn(r.bal)}</td></tr>`).join('')}
+          </tbody>
+          <tfoot><tr><td class="d"></td><td>মোট</td><td class="n plus">${bn(inT)}</td><td class="n minus">${bn(outT)}</td><td class="n bal">${bn(bal)}</td></tr></tfoot>
+        </table>
+      </div>
+      <p class="mk-note">নতুন মাল (🚚 গাড়ি) স্টক → মাল আসছে থেকে যোগ হয়; বিক্রি আসে মেমো থেকে। শেষ অবশিষ্ট = স্টকের সর্বমোট মাল।</p>`;
+    fit();
+    const tw = root.querySelector('.mk-tw');
+    if(tw) tw.scrollTop = !keep || keep.bottom ? tw.scrollHeight : keep.top;   // opens at the newest lines + মোট
+  }
+  window.addEventListener('resize', () => { if(root && !root.hidden) fit(); });
+  window.__malkhataRender = render;
+})();
+
 /* tabs */
 (function(){
   const tabs = document.querySelectorAll('.tabs button[data-tab]');
-  const titles = {stock:'গাড়ি স্টক', ledger:'খতিয়ান', amdani:'দৈনিক হিসাব', memo:'মেমো', labour:'লেবার খরচ', dash:'ড্যাশবোর্ড', settings:'সেটিং', company:'কোম্পানি খতিয়ান', baki:'বাকি লিস্ট', activity:'অ্যাক্টিভিটি', admin:'অ্যাডমিন'};
+  const titles = {stock:'গাড়ি স্টক', ledger:'খতিয়ান', amdani:'দৈনিক হিসাব', memo:'মেমো', labour:'লেবার খরচ', dash:'ড্যাশবোর্ড', settings:'সেটিং', company:'কোম্পানি খতিয়ান', malkhata:'মালের খতিয়ান', baki:'বাকি লিস্ট', activity:'অ্যাক্টিভিটি', admin:'অ্যাডমিন'};
   function show(name){
     // only the tabs this user may see (set by the login module)
     const ok = window.__allowedTabs;
-    if(!titles[name] || (ok && !ok.includes(name))) name = ok ? (['amdani','memo','stock','ledger','baki','company','labour','dash','settings','activity','admin'].find(t => ok.includes(t)) || 'stock') : 'stock';
+    if(!titles[name] || (ok && !ok.includes(name))) name = ok ? (['amdani','memo','stock','ledger','baki','company','malkhata','labour','dash','settings','activity','admin'].find(t => ok.includes(t)) || 'stock') : 'stock';
     tabs.forEach(t=>t.setAttribute('aria-selected', t.dataset.tab===name));
     Object.keys(titles).forEach(k=>{ document.getElementById(k).hidden = k!==name; });
     document.body.classList.toggle('on-ledger', name==='ledger');
@@ -8272,6 +8403,7 @@ window.__appBack = () => {
     if(name==='baki' && window.__bakiRender) window.__bakiRender();
     if(name==='activity' && window.__actRender) window.__actRender();
     if(name==='admin' && window.__adminRender) window.__adminRender();
+    if(name==='malkhata' && window.__malkhataRender) window.__malkhataRender();
     const at = document.querySelector('.tabs button[aria-selected="true"]'); if(at && at.scrollIntoView) at.scrollIntoView({inline:'center', block:'nearest'});
   }
   window.showTab = show;
