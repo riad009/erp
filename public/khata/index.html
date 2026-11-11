@@ -1522,7 +1522,7 @@ body.theme-pro .tabs button[aria-selected="true"]{background:#EAF0FC!important;c
 .coy .cy-x{background:#fff;border:1.5px solid var(--cy);color:var(--cy);width:34px;height:34px;border-radius:8px;font-size:18px;padding:0}
 
 /* স্টক sub-tabs: 3 */
-#stock .ssub{grid-template-columns:repeat(3,minmax(0,1fr))!important}
+#stock .ssub{grid-template-columns:repeat(2,minmax(0,1fr))!important}
 #stock .ssub .st{font-size:15px!important;padding:9px 4px!important}
 #stock .ssub .st span{font-size:12px!important}
 #stock .ssub .st.ty[aria-selected="true"]{background:#6B3FA0!important;color:#fff!important}
@@ -3103,16 +3103,6 @@ body.addmodal-on{overflow:hidden}
 #stock .hday:not(.open) .hday-h{border-bottom:0}
 #stock .hday{margin-top:8px}
 #stock .hgo{display:block;margin:6px 14px;padding:0;background:none;border:0;color:#1F4AA8;font-weight:700;font-size:13px;text-decoration:underline}
-/* 🕘 arrival history on each size (red = মাল এসেছে) */
-.tstock .ahb{display:block;margin-top:4px;padding:2px 8px;border-radius:999px;background:#FFF1F3;border:1px solid #F3B8C2;color:#8A1C2C;font-family:"Noto Sans Bengali",sans-serif;font-size:12px;font-weight:700;white-space:nowrap}
-.tstock .ahb i{font-style:normal;color:#C3122F;font-family:"Baloo Da 2",sans-serif;font-weight:800}
-.tstock .ahl{display:block;margin-top:4px;padding:6px 8px;border:1px dashed #F3B8C2;border-radius:8px;background:#FFFAFB;min-width:170px}
-.tstock .ahr{display:flex;justify-content:space-between;gap:10px;font-size:12.5px;color:#475467;line-height:1.7}
-.tstock .ahr b{font-family:"Baloo Da 2",sans-serif;font-weight:800;color:#1B2347}
-.tstock .ahr b.in{color:#C3122F}
-.tstock .ahr.tot{border-top:1px solid #F3B8C2;margin-top:2px;padding-top:2px;font-weight:700;color:#8A1C2C}
-.tstock .ahr.st b{color:#475467}
-@media (max-width: 700px){ .tstock .ahl{min-width:0;padding:5px 6px} .tstock .ahb{white-space:normal;font-size:11.5px} .tstock .ahr{font-size:11.5px;gap:6px} }
 
 
 /* 🏭 কোম্পানি খতিয়ান like the paper book: তারিখ | বিবরণ | জমা | খরচ | অবশিষ্ট (oldest on top) */
@@ -3704,7 +3694,7 @@ function getDB(){
     return out;
   }
   let sSub = 'types'; try{ sSub = localStorage.getItem('kg-khata-ssub') || 'types'; }catch(_){}
-  if(sSub !== 'queue' && sSub !== 'types') sSub = 'delivery';
+  if(sSub !== 'types') sSub = 'delivery';   // the 📦 মাল যাচ্ছে tab was removed (owner)
   let detOpen = false;   // ＋ মালের বিবরণ hidden until asked
   // মার্কা / ধরন → সাইজ (উচ্চতা × লম্বা) with the kg already in stock ("এখন আছে")
   const uidS = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
@@ -3729,9 +3719,7 @@ function getDB(){
   let tsOut = false;               // add box mode: − মাল গেছে (taken out by hand, not from a মেমো)
   const sumOuts = d => (d.outs||[]).reduce((a,o) => a + (Number(o.kg)||0), 0);
   const openMv = new Set();        // sizes whose today's +/− list is open (closed by default)
-  const openArr = new Set();       // sizes whose 🕘 arrival history is open
   // মাল of this size that came in recently, oldest first — today: the last 24 hours; an old date: that day only
-  const arrivalsOf = (itemId, D) => { const out = [], now = Date.now(), isToday = D === todayId(); days.forEach(d => { if(d.id > D) return; (d.entries||[]).forEach(e => { const fresh = isToday && e.ts ? now - e.ts < 864e5 : d.id === D; if(fresh && e.item === itemId && Number(e.kg) > 0) out.push({day:d.id, kg:Number(e.kg), car:e.car||'', b:!!e.b}); }); }); return out; };
   // kg per size up to day D: before D (black) and on D (red +)
   // kg per size up to day D. Stock never goes below ০: if a memo / মাল গেছে asks for more than is in stock,
   // only what is there leaves (the extra is billed on the memo but not taken from the stock).
@@ -4027,9 +4015,6 @@ function getDB(){
                 <span class="kv">${(() => {
                   const tot = b0 + x.now - (x.sold||0), mv = (x.moves||[]).slice().sort((p,q) => (p.ts||0) - (q.ts||0)), op = openMv.has(it.id);
                   return `<span class="kbad ${tot < 0 ? 'neg' : ''} ${markOf(it) ? 'mk-' + markOf(it) : ''}">${bn(tot)} <small>কেজি</small>${markOf(it) ? `<b class="zt">${markOf(it)}</b>` : ''}</span>`
-                    + (() => { const ar = arrivalsOf(it.id, D); if(!ar.length) return ''; const aop = openArr.has(it.id), sum = ar.reduce((t, a) => t + a.kg, 0);
-                        return `<button type="button" class="ahb" data-item="${it.id}" aria-expanded="${aop}" title="কবে কত মাল এসেছে">🕘 ${toBn(ar.length)} বার এসেছে ${aop ? '▾' : '▸'}</button>`
-                          + (aop ? `<span class="ahl">${Number(it.open) ? `<span class="ahr st"><span>শুরুর কেজি</span><b>${bn(it.open)}</b></span>` : ''}${ar.map(a => `<span class="ahr"><span>${toBn(a.day.slice(8,10) + '/' + a.day.slice(5,7))}${a.car ? ' · গাড়ি ' + esc(toBn(a.car)) : ''}</span><b class="in">+${bn(a.kg)}</b></span>`).join('')}<span class="ahr tot"><span>মোট এসেছে</span><b class="in">+${bn(sum)}</b></span></span>` : ''); })()
                     ;
                 })()}</span>
                 <span class="acts"><button type="button" class="ts-plus" data-item="${it.id}" aria-label="কেজি যোগ করুন">＋</button><button type="button" class="ts-pen" data-item="${it.id}" aria-label="বদলান">✎</button></span>
@@ -4110,7 +4095,6 @@ function getDB(){
     document.querySelectorAll('#stock .ts-h').forEach(b => b.onclick = () => { const id = b.dataset.cat; closedCats.has(id) ? closedCats.delete(id) : closedCats.add(id); tsMsg = ''; again(); });
     document.querySelectorAll('#stock .ts-plus').forEach(b => b.onclick = () => { tsAdd = b.dataset.item; tsEdit = null; tsNew = null; tsMsg = ''; again(); const k = $('tsKg'); if(k) k.focus(); });
     document.querySelectorAll('#stock .mvr').forEach(b => { b.onclick = () => openMove(b.dataset); b.onkeydown = e => { if(e.key === 'Enter') openMove(b.dataset); }; });
-    document.querySelectorAll('#stock .ahb').forEach(b => b.onclick = () => { const id = b.dataset.item; openArr.has(id) ? openArr.delete(id) : openArr.add(id); again(); });
     document.querySelectorAll('#stock .mvt').forEach(b => b.onclick = () => { const id = b.dataset.item; openMv.has(id) ? openMv.delete(id) : openMv.add(id); again(); });
     document.querySelectorAll('#stock .ts-pen').forEach(b => b.onclick = () => { tsEdit = b.dataset.item; tsAdd = null; tsNew = null; tsMsg = ''; again(); });
     document.querySelectorAll('#stock .ts-new').forEach(b => b.onclick = () => { tsAdd = null; tsEdit = null; tsMsg = ''; openNewSize({catId:b.dataset.cat, withOpen:true, onDone: () => again()}); });
@@ -4160,12 +4144,27 @@ function getDB(){
         { const cst = parseNum($('eC') ? $('eC').value : ''); if(cst > 0) f.it.cost = cst; else delete f.it.cost; }
         saveCats(); tsEdit = null; again();
       };
-      let armed = 0;
-      $('eDel').onclick = () => {
-        const used = days.some(d => (d.entries||[]).some(e => e.item === tsEdit));
-        if(used){ tsMsg = 'এই সাইজে মাল যোগ করা আছে — আগে ওই গাড়িগুলো মুছুন, তারপর সাইজ মুছতে পারবেন।'; tsEdit = null; again(); return; }
-        if(!armed){ armed = setTimeout(() => { armed = 0; }, 4000); $('eDel').textContent = 'আবার চাপুন'; return; }
-        f.c.items = f.c.items.filter(x => x.id !== tsEdit); saveCats(); tsEdit = null; again();
+      // মুছুন: ask first; a size that already has মাল also takes its মাল lines (and their company চালান lines) with it
+      $('eDel').onclick = async () => {
+        const id = tsEdit, ins = [], outs = [];
+        days.forEach(d => { (d.entries||[]).forEach(e => { if(e.item === id) ins.push({d, e}); }); (d.outs||[]).forEach(o => { if(o.item === id) outs.push({d, o}); }); });
+        let memos = 0; if(window.__ledger) window.__ledger.accs().forEach(a => (a.entries||[]).forEach(e => { if((e.picks||[]).some(p => p.item === id)) memos++; }));
+        const inKg = ins.reduce((t, x) => t + (Number(x.e.kg)||0), 0), cars = new Set(ins.map(x => x.e.car).filter(Boolean)).size;
+        const linked = ins.filter(x => x.e.co && x.e.ce).length;
+        const html = `<p><b>${esc(f.c.name)} · ${dimTxt(f.it)}</b></p>`
+          + (ins.length || outs.length
+            ? `<p>এই সাইজে মাল এসেছে <b>${toBn(ins.length)} বার</b>${cars ? ` (${toBn(cars)} গাড়ি)` : ''} — মোট <b>${bn(inKg)} কেজি</b>${outs.length ? `, হাতে বের ${toBn(outs.length)} বার` : ''}।</p>
+               <p>মুছলে এই মালের লাইনগুলোও স্টক থেকে মুছে যাবে${linked ? ', আর কোম্পানির খতিয়ানের ওই চালান লাইনও' : ''}।</p>` : '<p>এই সাইজে কোনো মাল যোগ করা নেই।</p>')
+          + (memos ? `<p class="kd-sub">${toBn(memos)}টা মেমোতে এই সাইজ আছে — মেমো আর পার্টির হিসাব যেমন আছে থাকবে।</p>` : '')
+          + `<p class="kd-sub">ভুল হলে 📝 অ্যাক্টিভিটি থেকে ↶ ফেরান করা যাবে।</p>`;
+        const go = await kDialog({icon:'🗑', title:'এই সাইজ মুছবেন?', html, ok: ins.length || outs.length ? 'সাইজ ও তার মাল মুছুন' : 'মুছুন', cancel:'না', tone:'warn'});
+        if(!go) return;
+        const C = window.__company, changed = new Set();
+        ins.forEach(({d, e}) => { if(e.co && e.ce && C && C.remove) C.remove(e.co, e.ce); changed.add(d); });
+        outs.forEach(({d}) => changed.add(d));
+        changed.forEach(d => { d.entries = (d.entries||[]).filter(e => e.item !== id); d.outs = (d.outs||[]).filter(o => o.item !== id); saveDay(d, true); });
+        f.c.items = f.c.items.filter(x => x.id !== id); saveCats(); tsEdit = null; again();
+        if(typeof kToast === 'function') kToast(`<b>✓ সাইজ মুছে ফেলা হয়েছে</b><span>${esc(dimTxt(f.it))}${ins.length ? ` · ${bn(inKg)} কেজি মাল স্টক থেকে বাদ` : ''}</span>`, 4000);
       };
       $('eNo').onclick = () => { tsEdit = null; again(); };
       wireMarks('eM');
@@ -4176,43 +4175,6 @@ function getDB(){
       $('ncNo').onclick = () => { tsNewCat = false; again(); };
       if(typeof attachBanglish === 'function') attachBanglish($('ncName'));
     }
-  }
-  function queueHtml(cur, c){
-    const all = goodsLines();
-    const due = all.filter(x=>!x.done);
-    const today = all.filter(x=>x.done && x.day===cur.id);
-    const goneAll = all.filter(x=>x.done).reduce((s,x)=>s+x.kg,0);
-    const dueKg = due.reduce((s,x)=>s+x.kg,0);
-    const row = (x, btn, i) => { const sh = !x.done && Array.isArray(x.e.picks) && window.__shortage ? window.__shortage(x.e.picks, {}) : []; return `
-      <li class="qrow ${sh.length ? 'short' : ''}">
-        <span class="qsl">${toBn((i||0)+1)}</span>
-        <div class="qmain">
-          <span class="qn">${esc(pnm(x.a))}</span>
-          <span class="qd">${x.e.memoNo ? 'মেমো #' + toBn(x.e.memoNo) + ' · ' : ''}${shortD(x.e.date)} · ${bn(x.e.credit)} ৳${mtBadges(x.e) ? ' · '+mtBadges(x.e) : ''}</span>
-          ${Array.isArray(x.e.picks) && x.e.picks.length ? `<span class="qpk">${x.e.picks.map(pk => { const f = findItem(pk.item); if(!f) return ''; return `<span class="qp"><span class="qp-mk ${f.c.tone||''}">${esc(f.c.name)}</span><b>${dimTxt(f.it)}</b><i>${bn(pk.kg)} কেজি</i></span>`; }).join('')}</span>` : ''}
-        </div>
-        <span class="qkg num">${bn(x.kg)} <small>কেজি</small></span>
-        <span class="qact">${btn}</span>
-        ${sh.length ? `<span class="qshort">⚠️ স্টকে মাল কম — ${sh.map(z => `${z.dims}: দরকার ${bn(z.need)}, আছে ${bn(Math.max(0, z.have))} কেজি`).join(' · ')} · মাল আসলে নিজে থেকে পাঠানো হবে</span>` : ''}
-      </li>`; };
-    const qhead = `<li class="qhead" aria-hidden="true"><span>ক্রমিক</span><span>পার্টি ও মেমো</span><span>কেজি</span><span></span></li>`;
-    return `
-      <section class="qtiles">
-        <div class="qt today"><span class="qi">🚚</span><span class="k">${cur.id === todayId() ? 'আজকের দিনে গেছে' : 'এই দিনে গেছে'}</span><b class="v">${bn(c.sold||0)} <small>কেজি</small></b><small class="s">${toBn(today.length)}টা মেমো</small></div>
-        <div class="qt due ${due.length ? '' : 'zero'}"><span class="qi">${due.length ? '⏳' : '✅'}</span><span class="k">বাকি মাল (দিতে হবে)</span><b class="v">${bn(dueKg)} <small>কেজি</small></b><small class="s">${due.length ? toBn(due.length) + 'টা মেমোর মাল বাকি' : 'সব মাল চলে গেছে'}</small></div>
-      </section>
-      <button type="button" class="houtbtn" id="handOutBtn">✋ হাতে মাল বের করুন</button>
-      ${(cur.outs||[]).length ? `<h3 class="qh qh2 gone"><span>✋ ${cur.id === todayId() ? 'আজ' : 'এই দিনে'} হাতে বের করা মাল</span><span class="qc">${bn(sumOuts(cur))} কেজি</span></h3>
-      <ol class="qlist qtab hout">${(cur.outs||[]).map((o, i) => { const f = o.item ? findItem(o.item) : null;
-        return `<li class="qrow"><span class="qsl">${toBn(i+1)}</span><div class="qmain">${f ? `<span class="qp"><span class="qp-mk ${f.c.tone||''}">${esc(f.c.name)}</span><b>${dimTxt(f.it)}</b></span>` : '<span class="qn">—</span>'}<span class="qd">${o.ts ? tmTxt(o.ts) : ''}</span></div><span class="qkg num">${bn(o.kg)} <small>কেজি</small></span><span class="qact"><button type="button" class="houtdel" data-oi="${i}" aria-label="মুছুন">×</button></span></li>`; }).join('')}</ol>` : ''}
-
-      <h3 class="qh due qh2"><span>⏳ স্টকে কম — যে মেমোর মাল এখনো যায়নি</span><span class="qc">${toBn(due.length)}টা</span></h3>
-      <ol class="qlist qtab">${due.length ? qhead + due.map((x, i)=>row(x, `<span class="qwait">⏳ মাল আসলে<br>নিজে যাবে</span>`, i)).join('')
-        : `<li class="empty qok"><span class="qe-i">✅</span><b>সব মাল চলে গেছে</b><small>এখন কোনো বাকি মাল নেই</small></li>`}</ol>
-
-      <h3 class="qh qh2 gone"><span>✓ ${cur.id === todayId() ? 'আজকের দিনে মাল গেছে' : 'এই দিনে মাল গেছে'}</span><span class="qc">${toBn(today.length)}টা</span></h3>
-      <ol class="qlist qtab">${today.length ? qhead + today.map((x, i)=>row(x, `<span class="qdone">✓ গেছে</span>`, i)).join('')
-        : `<li class="empty qnone"><span class="qe-i">📭</span><b>${cur.id === todayId() ? 'আজকে' : 'এই দিনে'} এখনো কোনো মাল যায়নি</b><small>উপরের লিস্ট থেকে "✓ গেছে" চাপলে এখানে আসবে</small></li>`}</ol>`;
   }
   function goodsLines(){
     const L = window.__ledger, ids = days.map(d=>d.id), out = [];
@@ -4227,11 +4189,6 @@ function getDB(){
     return out.sort((x,y)=> x.e.date > y.e.date ? -1 : x.e.date < y.e.date ? 1 : ((y.e.memoNo||0) - (x.e.memoNo||0)) || ((y.e.ts||0) - (x.e.ts||0)));
   }
   const shortD = id => { const [y,m,d] = id.split('-'); return toBn(d+'/'+m+'/'+y.slice(2)); };
-  function pendingKg(){
-    const L = window.__ledger; let kg = 0, n = 0;
-    if(L) L.accs().forEach(a => (a.entries||[]).forEach(e => { const k = entryKg(e); if(k > 0 && e.status !== 'confirmed'){ kg += k; n++; } }));
-    return {kg, n};
-  }
   function calc(){
     const m = {}; let prevTot = null; const sold = soldMap();
     days.forEach((d,i)=>{
@@ -4357,49 +4314,6 @@ function getDB(){
   }
 
   // ✋ হাতে মাল বের করুন: pick মার্কা → সাইজ + মোট কেজি, ＋ আরো মাল for the next one; saved as the day's outs (leave the stock)
-  function openHandOut(cur){
-    const st = itemStats(cur.id), have = id => { const f = findItem(id); return f ? itemNow(f.it, st) : 0; };
-    const bg = document.createElement('div'); bg.className = 'kdlg-bg';
-    bg.innerHTML = `<div class="kdlg hodlg" role="dialog" aria-modal="true" aria-label="হাতে মাল বের করুন">
-      <h3>✋ হাতে মাল বের করুন</h3><p class="kd-note">${bnDate(cur.id)} · প্রতিটা লাইনে মাল বাছাই করুন, তারপর মোট কেজি লিখুন</p>
-      <ol class="ho-rows"></ol>
-      <button type="button" class="ho-more">＋ আরো মাল</button>
-      <p class="ho-msg" role="alert"></p>
-      <div class="kd-acts two"><button type="button" class="kd-c">বাতিল</button><button type="button" class="kd-ok">✓ মাল বের করুন</button></div></div>`;
-    document.body.appendChild(bg);
-    const rows = bg.querySelector('.ho-rows'), msg = bg.querySelector('.ho-msg'), close = () => bg.remove();
-    const renum = () => rows.querySelectorAll('.ho-n').forEach((n, i) => n.textContent = toBn(i + 1));
-    const addRow = () => {
-      const li = document.createElement('li'); li.className = 'ho-row';
-      li.innerHTML = `<span class="ho-n"></span><button type="button" class="pkbtn ho-pk" data-item="">${pickHtml(cur.id, '')}</button><input class="num ho-kg" inputmode="decimal" placeholder="মোট কেজি" aria-label="মোট কেজি"><button type="button" class="ho-del" aria-label="এই লাইন বাদ দিন">×</button>`;
-      const pb = li.querySelector('.ho-pk'), kIn = li.querySelector('.ho-kg');
-      pb.onclick = () => openPicker(cur.id, id => { pb.dataset.item = id || ''; pb.innerHTML = pickHtml(cur.id, id || ''); kIn.focus(); });
-      li.querySelector('.ho-del').onclick = () => { if(rows.children.length > 1){ li.remove(); renum(); } else { pb.dataset.item = ''; pb.innerHTML = pickHtml(cur.id, ''); kIn.value = ''; } };
-      kIn.addEventListener('keydown', e => { if(e.key === 'Enter'){ e.preventDefault(); bg.querySelector('.kd-ok').click(); } });
-      rows.appendChild(li); renum(); pb.click();
-    };
-    bg.querySelector('.ho-more').onclick = addRow;
-    bg.querySelector('.kd-c').onclick = close;
-    bg.addEventListener('click', e => { if(e.target === bg) close(); });
-    bg.querySelector('.kd-ok').onclick = () => {
-      const lines = [];
-      for(const li of rows.children){
-        const id = li.querySelector('.ho-pk').dataset.item, kg = parseNum(li.querySelector('.ho-kg').value);
-        if(!id && !(kg > 0)) continue;
-        if(!id){ msg.textContent = 'প্রতিটা লাইনে মাল বাছাই করুন।'; return; }
-        if(!(kg > 0)){ msg.textContent = 'প্রতিটা লাইনে মোট কেজি লিখুন।'; li.querySelector('.ho-kg').focus(); return; }
-        lines.push({id, kg});
-      }
-      if(!lines.length){ msg.textContent = 'অন্তত একটা মাল আর কেজি দিন।'; return; }
-      const need = {}; lines.forEach(l => need[l.id] = (need[l.id]||0) + l.kg);
-      for(const id in need){ if(need[id] > have(id) + 1e-9){ const f = findItem(id); msg.textContent = `${f.c.name} ${dimTxt(f.it).replace(/<[^>]+>/g, '')}: স্টকে আছে ${bn(Math.max(0, have(id)))} কেজি — এর বেশি বের করা যাবে না।`; return; } }
-      const ts = Date.now(); cur.outs = cur.outs || [];
-      lines.forEach((l, i) => { const f = findItem(l.id); cur.outs.push({kg:l.kg, cat:f.c.id, item:l.id, ts:ts + i, hand:true}); });
-      saveDay(cur, true); close(); render();
-      kToast(`<b>✋ ${bn(lines.reduce((t, l) => t + l.kg, 0))} কেজি মাল বের হয়েছে</b><span>${toBn(lines.length)}টা লাইন — স্টক থেকে বাদ হলো</span>`, 5000);
-    };
-    addRow();
-  }
 
   /* ---------- render ---------- */
   function render(){
@@ -4456,11 +4370,10 @@ function getDB(){
     const entries = cur.entries||[];
     let sk;   // stock from the মার্কা sizes: আগের মোট + এসেছে − গেছে = মোট স্টক (same as the 📦 মোট স্টক box)
     app.innerHTML = head + `
-      ${(()=>{ const p = pendingKg(); return `
+      ${(()=>{ return `
       <nav class="subtabs ssub" role="tablist">
         <button role="tab" class="st ty" data-ssub="types" aria-selected="${sSub==='types'}">📊 সর্বমোট মাল <span class="num">${(() => { const st = itemStats(cur.id); let t = 0; cats.forEach(c => (c.items||[]).forEach(it => { t += itemNow(it, st); })); return bn(t) + ' কেজি'; })()}</span></button>
         <button role="tab" class="st" data-ssub="delivery" aria-selected="${sSub==='delivery'}">🚚 মাল আসছে <span class="num">আজ ${bn(c.sum)} কেজি</span></button>
-        <button role="tab" class="st q" data-ssub="queue" aria-selected="${sSub==='queue'}">📦 মাল যাচ্ছে <span class="num">${p.n ? 'বাকি '+bn(p.kg)+' কেজি' : 'বাকি নেই'}</span></button>
       </nav>`; })()}
       ${(() => { const st = itemStats(cur.id); sk = {prev:0, now:0, sold:0}; cats.forEach(cc => (cc.items||[]).forEach(it => { const x = st[it.id] || {prev:0, now:0, sold:0}; sk.prev += (Number(it.open)||0) + x.prev; sk.now += x.now; sk.sold += x.sold||0; })); sk.tot = sk.prev + sk.now - sk.sold; return ''; })()}
       <div class="calc">
@@ -4473,7 +4386,7 @@ function getDB(){
           <span class="val num in">+ ${bn(sk.now)} <small>কেজি</small></span>
         </div>
         <div class="row minus">
-          <span class="lbl">মাল গেছে (−) <small class="from">${(() => { const n = goodsLines().filter(x => x.done && x.day === cur.id).length + (cur.outs||[]).length; return n ? `এই দিনে ${toBn(n)} বার মাল গেছে · <button type="button" class="linkish" id="goQueue">দেখুন ›</button>` : 'মাল যাচ্ছে থেকে নিজে থেকে আসবে'; })()}</small></span>
+          <span class="lbl">মাল গেছে (−) <small class="from">${(() => { const n = goodsLines().filter(x => x.done && x.day === cur.id).length + (cur.outs||[]).length; return n ? `এই দিনে ${toBn(n)} বার মাল গেছে (মেমো থেকে)` : 'মেমো করলে নিজে থেকে আসবে'; })()}</small></span>
           <span class="val num">− ${bn(sk.sold)} <small>কেজি</small></span>
         </div>
         ${cur.due ? `<div class="row minus"><span class="lbl">অন্য বাদ <small class="from">আগে হাতে লেখা ডিউ</small></span><input id="due" class="num" inputmode="decimal" value="${bn(cur.due)}" placeholder="০" aria-label="অন্য বাদ কেজি"></div>` : ''}
@@ -4486,7 +4399,7 @@ function getDB(){
       </div>
 
 
-      ${sSub==='queue' ? queueHtml(cur, c) : sSub==='types' ? typesHtml(cur) : `
+      ${sSub==='types' ? typesHtml(cur) : `
       ${(()=>{ const C = window.__company; const cos = C ? C.list() : []; if(lastCo && !cos.find(x=>x.id===lastCo)) lastCo = ''; return `
       <button type="button" class="addopen" id="addOpenBtn" ${addOpen || coNew ? 'hidden' : ''}>＋ মাল যোগ করুন</button>
       <div class="addmodal" id="addWrap" ${addOpen || coNew ? '' : 'hidden'}><div class="addcard" role="dialog" aria-modal="true" aria-label="মাল যোগ করুন">
@@ -4617,9 +4530,6 @@ function getDB(){
       due.addEventListener('input',()=>{ const n=parseNum(due.value); cur.due=isNaN(n)?0:n; live(); saveDay(cur); });
       due.addEventListener('change', render);
     }
-    if($('handOutBtn')) $('handOutBtn').onclick = () => openHandOut(cur);
-    document.querySelectorAll('#stock .houtdel').forEach(b => twoTap(b, 'মুছুন?', 4000, () => { cur.outs.splice(+b.dataset.oi, 1); saveDay(cur, true); render(); }));
-    if($('goQueue')) $('goQueue').onclick = () => { sSub = 'queue'; try{ localStorage.setItem('kg-khata-ssub', sSub); }catch(_){}; render(); };
 
     document.querySelectorAll('#stock .ssub .st').forEach(b=>b.onclick=()=>{ sSub = b.dataset.ssub; try{ localStorage.setItem('kg-khata-ssub', sSub); }catch(_){}; editIndex=-1; render(); });
     if(sSub === 'types') bindTypes(cur);
