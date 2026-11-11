@@ -8096,7 +8096,7 @@ window.__appBack = () => {
       <div class="ac-tools">
         <select id="acU" aria-label="ইউজার"><option value="">👤 সব ইউজার</option>${users.map(u => `<option value="${esc(u.id)}" ${f.user === u.id ? 'selected' : ''}>${esc(u.name)}</option>`).join('')}</select>
         <input type="date" id="acD" value="${f.date}" aria-label="তারিখ">
-        <div class="ac-chips">${[['','সব'],['data','ডেটা বদল'],['other','লগইন ও অন্যান্য']].map(([k,l]) => `<button type="button" data-k="${k}" aria-pressed="${f.kind===k}">${l}</button>`).join('')}</div>
+        <div class="ac-chips">${[['','সব'],['memo','🧾 মেমো'],['stock','🚚 স্টকের মাল'],['joma','💰 টাকা জমা'],['khoroch','💸 খরচ'],['data','ডেটা বদল'],['other','লগইন ও অন্যান্য']].map(([k,l]) => `<button type="button" data-k="${k}" aria-pressed="${f.kind===k}">${l}</button>`).join('')}</div>
       </div>
       ${rows.length ? html : `<p class="ac-empty">${busy ? 'আনা হচ্ছে…' : 'কোনো অ্যাক্টিভিটি নেই।'}</p>`}
       ${more ? `<button type="button" class="ac-more" id="acMore">আরো দেখুন ↓</button>` : ''}`;

@@ -9,6 +9,13 @@ export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
 type Data = Record<string, unknown>;
+// a memo line reads "＋ মেমো নং …", a জমা line "＋ জমা ৳…" (lib/activity.ts entryText)
+const CATS: Record<string, Record<string, unknown>> = {
+  memo: { path: /^ledgers\//, lines: /মেমো/ },
+  joma: { path: /^ledgers\//, lines: /জমা ৳/ },
+  stock: { path: /^(days\/|settings\/cats$)/ },
+  khoroch: { path: /^khoroch\// },
+};
 const ids = (d: Data | null | undefined, k: string) => ((d?.[k] as Data[]) || []).map(x => String(x.id));
 
 export async function POST(req: Request) {
@@ -25,6 +32,8 @@ export async function POST(req: Request) {
       if (body.user) q.uid = String(body.user);
       if (body.kind === 'data') q.kind = { $in: ['data', 'undo', 'import', 'wipe'] };
       else if (body.kind === 'other') q.kind = { $nin: ['data', 'undo', 'import', 'wipe'] };
+      // owner's filters: only memos / stock মাল / টাকা জমা / খরচ (changes and their ফেরানো)
+      else if (CATS[body.kind]) Object.assign(q, { kind: { $in: ['data', 'undo'] } }, CATS[body.kind]);
       if (body.date) { const s = new Date(body.date + 'T00:00:00+06:00').getTime(); q.ts = { $gte: s, $lt: s + 864e5 }; }
       if (body.before) q.ts = { ...(q.ts as object || {}), $lt: Number(body.before) };
       const rows = await acts.find(q, { projection: { before: 0, snapshot: 0 } }).sort({ ts: -1 }).limit(60).toArray();
