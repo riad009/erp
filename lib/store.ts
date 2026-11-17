@@ -15,6 +15,7 @@ import type { Db, Document } from 'mongodb';
 //   settings/labour     settings       _id "labour_rate"
 //   settings/drafts     settings       _id "memo_drafts" (unsaved মেমো খসড়া)
 //   settings/ui         settings       _id "ui_prefs" (মেমোর ধরন কাগজ / ডিজিটাল — same on every device)
+//   settings/stamp      settings       _id "stamp_image" (the owner's stamp + signature, PNG data URL)
 
 export const COLLECTIONS = ['stock_markas', 'stock_sizes', 'stock_days', 'parties', 'companies', 'expenses', 'cash_opening', 'settings'];
 
@@ -23,7 +24,7 @@ type Row = Document & { _id: string };
 
 // plain one-record-per-item collections
 const SIMPLE: Record<string, string> = { days: 'stock_days', ledgers: 'parties', companies: 'companies', khoroch: 'expenses' };
-const SETTING: Record<string, string> = { rates: 'sale_rates', labour: 'labour_rate', drafts: 'memo_drafts', ui: 'ui_prefs' };
+const SETTING: Record<string, string> = { rates: 'sale_rates', labour: 'labour_rate', drafts: 'memo_drafts', ui: 'ui_prefs', stamp: 'stamp_image' };
 export const LISTABLE = Object.keys(SIMPLE);
 
 const strip = ({ _id, ...rest }: Row): Data => rest;
