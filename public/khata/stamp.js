@@ -101,17 +101,14 @@
     return bc.getImageData(0, 0, src.width, src.height).data;
   }
 
-  // ✨ CamScanner-like: white paper, dark clear ink · 'bw' = black & white · 'orig' = only straightened
+  // ✨ CamScanner-like: white paper, dark clear ink · 'orig' = only straightened
   function enhance(src, mode){
-    if(mode === 'orig') return src;
+    if(mode === 'orig') return vivid(src);
     const W = src.width, H = src.height, out = newCanvas(W, H), oc = out.getContext('2d');
     const id = src.getContext('2d').getImageData(0, 0, W, H), d = id.data, bg = paperLight(src);
     for(let i = 0; i < d.length; i += 4){
       let r = d[i] * 255 / Math.max(40, bg[i]), g = d[i+1] * 255 / Math.max(40, bg[i+1]), b = d[i+2] * 255 / Math.max(40, bg[i+2]);
-      if(mode === 'bw'){
-        let v = 0.299 * r + 0.587 * g + 0.114 * b; v = clamp((v - 60) * 255 / 170, 0, 255); v = 255 * Math.pow(v / 255, 1.8); v = v > 215 ? 255 : v;
-        d[i] = d[i+1] = d[i+2] = v;
-      } else {
+      {
         // levels + a darker middle (gamma) + more colour: faint pen writing stays readable on clean white
         // (tuned on the owner's own bank slips)
         const lift = c => 255 * Math.pow(clamp((c - 10) * 255 / 235, 0, 255) / 255, 2.3);
@@ -120,6 +117,19 @@
         d[i] = clamp(m + (r - m) * sat, 0, 255); d[i+1] = clamp(m + (g - m) * sat, 0, 255); d[i+2] = clamp(m + (b - m) * sat, 0, 255);
         if(d[i] > 238 && d[i+1] > 238 && d[i+2] > 238){ d[i] = d[i+1] = d[i+2] = 255; }
       }
+    }
+    oc.putImageData(id, 0, 0);
+    return out;
+  }
+
+  // 🖼 আসল: the slip's own colours (pink stays pink), just bolder — more contrast and colour
+  function vivid(src){
+    const W = src.width, H = src.height, out = newCanvas(W, H), oc = out.getContext('2d'), id = src.getContext('2d').getImageData(0, 0, W, H), d = id.data;
+    for(let i = 0; i < d.length; i += 4){
+      let r = clamp((d[i] - 25) * 255 / 215, 0, 255), g = clamp((d[i+1] - 25) * 255 / 215, 0, 255), b = clamp((d[i+2] - 25) * 255 / 215, 0, 255);
+      r = 255 * Math.pow(r / 255, 1.35); g = 255 * Math.pow(g / 255, 1.35); b = 255 * Math.pow(b / 255, 1.35);
+      const m = (r + g + b) / 3;
+      d[i] = clamp(m + (r - m) * 1.45, 0, 255); d[i+1] = clamp(m + (g - m) * 1.45, 0, 255); d[i+2] = clamp(m + (b - m) * 1.45, 0, 255);
     }
     oc.putImageData(id, 0, 0);
     return out;
@@ -163,6 +173,15 @@
   }
   window.__stampRemote = async data => { await useStamp(data); if(!root.hidden) render(); };
 
+  /* ---------- 📲 WhatsApp numbers (online: settings/wa → every device) ---------- */
+  let wa = [], waLoaded = false;
+  async function loadWa(){ try{ const db = await getDB(); if(db){ const d = await db.doc('settings/wa').get(); wa = d.exists && Array.isArray(d.data().list) ? d.data().list : []; } }catch(_){} waLoaded = true; }
+  async function saveWa(){ try{ const db = await getDB(); if(db) await db.doc('settings/wa').set({list: wa}); }catch(_){} }
+  window.__stampWaRemote = data => { wa = data && Array.isArray(data.list) ? data.list : []; if(!root.hidden) render(); };
+  // 01712-345678 / +880 1712… / ০১৭… → 8801712345678
+  const normPhone = p => { let d = String(p || '').replace(/[০-৯]/g, c => BD.indexOf(c)).replace(/\D/g, ''); if(d.startsWith('00')) d = d.slice(2); if(d.length === 11 && d[0] === '0') d = '88' + d; return d; };
+  const showPhone = p => { const d = normPhone(p); return toBn(d.startsWith('880') ? '0' + d.slice(3) : d); };
+
   /* ---------- page state ---------- */
   let newStamp = null;     // {src, strength, cut} while setting a new stamp
   let V = null;            // voucher: {src, quad, scan, mode, view, step}
@@ -176,7 +195,7 @@
 
   function render(){
     if(root.hidden) return;
-    if(!stampLoaded){ root.innerHTML = uHead('🔖 স্ট্যাম্প', 'ভাউচারে স্ট্যাম্প ও সই') + '<p class="loading">খোলা হচ্ছে…</p>'; loadStamp().then(render); return; }
+    if(!stampLoaded || !waLoaded){ root.innerHTML = uHead('🔖 স্ট্যাম্প', 'ভাউচারে স্ট্যাম্প ও সই') + '<p class="loading">খোলা হচ্ছে…</p>'; Promise.all([stampLoaded || loadStamp(), waLoaded || loadWa()]).then(render); return; }
     const steps = ['ছবি', 'কোণা ঠিক', 'স্ট্যাম্প বসান', 'প্রিন্ট / নামান'], cur = !V ? 0 : V.step;
     root.innerHTML = uHead('🔖 স্ট্যাম্প', 'ভাউচারে স্ট্যাম্প ও সই বসিয়ে প্রিন্ট') + `
       <section class="stp-card">
@@ -199,7 +218,7 @@
           <div class="stp-stage"><canvas id="vCrop"></canvas></div>
           <div class="stp-acts"><button type="button" class="stp-btn main" id="vScan">✨ স্ক্যান করুন</button><button type="button" class="stp-btn" id="vWhole">পুরো ছবি রাখুন</button><button type="button" class="stp-btn" id="vNew">বাতিল</button></div>`
         : `
-          <div class="stp-modes" role="group" aria-label="ছবির ধরন">${[['color','✨ পরিষ্কার রঙিন'],['bw','⚫ সাদা-কালো'],['orig','🖼 আসল']].map(([k, l]) => `<button type="button" data-mode="${k}" aria-pressed="${V.mode === k}">${l}</button>`).join('')}</div>
+          <div class="stp-modes" role="group" aria-label="ছবির ধরন">${[['color','✨ পরিষ্কার সাদা'],['orig','🎨 আসল রঙ (গাঢ়)']].map(([k, l]) => `<button type="button" data-mode="${k}" aria-pressed="${V.mode === k}">${l}</button>`).join('')}</div>
           <div class="stp-stage"><canvas id="vPlace"></canvas></div>
           ${stampImg ? `<label class="stp-on"><input type="checkbox" id="pOn" ${place.on ? 'checked' : ''}> স্ট্যাম্প ও সই দিন</label>
           <p class="sub">স্ট্যাম্পটা আঙুল / মাউস দিয়ে টেনে জায়গামতো বসান।</p>
@@ -209,8 +228,13 @@
             <button type="button" class="stp-btn main" id="vSave">⬇ ছবি নামান</button>
             ${window.KhataApp ? '' : '<button type="button" class="stp-btn" id="vPrint">🖨 প্রিন্ট</button>'}
             ${navigator.canShare ? '<button type="button" class="stp-btn" id="vShare">📤 শেয়ার</button>' : ''}
-            <button type="button" class="stp-btn" id="vBack">↩ কোণা আবার ঠিক করুন</button>
             <button type="button" class="stp-btn" id="vNew">🧾 নতুন ভাউচার</button>
+          </div>
+          <div class="stp-wa">
+            <h3>📲 WhatsApp-এ পাঠান</h3>
+            <p class="sub">নামে চাপ দিলে ওই নম্বরের WhatsApp চ্যাট খুলবে, ভাউচারের ছবি সাথে থাকবে — শুধু Send চাপুন।</p>
+            <div class="wa-list">${wa.length ? wa.map(c => `<span class="wa-c"><button type="button" class="wa-go" data-wa="${esc(c.id)}">🟢 ${esc(c.name)} <small>${showPhone(c.phone)}</small></button><button type="button" class="wa-x" data-wax="${esc(c.id)}" aria-label="নম্বর মুছুন">×</button></span>`).join('') : '<span class="stp-empty">এখনো কোনো নম্বর নেই — নিচে যোগ করুন।</span>'}</div>
+            <div class="wa-add"><input id="waName" autocomplete="off" placeholder="নাম (যেমন Karnafully)"><input id="waNum" inputmode="tel" autocomplete="off" placeholder="WhatsApp নম্বর ০১৭…"><button type="button" class="stp-btn" id="waAdd">＋ যোগ</button></div>
           </div>`}
       </section>`;
     bind();
@@ -253,8 +277,17 @@
     if($('pOn')) $('pOn').onchange = e => { place.on = e.target.checked; keepPlace(); drawPlace($('vPlace')); };
     if($('pW')) $('pW').oninput = e => { place.w = e.target.value / 100; keepPlace(); drawPlace($('vPlace')); };
     if($('pR')) $('pR').oninput = e => { place.rot = +e.target.value; keepPlace(); drawPlace($('vPlace')); };
-    if($('vBack')) $('vBack').onclick = () => { V.step = 1; render(); };
     if($('vSave')) $('vSave').onclick = () => exportImg('save');
+    root.querySelectorAll('[data-wa]').forEach(b => b.onclick = () => sendWa(wa.find(c => c.id === b.dataset.wa), b));
+    root.querySelectorAll('[data-wax]').forEach(b => b.onclick = async () => {
+      if(!b.classList.contains('sure')){ b.classList.add('sure'); b.textContent = 'মুছুন?'; setTimeout(() => { b.classList.remove('sure'); b.textContent = '×'; }, 3000); return; }
+      wa = wa.filter(c => c.id !== b.dataset.wax); await saveWa(); render();
+    });
+    if($('waAdd')) $('waAdd').onclick = async () => {
+      const name = $('waName').value.trim(), phone = normPhone($('waNum').value);
+      if(!name || phone.length < 10){ toast('<b>নাম আর সঠিক WhatsApp নম্বর দিন</b>'); return; }
+      wa.push({id: Date.now().toString(36), name, phone}); await saveWa(); render();
+    };
     if($('vPrint')) $('vPrint').onclick = () => exportImg('print');
     if($('vShare')) $('vShare').onclick = () => exportImg('share');
   }
@@ -295,15 +328,37 @@
     cv.onpointerup = cv.onpointercancel = () => { drag = -1; };
   }
 
+  // the stamp as it goes on paper (owner: bold and colourful like a real stamp): lines 1 px thicker, ink full strength,
+  // the stamp's colour (blue / violet) brighter, the signature (grey) near black
+  let bold = null;
+  function boldStamp(){
+    if(!stampImg) return null;
+    if(bold && bold.of === stampImg) return bold.c;
+    const w = stampImg.naturalWidth, h = stampImg.naturalHeight, c = newCanvas(w, h), cx = c.getContext('2d');
+    cx.drawImage(stampImg, 0, 0); const id = cx.getImageData(0, 0, w, h), d = id.data, o = new Uint8ClampedArray(d.length);
+    for(let y = 0; y < h; y++) for(let x = 0; x < w; x++){
+      let best = (y * w + x) * 4;
+      for(let dy = -1; dy <= 1; dy++) for(let dx = -1; dx <= 1; dx++){ const xx = x + dx, yy = y + dy; if(xx < 0 || yy < 0 || xx >= w || yy >= h) continue; const j = (yy * w + xx) * 4; if(d[j + 3] > d[best + 3]) best = j; }
+      const i = (y * w + x) * 4;
+      const r = d[best], g = d[best+1], b = d[best+2], m = (r + g + b) / 3, sat = Math.max(r, g, b) - Math.min(r, g, b);
+      if(sat > 22){ const k = 1.9; o[i] = clamp((m + (r - m) * k) * 0.82, 0, 255); o[i+1] = clamp((m + (g - m) * k) * 0.82, 0, 255); o[i+2] = clamp((m + (b - m) * k) * 0.82, 0, 255); }
+      else { o[i] = r * 0.35; o[i+1] = g * 0.35; o[i+2] = b * 0.35; }
+      o[i+3] = Math.min(255, d[best+3] * 1.9);
+    }
+    id.data.set(o); cx.putImageData(id, 0, 0);
+    bold = {of: stampImg, c};
+    return c;
+  }
   // the voucher with the stamp on it (full size for saving, or scaled for the screen)
   function compose(target, k){
     const v = V.view, ctx = target.getContext('2d');
     ctx.globalCompositeOperation = 'source-over'; ctx.drawImage(v, 0, 0, v.width * k, v.height * k);
-    if(stampImg && place.on){
-      const w = v.width * place.w * k, h = w * stampImg.height / stampImg.width;
+    const st = place.on ? boldStamp() : null;
+    if(st){
+      const w = v.width * place.w * k, h = w * st.height / st.width;
       ctx.save(); ctx.globalCompositeOperation = 'multiply';   // like real ink: the paper shows through
       ctx.translate(v.width * place.cx * k, v.height * place.cy * k); ctx.rotate(place.rot * Math.PI / 180);
-      ctx.drawImage(stampImg, -w / 2, -h / 2, w, h); ctx.restore();
+      ctx.drawImage(st, -w / 2, -h / 2, w, h); ctx.restore();
     }
   }
   let viewK = 1;
@@ -324,10 +379,30 @@
     cv.onpointerup = cv.onpointercancel = () => { if(drag){ drag = null; keepPlace(); } };
   }
 
-  async function exportImg(how){
+  async function finished(){
     const v = V.view, full = newCanvas(v.width, v.height); compose(full, 1);
     const blob = await new Promise(r => full.toBlob(r, 'image/jpeg', 0.92));
     const d = new Date(), name = `voucher-${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}-${String(d.getHours()).padStart(2,'0')}${String(d.getMinutes()).padStart(2,'0')}.jpg`;
+    return {blob, name};
+  }
+  const toB64 = blob => new Promise(res => { const r = new FileReader(); r.onload = () => res(String(r.result).split(',')[1]); r.readAsDataURL(blob); });
+  // 📲 to one number: Android app → that WhatsApp chat with the picture attached; phone browser → share sheet; else save + open the chat
+  async function sendWa(c, btn){
+    if(!c) return;
+    const {blob, name} = await finished(), phone = normPhone(c.phone);
+    if(window.KhataApp && window.KhataApp.shareWhatsApp){
+      if(window.KhataApp.shareWhatsApp(await toB64(blob), name, 'image/jpeg', phone)) return;
+    }
+    const file = new File([blob], name, {type: 'image/jpeg'});
+    if(!window.KhataApp && navigator.canShare && navigator.canShare({files: [file]})){
+      try{ await navigator.share({files: [file], title: 'ভাউচার'}); toast('<b>WhatsApp বেছে ' + esc(c.name) + '-কে পাঠান</b>', 5000); return; }catch(e){ if(e && e.name === 'AbortError') return; }
+    }
+    await exportImg('save');
+    toast('<b>ছবি নামানো হয়েছে — WhatsApp খুলছে</b><span>' + esc(c.name) + '-এর চ্যাটে 📎 দিয়ে ছবিটা পাঠান।</span>', 7000);
+    window.open('https://wa.me/' + phone, '_blank');
+  }
+  async function exportImg(how){
+    const {blob, name} = await finished();
     if(how === 'share'){
       const file = new File([blob], name, {type: 'image/jpeg'});
       try{ if(navigator.canShare && navigator.canShare({files: [file]})){ await navigator.share({files: [file], title: 'ভাউচার'}); return; } }catch(e){ if(e && e.name === 'AbortError') return; }

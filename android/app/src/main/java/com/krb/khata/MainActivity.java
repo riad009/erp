@@ -231,7 +231,36 @@ public class MainActivity extends Activity {
                 return false;
             }
         }
+
+        /** window.KhataApp.shareWhatsApp(base64, name, mime, phone): opens that number's WhatsApp chat with the file attached. */
+        @JavascriptInterface
+        public boolean shareWhatsApp(String base64, String name, String mime, String phone) {
+            try {
+                byte[] bytes = Base64.decode(base64, Base64.DEFAULT);
+                File dir = new File(getCacheDir(), "share");
+                if (!dir.exists() && !dir.mkdirs()) return false;
+                File f = new File(dir, name.replaceAll("[\\\\/:*?\"<>|]", "_"));
+                try (OutputStream o = new FileOutputStream(f)) { o.write(bytes); }
+                final Uri uri = FileProvider.getUriForFile(MainActivity.this, getPackageName() + ".files", f);
+                final String digits = phone == null ? "" : phone.replaceAll("[^0-9]", "");
+                runOnUiThread(() -> {
+                    Intent send = new Intent(Intent.ACTION_SEND).setType(mime).putExtra(Intent.EXTRA_STREAM, uri)
+                            .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                    if (!digits.isEmpty()) send.putExtra("jid", digits + "@s.whatsapp.net");   // that person's chat
+                    for (String pkg : WHATSAPP) {
+                        try { startActivity(new Intent(send).setPackage(pkg)); return; } catch (ActivityNotFoundException ignored) { }
+                    }
+                    try { startActivity(Intent.createChooser(send, "পাঠান")); } catch (ActivityNotFoundException ignored) { }   // no WhatsApp on this phone
+                });
+                return true;
+            } catch (Exception e) {
+                return false;
+            }
+        }
     }
+
+    // (inside Bridge, below) 📲 a voucher picture straight into one WhatsApp chat — the user only taps Send
+    static final String[] WHATSAPP = {"com.whatsapp", "com.whatsapp.w4b"};
 
     static final String OFFLINE = "<meta name='viewport' content='width=device-width,initial-scale=1'>"
             + "<body style='font-family:sans-serif;text-align:center;padding:60px 20px;color:#1B2347'>"

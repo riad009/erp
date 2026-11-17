@@ -8019,6 +8019,7 @@ window.__appBack = () => {
     else if(path === 'settings/labour'){ if(window.__labourRemote) window.__labourRemote(data); }
     else if(path === 'settings/ui'){ if(window.__uiRemote) window.__uiRemote(data); }
     else if(path === 'settings/stamp'){ if(window.__stampRemote) window.__stampRemote(data); }
+    else if(path === 'settings/wa'){ if(window.__stampWaRemote) window.__stampWaRemote(data); }
     else if(window.__ledger && window.__ledger.remote) window.__ledger.remote(path, data);
   }
   function repaint(){

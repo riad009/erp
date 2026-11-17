@@ -157,6 +157,7 @@ export function describe(path: string, before: Data | null, after: Data | null):
   else if (path === 'amdani/sabek') label = '💰 সাবেক জমা';
   else if (path === 'settings/ui') label = '🎨 মেমোর ধরন (সেটিং)';
   else if (path === 'settings/stamp') label = '🔖 স্ট্যাম্প ও সই';
+  else if (path === 'settings/wa') label = '📲 WhatsApp নম্বর (ভাউচার)';
 
   if (before && after) {
     if (col === 'ledgers' || col === 'companies') listDiff(col, before.entries, after.entries, lines);
