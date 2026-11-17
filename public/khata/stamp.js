@@ -173,14 +173,8 @@
   }
   window.__stampRemote = async data => { await useStamp(data); if(!root.hidden) render(); };
 
-  /* ---------- 📲 WhatsApp numbers (online: settings/wa → every device) ---------- */
-  let wa = [], waLoaded = false;
-  async function loadWa(){ try{ const db = await getDB(); if(db){ const d = await db.doc('settings/wa').get(); wa = d.exists && Array.isArray(d.data().list) ? d.data().list : []; } }catch(_){} waLoaded = true; }
-  async function saveWa(){ try{ const db = await getDB(); if(db) await db.doc('settings/wa').set({list: wa}); }catch(_){} }
-  window.__stampWaRemote = data => { wa = data && Array.isArray(data.list) ? data.list : []; if(!root.hidden) render(); };
-  // 01712-345678 / +880 1712… / ০১৭… → 8801712345678
+  // (the saved WhatsApp numbers were removed by the owner — only "📲 WhatsApp-এ শেয়ার করুন", which opens WhatsApp's own chat list)
   const normPhone = p => { let d = String(p || '').replace(/[০-৯]/g, c => BD.indexOf(c)).replace(/\D/g, ''); if(d.startsWith('00')) d = d.slice(2); if(d.length === 11 && d[0] === '0') d = '88' + d; return d; };
-  const showPhone = p => { const d = normPhone(p); return toBn(d.startsWith('880') ? '0' + d.slice(3) : d); };
 
   /* ---------- 📁 ভাউচার লিস্ট: finished vouchers are kept on THIS phone / computer only (IndexedDB — never in the
      online database, the pictures would fill it). meta = {id, ts, date, name, note, thumb, w, h, size, acts[{k, to, ts}]},
@@ -218,7 +212,6 @@
   const ACT = {save: '⬇ নামানো', print: '🖨 প্রিন্ট', share: '📤 শেয়ার'};
   const ANY = {id: '*', name: '', phone: ''};
   const anyBtn = (label = '📲 WhatsApp-এ শেয়ার করুন', attr = 'data-waany') => `<button type="button" class="wa-any" ${attr}>${label}<small>যে কাউকে · যেকোনো গ্রুপে</small></button>`;
-  const waAddHTML = () => '<div class="wa-add"><input id="waName" autocomplete="off" placeholder="নাম (যেমন Karnafully)"><input id="waNum" inputmode="tel" autocomplete="off" placeholder="WhatsApp নম্বর ০১৭…"><button type="button" class="stp-btn" id="waAdd">＋ যোগ</button></div>';
   const tagsOf = m => { const seen = new Set(), out = [];
     for(const a of (m.acts || [])){ const t = a.k === 'wa' ? '📲 ' + (a.to || 'WhatsApp') : ACT[a.k]; if(t && !seen.has(t)){ seen.add(t); out.push(t); } }
     return out; };
@@ -228,7 +221,7 @@
   let newStamp = null;     // {src, strength, cut} while setting a new stamp
   let V = null;            // voucher on screen: {file, src, quad, scan, mode, view, step, name, note, id, dirty} (+ item / place when it is one of many)
   let Q = null;            // many vouchers at once (owner): [{file, quad, mode, place, note, ps, pv, id, dirty, name, f}] — ps / pv = small scan / look for the previews
-  let qBusy = null, qRunning = false;
+  let qBusy = null, qRunning = false, qShown = false, qSeq = 0, qBaseName = '', acting = false;
   const MODES = [['color','✨ পরিষ্কার সাদা'],['orig','🎨 আসল রঙ (গাঢ়)']];
   let place = {cx: 0.62, cy: 0.62, w: 0.26, rot: -8, on: true};
   try{ Object.assign(place, JSON.parse(localStorage.getItem('kg-khata-stamp-place') || '{}')); }catch(_){}
@@ -243,7 +236,7 @@
 
   function render(){
     if(root.hidden) return;
-    if(!stampLoaded || !waLoaded){ root.innerHTML = uHead('🔖 স্ট্যাম্প', 'ভাউচারে স্ট্যাম্প ও সই') + '<p class="loading">খোলা হচ্ছে…</p>'; Promise.all([stampLoaded || loadStamp(), waLoaded || loadWa()]).then(render); return; }
+    if(!stampLoaded){ root.innerHTML = uHead('🔖 স্ট্যাম্প', 'ভাউচারে স্ট্যাম্প ও সই') + '<p class="loading">খোলা হচ্ছে…</p>'; loadStamp().then(render); return; }
     const steps = ['ছবি', 'কোণা ঠিক', 'স্ট্যাম্প বসান', 'প্রিন্ট / নামান'], cur = V ? V.step : Q ? 2 : 0, pl = P();
     const item = V && V.item, itemNo = item ? toBn(Q.indexOf(item) + 1) + ' / ' + toBn(Q.length) : '';
     root.innerHTML = uHead('🔖 স্ট্যাম্প', 'ভাউচারে স্ট্যাম্প ও সই বসিয়ে প্রিন্ট') + `
@@ -277,22 +270,18 @@
           <label class="stp-sl">ঘোরান<input type="range" id="pR" min="-45" max="45" value="${Math.round(pl.rot)}"></label>` : '<p class="stp-empty">উপরে আগে স্ট্যাম্প সেভ করুন — তাহলে এখানে বসানো যাবে।</p>'}
           <label class="stp-note">📝 নোট <small>(ইচ্ছা হলে — লিস্টে খুঁজতে সুবিধা)</small><input type="text" id="vNote" autocomplete="off" maxlength="120" value="${esc(V.note || '')}" placeholder="যেমন: Karnafully জমা ৫০,০০০"></label>
           ${item ? `<div class="stp-acts"><button type="button" class="stp-btn main" id="vDone">✓ ঠিক আছে — সব ভাউচারে ফিরুন</button></div>` : `
+          ${stampImg && pl.on ? `
           <div class="stp-acts">
             <button type="button" class="stp-btn main" id="vSave">⬇ ছবি নামান</button>
             <button type="button" class="stp-btn" id="vKeep">${keepLabel()}</button>
             ${window.KhataApp ? '' : '<button type="button" class="stp-btn" id="vPrint">🖨 প্রিন্ট</button>'}
             ${navigator.canShare ? '<button type="button" class="stp-btn" id="vShare">📤 শেয়ার</button>' : ''}
-            <button type="button" class="stp-btn" id="vNew">🧾 নতুন ভাউচার</button>
           </div>
-          <p class="stp-hint">নামালে / পাঠালে ভাউচারটা নিজে থেকেই নিচের 📁 ভাউচার লিস্টে জমা হয়।</p>
-          <div class="q-more"><h3>＋ একসাথে আরো ভাউচার</h3><p class="sub">আরো ছবি দিলে সবগুলোতে একই জায়গায় স্ট্যাম্প বসবে — একবারে নামান / পাঠান।</p>${pickBtns('more', '📷 আরো ছবি তুলুন', '🖼 আরো গ্যালারি থেকে')}</div>
-          <div class="stp-wa">
-            <h3>📲 WhatsApp-এ পাঠান</h3>
-            ${anyBtn()}
-            <p class="sub">অথবা সেভ করা নামে চাপ দিন — সরাসরি ওই নম্বরের চ্যাট খুলবে, ছবি সাথে থাকবে — শুধু Send চাপুন।</p>
-            <div class="wa-list">${wa.length ? wa.map(c => `<span class="wa-c"><button type="button" class="wa-go" data-wa="${esc(c.id)}">🟢 ${esc(c.name)} <small>${showPhone(c.phone)}</small></button><button type="button" class="wa-x" data-wax="${esc(c.id)}" aria-label="নম্বর মুছুন">×</button></span>`).join('') : '<span class="stp-empty">এখনো কোনো নম্বর নেই — নিচে যোগ করুন।</span>'}</div>
-            ${waAddHTML()}
-          </div>`}`}
+          <div class="stp-wa">${anyBtn()}<p class="sub">WhatsApp খুলবে — যে কাউকে বা যেকোনো গ্রুপে বেছে Send চাপুন।</p></div>
+          <p class="stp-hint">নামালে / পাঠালে ভাউচারটা নিজে থেকেই নিচের 📁 ভাউচার লিস্টে জমা হয়।</p>`
+          : '<p class="stp-wait">স্ট্যাম্প বসালে এখানে নামানো / WhatsApp-এ শেয়ারের বাটন আসবে।</p>'}
+          <div class="stp-acts"><button type="button" class="stp-btn" id="vNew">🧾 নতুন ভাউচার</button></div>
+          <div class="q-more"><h3>＋ একসাথে আরো ভাউচার</h3><p class="sub">আরো ছবি দিলে সবগুলোতে একই জায়গায় স্ট্যাম্প বসবে — একবারে নামান / পাঠান।</p>${pickBtns('more', '📷 আরো ছবি তুলুন', '🖼 আরো গ্যালারি থেকে')}</div>`}`}
       </section>
 
       <section class="stp-card stp-vl" id="vlCard">
@@ -305,53 +294,54 @@
     drawList();
   }
 
-  /* ---------- 🧾 many vouchers at once (owner: "10টা ভাউচার বাছাই করলে সবগুলোতে স্ট্যাম্প") ---------- */
+  /* ---------- 🧾 many vouchers at once (owner: "10টা ভাউচার বাছাই করলে সবগুলোতে স্ট্যাম্প") ----------
+     Each card: drag the stamp with a finger / mouse and change its আকার right there (no ✎ needed; ✎ = corners).
+     The finished pictures are made in the background (warm), so নামান / WhatsApp work at the first tap;
+     the buttons show only once every voucher has its stamp (owner). */
   function batchHTML(){
     const allMode = k => Q.length && Q.every(it => it.mode === k), n = toBn(Q.length);
     return `
-      <p class="sub">সবগুলোতে একই জায়গায় স্ট্যাম্প বসেছে। কোনোটার কোণা / স্ট্যাম্পের জায়গা বদলাতে ✎ চাপুন।</p>
       ${qBusy ? `<p class="q-busy" id="qBusy">⏳ ${qBusy}</p>` : ''}
       ${Q.length ? `
+      <p class="sub">প্রতিটা ভাউচারে স্ট্যাম্পটা আঙুল / মাউস দিয়ে টেনে সরান, নিচের <b>আকার</b> দিয়ে ছোট-বড় করুন। কোণা ভুল হলে ✎ চাপুন।</p>
       <div class="stp-modes" role="group" aria-label="ছবির ধরন (সব)">${MODES.map(([k, l]) => `<button type="button" data-qmode="${k}" aria-pressed="${allMode(k)}">${l}</button>`).join('')}</div>
       ${stampImg ? `<label class="stp-on"><input type="checkbox" id="qOn" ${place.on ? 'checked' : ''}> সবগুলোতে স্ট্যাম্প ও সই দিন</label>
       <label class="stp-sl">আকার (সব)<input type="range" id="qW" min="8" max="70" value="${Math.round(place.w * 100)}"></label>
       <label class="stp-sl">ঘোরান (সব)<input type="range" id="qR" min="-45" max="45" value="${Math.round(place.rot)}"></label>` : '<p class="stp-empty">উপরে আগে স্ট্যাম্প সেভ করুন — তাহলে এখানে বসানো যাবে।</p>'}
       <div class="q-grid">${Q.map((it, i) => `<div class="q-it">
-        <button type="button" class="q-pv" data-qedit="${i}" aria-label="${toBn(i + 1)} নং ভাউচার ঠিক করুন"><canvas data-qcv="${i}"></canvas><span class="q-no">${toBn(i + 1)}</span>${it.id && !it.dirty ? '<span class="q-kept">✓ লিস্টে</span>' : ''}</button>
+        <div class="q-pv"><canvas data-qcv="${i}" aria-label="${toBn(i + 1)} নং ভাউচার — স্ট্যাম্প টেনে সরান"></canvas><span class="q-no">${toBn(i + 1)}</span>${it.id && !it.dirty ? '<span class="q-kept">✓ লিস্টে</span>' : ''}</div>
+        ${stampImg ? `<label class="q-sz">আকার<input type="range" data-qsz="${i}" min="8" max="70" value="${Math.round(it.place.w * 100)}"></label>` : ''}
         ${it.note ? `<span class="q-nt">${esc(it.note)}</span>` : ''}
-        <div class="q-row"><button type="button" class="q-ed" data-qedit="${i}">✎ ঠিক করুন</button><button type="button" class="q-x" data-qx="${i}" aria-label="এই ভাউচার বাদ দিন">×</button></div></div>`).join('')}</div>
-      <div class="stp-acts">
-        <button type="button" class="stp-btn main" data-qrun="save">⬇ সব নামান (${n}টা)</button>
-        <button type="button" class="stp-btn" data-qrun="keep">💾 সব লিস্টে রাখুন</button>
-        ${window.KhataApp ? '' : '<button type="button" class="stp-btn" data-qrun="print">🖨 সব প্রিন্ট</button>'}
-        ${navigator.canShare ? '<button type="button" class="stp-btn" data-qrun="share">📤 সব শেয়ার</button>' : ''}
-      </div>
-      <p class="stp-hint">নামালে / পাঠালে প্রতিটা ভাউচার নিজে থেকেই নিচের 📁 ভাউচার লিস্টে জমা হয়।</p>` : ''}
+        <div class="q-row"><button type="button" class="q-ed" data-qedit="${i}">✎ কোণা ঠিক করুন</button><button type="button" class="q-x" data-qx="${i}" aria-label="এই ভাউচার বাদ দিন">×</button></div></div>`).join('')}</div>
+      <p class="stp-wait" id="qReady"></p>
+      <div id="qActs" hidden>
+        <div class="stp-acts">
+          <button type="button" class="stp-btn main" data-qrun="save">⬇ সব নামান (${n}টা)</button>
+          <button type="button" class="stp-btn" data-qrun="keep">💾 সব লিস্টে রাখুন</button>
+          ${window.KhataApp ? '' : '<button type="button" class="stp-btn" data-qrun="print">🖨 সব প্রিন্ট</button>'}
+          ${navigator.canShare ? '<button type="button" class="stp-btn" data-qrun="share">📤 সব শেয়ার</button>' : ''}
+        </div>
+        <div class="stp-wa">${anyBtn(`📲 WhatsApp-এ ${n}টা শেয়ার করুন`, 'data-qrun="wa"')}<p class="sub">WhatsApp খুলবে — যে কাউকে বা যেকোনো গ্রুপে বেছে Send চাপুন।</p></div>
+        <p class="stp-hint">নামালে / পাঠালে প্রতিটা ভাউচার নিজে থেকেই নিচের 📁 ভাউচার লিস্টে জমা হয়।</p>
+      </div>` : ''}
       <div class="q-more"><h3>＋ আরো ভাউচার যোগ করুন</h3>${pickBtns('more', '📷 আরো ছবি তুলুন', '🖼 আরো গ্যালারি থেকে')}</div>
-      <div class="stp-acts"><button type="button" class="stp-btn" id="qNew">🧾 নতুন করে শুরু (সব বাদ)</button></div>
-      ${Q.length ? `<div class="stp-wa">
-        <h3>📲 WhatsApp-এ সব পাঠান (${n}টা)</h3>
-        ${anyBtn(`📲 WhatsApp-এ ${n}টা শেয়ার করুন`, 'data-qwaany')}
-        <p class="sub">অথবা সেভ করা নামে চাপ দিন — সরাসরি ওই নম্বরের চ্যাটে সব ছবি যাবে।</p>
-        <div class="wa-list">${wa.length ? wa.map(c => `<span class="wa-c"><button type="button" class="wa-go" data-qwa="${esc(c.id)}">🟢 ${esc(c.name)} <small>${showPhone(c.phone)}</small></button><button type="button" class="wa-x" data-wax="${esc(c.id)}" aria-label="নম্বর মুছুন">×</button></span>`).join('') : '<span class="stp-empty">এখনো কোনো নম্বর নেই — নিচে যোগ করুন।</span>'}</div>
-        ${waAddHTML()}
-      </div>` : ''}`;
+      <div class="stp-acts"><button type="button" class="stp-btn" id="qNew">🧾 নতুন করে শুরু (সব বাদ)</button></div>`;
   }
   const tick = (ms = 16) => new Promise(r => setTimeout(r, ms));
   // one photo → one voucher of many: corners found by themselves, the stamp where the last one was
   async function makeItem(file, mode){
-    const src = await fileToCanvas(file, 2200), quad = findPaper(src), ps = warp(src, quad, 720);
-    return {file, quad, mode, place: {...place}, note: '', ps, pv: enhance(ps, mode), id: null, dirty: false, name: null, f: null};
+    const src = await fileToCanvas(file, 2200), quad = findPaper(src), ps = warp(src, quad, 900);
+    return {no: ++qSeq, file, quad, mode, place: {...place}, note: '', ps, pv: enhance(ps, mode), id: null, dirty: false, name: null, f: null, ver: 0};
   }
   // the voucher on screen becomes no. 1 of many
   function itemFromV(){
-    const ps = V.scan ? scaled(V.scan, 720) : warp(V.src, V.quad, 720);
-    return {file: V.file, quad: V.quad, mode: V.mode, place: {...(V.place || place)}, note: V.note || '', ps, pv: enhance(ps, V.mode), id: V.id || null, dirty: !!V.dirty, name: V.name || null, f: null};
+    const ps = V.scan ? scaled(V.scan, 900) : warp(V.src, V.quad, 900);
+    return {no: ++qSeq, file: V.file, quad: V.quad, mode: V.mode, place: {...(V.place || place)}, note: V.note || '', ps, pv: enhance(ps, V.mode), id: V.id || null, dirty: !!V.dirty, name: V.name || null, f: null, ver: 0};
   }
   async function addFiles(files){
-    if(!Q) Q = [];
+    if(!Q){ Q = []; const d = new Date(); qBaseName = `voucher-${ymd(d)}-${String(d.getHours()).padStart(2,'0')}${String(d.getMinutes()).padStart(2,'0')}${String(d.getSeconds()).padStart(2,'0')}`; }
     if(V && !V.item && V.file) Q.push(itemFromV());
-    V = null;
+    V = null; qShown = false;
     const mode = Q.length && Q.every(it => it.mode === Q[0].mode) ? Q[0].mode : 'orig';
     qBusy = `${toBn(files.length)}টা ছবি থেকে ভাউচার তৈরি হচ্ছে…`; render();
     let done = 0;
@@ -363,19 +353,52 @@
     qBusy = null; if(!Q.length) Q = null;
     render();
   }
-  // small pictures of every voucher with its stamp
+  // a voucher of many was changed → its finished picture is made again (in the background)
+  function touched(it){ it.ver = (it.ver || 0) + 1; it.f = null; if(it.id) it.dirty = true; scheduleWarm(700); }
+  function drawOne(cv, it){ compose(cv, cv.width / it.pv.width, {view: it.pv, place: it.place}); }
+  // the cards: draw each one + stamp drag / size right on it
   function drawQ(){
     root.querySelectorAll('[data-qcv]').forEach(cv => {
-      const it = Q && Q[+cv.dataset.qcv]; if(!it) return;
-      const w = Math.min(320, cv.parentElement.clientWidth || 240) * Math.min(2, window.devicePixelRatio || 1), k = w / it.pv.width;
-      cv.width = Math.round(it.pv.width * k); cv.height = Math.round(it.pv.height * k);
-      compose(cv, k, {view: it.pv, place: it.place});
+      const i = +cv.dataset.qcv, it = Q && Q[i]; if(!it) return;
+      const w = Math.round((cv.parentElement.clientWidth || 300) * Math.min(2, window.devicePixelRatio || 1));
+      cv.width = w; cv.height = Math.round(w * it.pv.height / it.pv.width);
+      drawOne(cv, it);
+      if(!cv.dataset.ui){ cv.dataset.ui = 1; cardUI(cv, i); }
     });
+  }
+  function cardUI(cv, i){
+    const it = () => Q && Q[i], can = () => stampImg && it() && it().place.on;
+    const pos = (x, y) => { const r = cv.getBoundingClientRect(); return {x: (x - r.left) / r.width, y: (y - r.top) / r.height}; };
+    const near = p => { const pl = it().place, r = cv.getBoundingClientRect(); return Math.hypot((p.x - pl.cx) * r.width, (p.y - pl.cy) * r.height) < Math.max(34, pl.w * r.width * 0.7); };
+    let drag = null, tap = null;
+    const start = (p, jump) => { const pl = it().place; drag = jump ? {dx: 0, dy: 0} : {dx: pl.cx - p.x, dy: pl.cy - p.y}; if(jump) move(p); };
+    const move = p => { const x = it(), pl = x.place; pl.cx = clamp(p.x + drag.dx, 0, 1); pl.cy = clamp(p.y + drag.dy, 0, 1); drawOne(cv, x); };
+    const end = () => { if(drag){ drag = null; touched(it()); } };
+    // mouse / pen: drag from anywhere (a click puts the stamp there)
+    cv.onpointerdown = e => { if(e.pointerType === 'touch' || !can()) return; const p = pos(e.clientX, e.clientY); start(p, !near(p)); cv.setPointerCapture(e.pointerId); e.preventDefault(); };
+    cv.onpointermove = e => { if(e.pointerType !== 'touch' && drag) move(pos(e.clientX, e.clientY)); };
+    cv.onpointerup = cv.onpointercancel = e => { if(e.pointerType !== 'touch') end(); };
+    // finger: drag when it starts on the stamp (elsewhere the page still scrolls); a short tap puts the stamp there
+    cv.addEventListener('touchstart', e => {
+      if(e.touches.length !== 1 || !can()) return;
+      const t = e.touches[0], p = pos(t.clientX, t.clientY);
+      if(near(p)){ start(p, false); e.preventDefault(); } else tap = {x: t.clientX, y: t.clientY, ts: Date.now()};
+    }, {passive: false});
+    cv.addEventListener('touchmove', e => {
+      const t = e.touches[0];
+      if(drag){ move(pos(t.clientX, t.clientY)); e.preventDefault(); }
+      else if(tap && Math.hypot(t.clientX - tap.x, t.clientY - tap.y) > 10) tap = null;
+    }, {passive: false});
+    cv.addEventListener('touchend', e => {
+      if(drag){ end(); e.preventDefault(); }
+      else if(tap && Date.now() - tap.ts < 450){ start(pos(tap.x, tap.y), true); end(); e.preventDefault(); }
+      tap = null;
+    }, {passive: false});
   }
   // a change for all of them (look / stamp size / turn / on-off)
   function qAll(fn, again){
-    Q.forEach(it => { if(fn(it)){ it.f = null; if(it.id) it.dirty = true; } });
-    if(again) render(); else drawQ();
+    Q.forEach(it => { if(fn(it)) touched(it); });
+    if(again) render(); else { drawQ(); updateReady(); }
   }
   async function editItem(i){
     const it = Q && Q[i]; if(!it) return;
@@ -390,52 +413,79 @@
     const it = V.item, i = Q.indexOf(it), was = JSON.stringify([it.quad, it.mode, it.place, it.note]);
     Object.assign(it, {quad: V.quad, mode: V.mode, place: V.place, note: V.note || '', id: V.id || it.id});
     if(JSON.stringify([it.quad, it.mode, it.place, it.note]) !== was){
-      it.f = null; if(it.id) it.dirty = true;
-      if(V.scan){ it.ps = scaled(V.scan, 720); it.pv = enhance(it.ps, it.mode); }
+      if(V.scan){ it.ps = scaled(V.scan, 900); it.pv = enhance(it.ps, it.mode); }
+      touched(it);
     }
     V = null; render();
     const c = root.querySelector(`[data-qcv="${i}"]`); if(c) c.scrollIntoView({block: 'center'});
   }
   // the full-size picture of one of many (made again from the photo, so phones don't run out of memory)
-  async function fullOf(it, i, base){
+  async function fullOf(it){
     if(it.f) return it.f;
-    const src = await fileToCanvas(it.file, 2200), scan = warp(src, it.quad), view = enhance(scan, it.mode);
-    const full = newCanvas(view.width, view.height); compose(full, 1, {view, place: it.place});
+    const ver = it.ver || 0, pl = {...it.place}, mode = it.mode, quad = it.quad;
+    const src = await fileToCanvas(it.file, 2200); await tick(0);
+    const scan = warp(src, quad); await tick(0);
+    const view = enhance(scan, mode); await tick(0);
+    const full = newCanvas(view.width, view.height); compose(full, 1, {view, place: pl});
     const blob = await new Promise(r => full.toBlob(r, 'image/jpeg', 0.92));
-    if(!it.name) it.name = `${base}-${i + 1}.jpg`;
-    it.f = {blob, name: it.name, thumb: scaled(full, 360).toDataURL('image/jpeg', 0.72), w: full.width, h: full.height};
-    return it.f;
+    if(!it.name) it.name = `${qBaseName || 'voucher'}-${it.no}.jpg`;
+    const f = {blob, name: it.name, thumb: scaled(full, 360).toDataURL('image/jpeg', 0.72), w: full.width, h: full.height};
+    if((it.ver || 0) === ver) it.f = f;
+    return f;
   }
-  // ⬇ / 💾 / 🖨 / 📤 / 📲 for all of them
-  async function qRun(how, c, btn){
+  // make the finished pictures in the background, one by one
+  let warmT = 0, warming = false;
+  function scheduleWarm(ms){ clearTimeout(warmT); warmT = setTimeout(warm, ms == null ? 300 : ms); updateReady(); }
+  async function warm(){
+    if(warming || !Q || V) return;
+    warming = true;
+    try{
+      for(const it of Q.slice()){
+        if(!Q || V) break;
+        if(it.f || !Q.includes(it)) continue;
+        await tick(40);
+        try{ await fullOf(it); }catch(_){}
+        updateReady();
+      }
+    } finally { warming = false; }
+    if(Q && !V && Q.some(it => !it.f)) scheduleWarm(400);   // something changed meanwhile
+    updateReady();
+  }
+  // the buttons show once every voucher is ready with its stamp
+  function updateReady(){
+    if(!Q || V) return;
+    const n = Q.filter(it => it.f).length, stampOn = stampImg && Q.some(it => it.place.on);
+    if(n === Q.length) qShown = true;
+    const show = qShown && stampOn, acts = root.querySelector('#qActs'), msg = root.querySelector('#qReady');
+    if(acts) acts.hidden = !show;
+    if(msg){ msg.hidden = show; msg.textContent = !stampOn ? 'স্ট্যাম্প দিলে এখানে নামানো / WhatsApp-এ শেয়ারের বাটন আসবে।' : `⏳ স্ট্যাম্পসহ ছবি তৈরি হচ্ছে… ${toBn(n)} / ${toBn(Q.length)}`; }
+  }
+  // ⬇ / 💾 / 🖨 / 📤 / 📲 for all of them — WhatsApp / নামান first, the 📁 list after
+  async function qRun(how, btn){
     if(!Q || !Q.length || qRunning) return;
     qRunning = true;
-    const label = btn ? btn.innerHTML : '', d = new Date(), outs = [];
-    const base = `voucher-${ymd(d)}-${String(d.getHours()).padStart(2,'0')}${String(d.getMinutes()).padStart(2,'0')}${String(d.getSeconds()).padStart(2,'0')}`;
-    root.querySelectorAll('[data-qrun], [data-qwa], [data-qwaany]').forEach(b => b.disabled = true);
+    const label = btn ? btn.innerHTML : '', items = Q.slice(), fs = [];
+    root.querySelectorAll('[data-qrun]').forEach(b => b.disabled = true);
     try{
-      for(let i = 0; i < Q.length; i++){
-        if(btn) btn.textContent = `⏳ ${toBn(i + 1)} / ${toBn(Q.length)} তৈরি হচ্ছে…`;
-        await tick();
-        const it = Q[i], f = await fullOf(it, i, base);
-        try{ if(!it.id || it.dirty) await keep(f, it); }
-        catch(e){ if(!keepWarned){ keepWarned = true; toast('<b>⚠️ ভাউচার লিস্টে রাখা গেল না</b><span>' + esc(e.message || e) + '</span>', 5000); } }
-        outs.push({f, it});
+      for(let i = 0; i < items.length; i++){
+        if(!items[i].f && btn) btn.textContent = `⏳ ${toBn(i + 1)} / ${toBn(items.length)} তৈরি হচ্ছে…`;
+        fs.push(await fullOf(items[i]));
       }
+      if(btn) btn.textContent = how === 'wa' ? '⏳ WhatsApp খুলছে…' : '⏳ একটু অপেক্ষা…';
+      let done = null;
+      if(how === 'save') done = await saveMany(fs);
+      else if(how === 'print') done = printMany(fs);
+      else if(how === 'share') done = await shareMany(fs);
+      else if(how === 'wa') done = await waMany(ANY, fs) ? 'wa' : null;
+      for(let i = 0; i < items.length; i++){
+        const it = items[i];
+        try{ if(!it.id || it.dirty) await keep(fs[i], it); if(done) await addAct(it.id, done === 'wa' ? {k: 'wa', to: 'WhatsApp'} : {k: done}, true); }
+        catch(e){ if(!keepWarned){ keepWarned = true; toast('<b>⚠️ ভাউচার লিস্টে রাখা গেল না</b><span>' + esc(e.message || e) + '</span>', 5000); } }
+      }
+      if(how === 'keep') toast(`<b>✓ ${toBn(fs.length)}টা ভাউচার লিস্টে রাখা হয়েছে</b><span>নিচে 📁 ভাউচার লিস্টে আছে (শুধু এই ফোনে)।</span>`);
     }catch(e){ toast('<b>⚠️ ' + esc(e.message || e) + '</b>', 5000); }
-    if(btn) btn.innerHTML = label;
-    root.querySelectorAll('[data-qrun], [data-qwa], [data-qwaany]').forEach(b => b.disabled = false);
-    qRunning = false;
-    if(outs.length !== Q.length) return;
-    const fs = outs.map(o => o.f);
-    let done = null;
-    if(how === 'keep'){ toast(`<b>✓ ${toBn(fs.length)}টা ভাউচার লিস্টে রাখা হয়েছে</b><span>নিচে 📁 ভাউচার লিস্টে আছে (শুধু এই ফোনে)।</span>`); }
-    else if(how === 'save') done = await saveMany(fs);
-    else if(how === 'print') done = printMany(fs);
-    else if(how === 'share') done = await shareMany(fs);
-    else if(how === 'wa') done = await waMany(c, fs) ? 'wa' : null;
-    if(done) for(const o of outs) await addAct(o.it.id, done === 'wa' ? {k: 'wa', to: c.name || 'WhatsApp'} : {k: done}, true);
-    list = null; render();
+    // a second tap right after must not send everything twice
+    setTimeout(() => { qRunning = false; list = null; if(btn && btn.isConnected) btn.innerHTML = label; if(Q && !V) render(); else drawList(); }, 1500);
   }
   async function saveMany(fs){
     const app = window.KhataApp;
@@ -467,7 +517,7 @@
     return saveMany(fs);
   }
   async function waMany(c, fs){
-    const app = window.KhataApp, phone = normPhone(c.phone), who = c.phone ? esc(c.name) + '-কে' : 'যে চ্যাট / গ্রুপে চান সেখানে';
+    const app = window.KhataApp, phone = normPhone(c.phone), who = 'যে চ্যাট / গ্রুপে চান সেখানে';
     if(fs.length === 1) return sendWaBlob(c, fs[0].blob, fs[0].name);
     if(app && app.addShareFile){   // Android app 1.4: all pictures in one go
       app.clearShareFiles();
@@ -490,7 +540,26 @@
 
   // the 💾 button: not kept yet / kept / changed since it was kept
   const keepLabel = () => !V || !V.id ? '💾 লিস্টে রাখুন' : V.dirty ? '💾 বদলসহ আবার রাখুন' : '✓ লিস্টে রাখা আছে';
-  const changed = () => { if(V && V.id && !V.dirty){ V.dirty = true; const b = root.querySelector('#vKeep'); if(b) b.textContent = keepLabel(); } };
+  const changed = () => { if(V && V.id && !V.dirty){ V.dirty = true; const b = root.querySelector('#vKeep'); if(b) b.textContent = keepLabel(); } prewarm(); };
+  // the finished picture of the voucher on screen is made in the background after every change, so a tap works at once
+  let preT = 0;
+  function prewarm(){
+    if(!V || V.item || V.step !== 2) return;
+    const v = V, ver = v.ver = (v.ver || 0) + 1;
+    clearTimeout(preT);
+    preT = setTimeout(async () => { if(V !== v || v.ver !== ver) return; try{ const f = await finished(); if(V === v && v.ver === ver) v.pre = {ver, f}; }catch(_){} }, 400);
+  }
+  const ready = async () => V.pre && V.pre.ver === V.ver ? V.pre.f : finished();
+  // a tap shows "⏳ …" at once and further taps are ignored until it is done (no double sending)
+  async function withBusy(btn, text, fn){
+    if(acting) return;
+    acting = true;
+    const old = btn ? btn.innerHTML : '';
+    if(btn){ btn.disabled = true; btn.innerHTML = text; }
+    try{ await fn(); }
+    catch(e){ toast('<b>⚠️ ' + esc(e.message || e) + '</b>', 5000); }
+    finally{ setTimeout(() => { acting = false; if(btn && btn.isConnected){ btn.disabled = false; btn.innerHTML = old; } }, 1500); }
+  }
 
   async function drawList(){
     const box = root.querySelector('#vlBox'); if(!box) return;
@@ -539,12 +608,10 @@
     drawList();
     return m;
   }
-  // the finished voucher on screen, kept in the list first (if the list can't be written, saving / sending still works)
-  async function current(){
-    const f = await finished();
-    try{ if(!V.id || V.dirty) await keep(f); }
+  // the voucher on screen into the 📁 list (after নামান / WhatsApp, so they happen at once; if the list can't be written, they still work)
+  async function keepAfter(f, v){
+    try{ if(!v.id || v.dirty) await keep(f, v); }
     catch(e){ if(!keepWarned){ keepWarned = true; toast('<b>⚠️ ভাউচার লিস্টে রাখা গেল না</b><span>' + esc(e.message || e) + '</span>', 5000); } }
-    return f;
   }
   async function addAct(id, act, quiet){
     if(!id || !act) return;
@@ -567,7 +634,7 @@
         ${window.KhataApp ? '' : '<button type="button" class="stp-btn" data-vx="print">🖨 প্রিন্ট</button>'}
         ${navigator.canShare ? '<button type="button" class="stp-btn" data-vx="share">📤 শেয়ার</button>' : ''}
       </div>
-      <div class="stp-wa vl-wa"><h4>📲 WhatsApp-এ পাঠান</h4>${anyBtn()}${wa.length ? `<div class="wa-list">${wa.map(c => `<button type="button" class="wa-go" data-vwa="${esc(c.id)}">🟢 ${esc(c.name)} <small>${showPhone(c.phone)}</small></button>`).join('')}</div>` : ''}</div>
+      <div class="stp-wa vl-wa">${anyBtn()}</div>
       <div class="acts"><button type="button" class="r" id="vlDel">🗑 মুছুন</button><button type="button" data-close>বন্ধ</button></div>`,
       () => { setTimeout(() => URL.revokeObjectURL(url), 1000); saveNote(); });
     p.el.classList.add('vl-pop');
@@ -579,9 +646,8 @@
       list = null; drawList();
     };
     note.onchange = saveNote;
-    p.el.querySelectorAll('[data-vx]').forEach(b => b.onclick = async () => { const done = await exportBlob(b.dataset.vx, blob, m.name || 'voucher.jpg'); if(done) addAct(id, {k: done}); });
-    p.el.querySelectorAll('[data-vwa]').forEach(b => b.onclick = async () => { const c = wa.find(x => x.id === b.dataset.vwa); if(c && await sendWaBlob(c, blob, m.name || 'voucher.jpg')) addAct(id, {k: 'wa', to: c.name}); });
-    p.el.querySelectorAll('[data-waany]').forEach(b => b.onclick = async () => { if(await sendWaBlob(ANY, blob, m.name || 'voucher.jpg')) addAct(id, {k: 'wa', to: 'WhatsApp'}); });
+    p.el.querySelectorAll('[data-vx]').forEach(b => b.onclick = () => withBusy(b, '⏳ …', async () => { const done = await exportBlob(b.dataset.vx, blob, m.name || 'voucher.jpg'); if(done) addAct(id, {k: done}); }));
+    p.el.querySelectorAll('[data-waany]').forEach(b => b.onclick = () => withBusy(b, '⏳ WhatsApp খুলছে…', async () => { if(await sendWaBlob(ANY, blob, m.name || 'voucher.jpg')) addAct(id, {k: 'wa', to: 'WhatsApp'}); }));
     const del = p.el.querySelector('#vlDel');
     del.onclick = async () => {
       if(!del.classList.contains('sure')){ del.classList.add('sure'); del.textContent = '⚠️ আবার চাপুন — মুছে যাবে'; setTimeout(() => { del.classList.remove('sure'); del.textContent = '🗑 মুছুন'; }, 3500); return; }
@@ -627,7 +693,7 @@
     // voucher step 2: mode, stamp place, export
     root.querySelectorAll('[data-mode]').forEach(b => b.onclick = () => { if(V.mode === b.dataset.mode) return; V.mode = b.dataset.mode; V.view = enhance(V.scan, V.mode); changed(); render(); });
     if($('vPlace')) placeUI($('vPlace'));
-    if($('pOn')) $('pOn').onchange = e => { P().on = e.target.checked; keepPlace(); changed(); drawPlace($('vPlace')); };
+    if($('pOn')) $('pOn').onchange = e => { P().on = e.target.checked; keepPlace(); changed(); render(); };   // the buttons come / go with the stamp
     if($('pW')) $('pW').oninput = e => { P().w = e.target.value / 100; keepPlace(); changed(); drawPlace($('vPlace')); };
     if($('pR')) $('pR').oninput = e => { P().rot = +e.target.value; keepPlace(); changed(); drawPlace($('vPlace')); };
     if($('vBack')) $('vBack').onclick = () => { V = null; render(); };
@@ -635,44 +701,35 @@
     // many vouchers: look / stamp for all, ✎ one, × one, actions for all
     root.querySelectorAll('[data-qmode]').forEach(b => b.onclick = () => qAll(it => { if(it.mode === b.dataset.qmode) return false; it.mode = b.dataset.qmode; it.pv = enhance(it.ps, it.mode); return true; }, true));
     if($('qOn')) $('qOn').onchange = e => { place.on = e.target.checked; keepPlace(); qAll(it => { it.place.on = place.on; return true; }); };
-    if($('qW')) $('qW').oninput = e => { place.w = e.target.value / 100; keepPlace(); qAll(it => { it.place.w = place.w; return true; }); };
+    if($('qW')) $('qW').oninput = e => { place.w = e.target.value / 100; keepPlace(); qAll(it => { it.place.w = place.w; return true; }); root.querySelectorAll('[data-qsz]').forEach(x => { x.value = e.target.value; }); };
+    // each card's own আকার
+    root.querySelectorAll('[data-qsz]').forEach(x => x.oninput = () => { const i = +x.dataset.qsz, it = Q[i]; it.place.w = x.value / 100; const cv = root.querySelector(`[data-qcv="${i}"]`); if(cv) drawOne(cv, it); touched(it); });
     if($('qR')) $('qR').oninput = e => { place.rot = +e.target.value; keepPlace(); qAll(it => { it.place.rot = place.rot; return true; }); };
     root.querySelectorAll('[data-qedit]').forEach(b => b.onclick = () => editItem(+b.dataset.qedit));
     root.querySelectorAll('[data-qx]').forEach(b => b.onclick = () => { Q.splice(+b.dataset.qx, 1); if(!Q.length) Q = null; render(); });
-    root.querySelectorAll('[data-qrun]').forEach(b => b.onclick = () => qRun(b.dataset.qrun, null, b));
-    root.querySelectorAll('[data-qwa]').forEach(b => b.onclick = () => qRun('wa', wa.find(c => c.id === b.dataset.qwa), b));
-    root.querySelectorAll('[data-qwaany]').forEach(b => b.onclick = () => qRun('wa', ANY, b));
+    root.querySelectorAll('[data-qrun]').forEach(b => b.onclick = () => qRun(b.dataset.qrun, b));
     if($('qNew')) $('qNew').onclick = () => {
       const b = $('qNew');
       if(Q && Q.length > 1 && !b.classList.contains('sure')){ b.classList.add('sure'); b.textContent = '⚠️ আবার চাপুন — সব বাদ যাবে'; setTimeout(() => { b.classList.remove('sure'); b.textContent = '🧾 নতুন করে শুরু (সব বাদ)'; }, 3500); return; }
       Q = null; V = null; render();
     };
-    if(Q && !V) drawQ();
-    if($('vSave')) $('vSave').onclick = () => exportImg('save');
+    if(Q && !V){ drawQ(); scheduleWarm(); }
+    if(V && V.step === 2 && !V.item) prewarm();
+    if($('vSave')) $('vSave').onclick = () => exportImg('save', $('vSave'));
     // 📝 note: kept with the voucher in the list
     if($('vNote')){ let tm = 0; $('vNote').oninput = e => { V.note = e.target.value.trim(); if(V.id){ clearTimeout(tm); tm = setTimeout(async () => {
       try{ const m = await VL.get(V.id); if(m){ m.note = V.note; await VL.meta(m); list = null; drawList(); } }catch(_){} }, 500); } }; }
     if($('vKeep')) $('vKeep').onclick = async () => {
       const b = $('vKeep'); if(V.id && !V.dirty){ root.querySelector('#vlCard').scrollIntoView({behavior: 'smooth', block: 'start'}); return; }
       b.disabled = true; b.textContent = '⏳ রাখা হচ্ছে…';
-      try{ await keep(await finished()); toast('<b>✓ ভাউচার লিস্টে রাখা হয়েছে</b><span>নিচে 📁 ভাউচার লিস্টে আজকের তারিখে আছে (শুধু এই ফোনে)।</span>'); }
+      try{ await keep(await ready()); toast('<b>✓ ভাউচার লিস্টে রাখা হয়েছে</b><span>নিচে 📁 ভাউচার লিস্টে আজকের তারিখে আছে (শুধু এই ফোনে)।</span>'); }
       catch(e){ toast('<b>⚠️ লিস্টে রাখা গেল না</b><span>' + esc(e.message || e) + '</span>', 5000); }
       b.disabled = false; b.textContent = keepLabel();
     };
     if($('vlQ')) $('vlQ').oninput = e => { vlQ = e.target.value; vlShow = 24; drawList(); };
-    root.querySelectorAll('[data-wa]').forEach(b => b.onclick = () => sendWa(wa.find(c => c.id === b.dataset.wa), b));
-    root.querySelectorAll('[data-waany]').forEach(b => b.onclick = () => sendWa(ANY));
-    root.querySelectorAll('[data-wax]').forEach(b => b.onclick = async () => {
-      if(!b.classList.contains('sure')){ b.classList.add('sure'); b.textContent = 'মুছুন?'; setTimeout(() => { b.classList.remove('sure'); b.textContent = '×'; }, 3000); return; }
-      wa = wa.filter(c => c.id !== b.dataset.wax); await saveWa(); render();
-    });
-    if($('waAdd')) $('waAdd').onclick = async () => {
-      const name = $('waName').value.trim(), phone = normPhone($('waNum').value);
-      if(!name || phone.length < 10){ toast('<b>নাম আর সঠিক WhatsApp নম্বর দিন</b>'); return; }
-      wa.push({id: Date.now().toString(36), name, phone}); await saveWa(); render();
-    };
-    if($('vPrint')) $('vPrint').onclick = () => exportImg('print');
-    if($('vShare')) $('vShare').onclick = () => exportImg('share');
+    root.querySelectorAll('[data-waany]').forEach(b => b.onclick = () => sendWa(b));
+    if($('vPrint')) $('vPrint').onclick = () => exportImg('print', $('vPrint'));
+    if($('vShare')) $('vShare').onclick = () => exportImg('share', $('vShare'));
   }
 
   function drawChecker(cv, img){
@@ -771,12 +828,15 @@
     return {blob, name: V.name, thumb: scaled(full, 360).toDataURL('image/jpeg', 0.72), w: full.width, h: full.height};
   }
   const toB64 = blob => new Promise(res => { const r = new FileReader(); r.onload = () => res(String(r.result).split(',')[1]); r.readAsDataURL(blob); });
-  // 📲 to one saved number: Android app → that WhatsApp chat with the picture attached; phone browser → share sheet; else save + open the chat.
-  // ANY (owner: "send to anyone, a group …"): the app opens WhatsApp's own "Send to…" list (every chat + group) with the picture attached.
-  async function sendWa(c){
-    if(!c) return;
-    const f = await current();
-    if(await sendWaBlob(c, f.blob, f.name)) addAct(V.id, {k: 'wa', to: c.name || 'WhatsApp'});
+  // 📲 WhatsApp-এ শেয়ার: the app opens WhatsApp's own "Send to…" list (every chat + group) with the picture attached;
+  // phone browser → share sheet; computer → the picture is saved and WhatsApp Web opens
+  async function sendWa(btn){
+    await withBusy(btn, '⏳ WhatsApp খুলছে…', async () => {
+      const v = V, f = await ready();
+      const ok = await sendWaBlob(ANY, f.blob, f.name);
+      await keepAfter(f, v);
+      if(ok) await addAct(v.id, {k: 'wa', to: 'WhatsApp'});
+    });
   }
   async function sendWaBlob(c, blob, name){
     const phone = normPhone(c.phone), who = c.phone ? esc(c.name) + '-কে' : 'যে চ্যাট / গ্রুপে চান সেখানে';
@@ -792,10 +852,13 @@
     window.open(phone ? 'https://wa.me/' + phone : 'https://web.whatsapp.com/', '_blank');
     return true;
   }
-  async function exportImg(how){
-    const f = await current();
-    const done = await exportBlob(how, f.blob, f.name);
-    if(done) addAct(V.id, {k: done});
+  async function exportImg(how, btn){
+    await withBusy(btn, '⏳ …', async () => {
+      const v = V, f = await ready();
+      const done = await exportBlob(how, f.blob, f.name);
+      await keepAfter(f, v);
+      if(done) await addAct(v.id, {k: done});
+    });
   }
   // returns what was done ('share' / 'print' / 'save') or false (cancelled)
   async function exportBlob(how, blob, name){
