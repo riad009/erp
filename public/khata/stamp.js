@@ -550,6 +550,20 @@
     preT = setTimeout(async () => { if(V !== v || v.ver !== ver) return; try{ const f = await finished(); if(V === v && v.ver === ver) v.pre = {ver, f}; }catch(_){} }, 400);
   }
   const ready = async () => V.pre && V.pre.ver === V.ver ? V.pre.f : finished();
+  // owner: "WhatsApp-এ ২ বার চাপতে হয়". On a phone the first tap closes the keyboard / the page moves a little under the finger,
+  // and the browser then drops the click. pointerup still reaches the button (the finger is "held" by it), so a tap counts on pointerup.
+  function onTap(el, fn){
+    if(!el) return;
+    let down = null, skip = 0;
+    el.addEventListener('pointerdown', e => { down = e.pointerType === 'mouse' ? null : {x: e.clientX, y: e.clientY, id: e.pointerId}; });
+    el.addEventListener('pointercancel', () => { down = null; });
+    el.addEventListener('pointerup', e => {
+      if(!down || e.pointerId !== down.id) return;
+      const still = Math.hypot(e.clientX - down.x, e.clientY - down.y) < 24; down = null;
+      if(still && !el.disabled){ skip = Date.now(); fn(); }
+    });
+    el.addEventListener('click', () => { if(Date.now() - skip > 900) fn(); });
+  }
   // a tap shows "⏳ …" at once and further taps are ignored until it is done (no double sending)
   async function withBusy(btn, text, fn){
     if(acting) return;
@@ -646,8 +660,8 @@
       list = null; drawList();
     };
     note.onchange = saveNote;
-    p.el.querySelectorAll('[data-vx]').forEach(b => b.onclick = () => withBusy(b, '⏳ …', async () => { const done = await exportBlob(b.dataset.vx, blob, m.name || 'voucher.jpg'); if(done) addAct(id, {k: done}); }));
-    p.el.querySelectorAll('[data-waany]').forEach(b => b.onclick = () => withBusy(b, '⏳ WhatsApp খুলছে…', async () => { if(await sendWaBlob(ANY, blob, m.name || 'voucher.jpg')) addAct(id, {k: 'wa', to: 'WhatsApp'}); }));
+    p.el.querySelectorAll('[data-vx]').forEach(b => onTap(b, () => withBusy(b, '⏳ …', async () => { const done = await exportBlob(b.dataset.vx, blob, m.name || 'voucher.jpg'); if(done) addAct(id, {k: done}); })));
+    p.el.querySelectorAll('[data-waany]').forEach(b => onTap(b, () => withBusy(b, '⏳ WhatsApp খুলছে…', async () => { if(await sendWaBlob(ANY, blob, m.name || 'voucher.jpg')) addAct(id, {k: 'wa', to: 'WhatsApp'}); })));
     const del = p.el.querySelector('#vlDel');
     del.onclick = async () => {
       if(!del.classList.contains('sure')){ del.classList.add('sure'); del.textContent = '⚠️ আবার চাপুন — মুছে যাবে'; setTimeout(() => { del.classList.remove('sure'); del.textContent = '🗑 মুছুন'; }, 3500); return; }
@@ -707,7 +721,7 @@
     if($('qR')) $('qR').oninput = e => { place.rot = +e.target.value; keepPlace(); qAll(it => { it.place.rot = place.rot; return true; }); };
     root.querySelectorAll('[data-qedit]').forEach(b => b.onclick = () => editItem(+b.dataset.qedit));
     root.querySelectorAll('[data-qx]').forEach(b => b.onclick = () => { Q.splice(+b.dataset.qx, 1); if(!Q.length) Q = null; render(); });
-    root.querySelectorAll('[data-qrun]').forEach(b => b.onclick = () => qRun(b.dataset.qrun, b));
+    root.querySelectorAll('[data-qrun]').forEach(b => onTap(b, () => qRun(b.dataset.qrun, b)));
     if($('qNew')) $('qNew').onclick = () => {
       const b = $('qNew');
       if(Q && Q.length > 1 && !b.classList.contains('sure')){ b.classList.add('sure'); b.textContent = '⚠️ আবার চাপুন — সব বাদ যাবে'; setTimeout(() => { b.classList.remove('sure'); b.textContent = '🧾 নতুন করে শুরু (সব বাদ)'; }, 3500); return; }
@@ -715,7 +729,7 @@
     };
     if(Q && !V){ drawQ(); scheduleWarm(); }
     if(V && V.step === 2 && !V.item) prewarm();
-    if($('vSave')) $('vSave').onclick = () => exportImg('save', $('vSave'));
+    onTap($('vSave'), () => exportImg('save', $('vSave')));
     // 📝 note: kept with the voucher in the list
     if($('vNote')){ let tm = 0; $('vNote').oninput = e => { V.note = e.target.value.trim(); if(V.id){ clearTimeout(tm); tm = setTimeout(async () => {
       try{ const m = await VL.get(V.id); if(m){ m.note = V.note; await VL.meta(m); list = null; drawList(); } }catch(_){} }, 500); } }; }
@@ -727,9 +741,9 @@
       b.disabled = false; b.textContent = keepLabel();
     };
     if($('vlQ')) $('vlQ').oninput = e => { vlQ = e.target.value; vlShow = 24; drawList(); };
-    root.querySelectorAll('[data-waany]').forEach(b => b.onclick = () => sendWa(b));
-    if($('vPrint')) $('vPrint').onclick = () => exportImg('print', $('vPrint'));
-    if($('vShare')) $('vShare').onclick = () => exportImg('share', $('vShare'));
+    root.querySelectorAll('[data-waany]').forEach(b => onTap(b, () => sendWa(b)));
+    onTap($('vPrint'), () => exportImg('print', $('vPrint')));
+    onTap($('vShare'), () => exportImg('share', $('vShare')));
   }
 
   function drawChecker(cv, img){
@@ -802,10 +816,11 @@
       ctx.drawImage(st, -w / 2, -h / 2, w, h); ctx.restore();
     }
   }
-  let viewK = 1;
+  let viewK = 1, stableH = 0;
   function drawPlace(cv){
     if(!cv) return;
-    const v = V.view, maxW = cv.parentElement.clientWidth || 700, maxH = Math.max(260, window.innerHeight * 0.7);
+    stableH = Math.max(stableH, window.innerHeight);   // the tallest the screen has been (a keyboard makes innerHeight smaller)
+    const v = V.view, maxW = cv.parentElement.clientWidth || 700, maxH = Math.max(260, stableH * 0.7);
     viewK = Math.min(maxW / v.width, maxH / v.height, 1); cv.width = Math.round(v.width * viewK); cv.height = Math.round(v.height * viewK);
     compose(cv, viewK);
   }
@@ -888,7 +903,14 @@
     return 'save';
   }
 
-  window.addEventListener('resize', () => { if(root.hidden) return; if(V){ const c = root.querySelector('#vPlace'); if(c) drawPlace(c); } else if(Q) drawQ(); });
+  // only a new width redraws (a keyboard opening / closing changes just the height)
+  let lastW = window.innerWidth;
+  window.addEventListener('resize', () => {
+    if(window.innerWidth === lastW) return; lastW = window.innerWidth; stableH = 0;
+    if(root.hidden) return; if(V){ const c = root.querySelector('#vPlace'); if(c) drawPlace(c); } else if(Q) drawQ();
+  });
+  // back from WhatsApp / the share screen: the buttons work again straight away
+  document.addEventListener('visibilitychange', () => { if(!document.hidden) acting = false; });
   window.__stampRender = render;
   window.__stampTools = {findPaper, warp, enhance, cutStamp, fileToCanvas, VL};   // for checks
 })();
