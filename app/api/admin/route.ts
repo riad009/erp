@@ -1,6 +1,6 @@
 import { randomBytes } from 'node:crypto';
 import { getMongo } from '@/lib/mongo';
-import { currentUser, hashPass, cleanPerms, FEATURES, type User } from '@/lib/auth';
+import { currentUser, hashPass, cleanPerms, FEATURES, permsOf, KNOWN_NOW, type User } from '@/lib/auth';
 import { logAct } from '@/lib/activity';
 import { getCfg, saveCfg, sendDaily, fullBackup } from '@/lib/report';
 import { PARTS, counts, wipe } from '@/lib/wipe';
@@ -25,7 +25,7 @@ export async function POST(req: Request) {
     switch (body.op) {
       case 'users': {
         const list = await users.find({}, { projection: { pass: 0 } }).sort({ created: 1 }).toArray();
-        return Response.json({ users: list.map(u => ({ id: u._id, email: u.email, name: u.name, role: u.role, perms: u.perms || [], active: u.active, created: u.created })), features: FEATURES });
+        return Response.json({ users: list.map(u => ({ id: u._id, email: u.email, name: u.name, role: u.role, perms: permsOf(u), active: u.active, created: u.created })), features: FEATURES });
       }
       case 'saveUser': {
         const u = body.user || {};
@@ -37,7 +37,7 @@ export async function POST(req: Request) {
         const perms = cleanPerms(u.perms);
         if (!u.id) {
           if (pass.length < 4) return Response.json({ error: 'পাসওয়ার্ড অন্তত ৪ অক্ষর' }, { status: 400 });
-          const nu: User = { _id: 'u' + randomBytes(6).toString('hex'), email, name, pass: hashPass(pass), role: 'user', perms, active: true, ver: 1, created: Date.now() };
+          const nu: User = { _id: 'u' + randomBytes(6).toString('hex'), email, name, pass: hashPass(pass), role: 'user', perms, known: KNOWN_NOW, active: true, ver: 1, created: Date.now() };
           await users.insertOne(nu);
           await logAct(db, me, { kind: 'user', action: 'নতুন ইউজার', label: '👤 ইউজার তৈরি: ' + name, lines: [email, 'দেখতে পারবে: ' + label(perms)] });
           return Response.json({ ok: true, id: nu._id });
@@ -46,11 +46,11 @@ export async function POST(req: Request) {
         if (!old) return Response.json({ error: 'ইউজার নেই' }, { status: 404 });
         const isSelf = old._id === me._id;
         const set: Partial<User> = { email, name };
-        if (old.role !== 'admin') { set.perms = perms; set.active = u.active !== false; }
+        if (old.role !== 'admin') { set.perms = perms; set.known = KNOWN_NOW; set.active = u.active !== false; }
         const lines: string[] = [];
         if (old.email !== email) lines.push(`ইমেইল: ${old.email} → ${email}`);
         if (old.name !== name) lines.push(`নাম: ${old.name} → ${name}`);
-        if (set.perms && JSON.stringify(old.perms || []) !== JSON.stringify(perms)) lines.push('দেখতে পারবে: ' + label(perms));
+        if (set.perms && JSON.stringify(permsOf(old)) !== JSON.stringify(perms)) lines.push('দেখতে পারবে: ' + label(perms));
         if (set.active !== undefined && set.active !== old.active) lines.push(set.active ? 'চালু করা হয়েছে' : 'বন্ধ করা হয়েছে');
         // new password or switched off → that user's open logins end
         if (pass) {

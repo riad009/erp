@@ -15,8 +15,14 @@ export const FEATURES: [string, string][] = [
   ['activity', 'অ্যাক্টিভিটি দেখা'], ['undo', 'অ্যাক্টিভিটি ফেরানো / মোছা'],
 ];
 const FEATURE_IDS = FEATURES.map(f => f[0]);
+// owner: a NEW page shows up for every user by itself (he can untick it in 👑 অ্যাডমিন).
+// `known` = the pages that existed when the user's ticks were last saved; a page added later is on until then.
+// Users saved before this rule get the pages of Nov 2026 as `known`.
+const KNOWN_BEFORE = ['stock', 'amdani', 'memo', 'ledger', 'baki', 'company', 'malkhata', 'labour', 'stamp', 'dash', 'settings', 'activity', 'undo'];
+const NEVER_AUTO = ['activity', 'undo'];
+export const KNOWN_NOW = FEATURE_IDS;
 
-export type User = { _id: string; email: string; name: string; pass: string; role: 'admin' | 'user'; perms: string[]; active: boolean; ver: number; created: number };
+export type User = { _id: string; email: string; name: string; pass: string; role: 'admin' | 'user'; perms: string[]; known?: string[]; active: boolean; ver: number; created: number };
 export type Me = { id: string; email: string; name: string; role: 'admin' | 'user'; perms: string[] };
 
 // AUTH_SECRET if set on Vercel, else derived from MONGO_URI (already a secret there)
@@ -70,7 +76,13 @@ export function seedAdmin(db: Db) {
   return g.__khataSeed;
 }
 
-export const toMe = (u: User): Me => ({ id: u._id, email: u.email, name: u.name, role: u.role, perms: u.role === 'admin' ? FEATURE_IDS : (u.perms || []).filter(p => FEATURE_IDS.includes(p)) });
+// the pages this user may see: the ticked ones + pages added after the ticks were saved
+export const permsOf = (u: User): string[] => {
+  if (u.role === 'admin') return FEATURE_IDS;
+  const known = u.known || KNOWN_BEFORE, own = (u.perms || []).filter(p => FEATURE_IDS.includes(p));
+  return [...own, ...FEATURE_IDS.filter(f => !known.includes(f) && !NEVER_AUTO.includes(f) && !own.includes(f))];
+};
+export const toMe = (u: User): Me => ({ id: u._id, email: u.email, name: u.name, role: u.role, perms: permsOf(u) });
 
 export async function login(db: Db, email: string, pass: string): Promise<User | null> {
   await seedAdmin(db);
@@ -87,6 +99,6 @@ export async function currentUser(db: Db, req: Request): Promise<User | null> {
   return u && u.active && u.ver === t.v ? u : null;
 }
 
-export const can = (u: User, perm: string) => u.role === 'admin' || (u.perms || []).includes(perm);
+export const can = (u: User, perm: string) => permsOf(u).includes(perm);
 export const cleanPerms = (p: unknown) => (Array.isArray(p) ? p : []).map(String).filter(x => FEATURE_IDS.includes(x));
 export { checkPass };
