@@ -216,6 +216,8 @@
     return (h < 4 ? 'রাত' : h < 12 ? 'সকাল' : h < 15 ? 'দুপুর' : h < 18 ? 'বিকাল' : h < 20 ? 'সন্ধ্যা' : 'রাত') + ' ' + toBn((h % 12 || 12) + ':' + String(d.getMinutes()).padStart(2, '0')); };
   const mb = n => toBn((n / 1048576).toFixed(n < 10485760 ? 1 : 0));
   const ACT = {save: '⬇ নামানো', print: '🖨 প্রিন্ট', share: '📤 শেয়ার'};
+  const ANY = {id: '*', name: '', phone: ''};
+  const anyBtn = () => '<button type="button" class="wa-any" data-waany>📲 WhatsApp-এ শেয়ার করুন<small>যে কাউকে · যেকোনো গ্রুপে</small></button>';
   const tagsOf = m => { const seen = new Set(), out = [];
     for(const a of (m.acts || [])){ const t = a.k === 'wa' ? '📲 ' + (a.to || 'WhatsApp') : ACT[a.k]; if(t && !seen.has(t)){ seen.add(t); out.push(t); } }
     return out; };
@@ -274,7 +276,8 @@
           <p class="stp-hint">নামালে / পাঠালে ভাউচারটা নিজে থেকেই নিচের 📁 ভাউচার লিস্টে জমা হয়।</p>
           <div class="stp-wa">
             <h3>📲 WhatsApp-এ পাঠান</h3>
-            <p class="sub">নামে চাপ দিলে ওই নম্বরের WhatsApp চ্যাট খুলবে, ভাউচারের ছবি সাথে থাকবে — শুধু Send চাপুন।</p>
+            ${anyBtn()}
+            <p class="sub">অথবা সেভ করা নামে চাপ দিন — সরাসরি ওই নম্বরের চ্যাট খুলবে, ছবি সাথে থাকবে — শুধু Send চাপুন।</p>
             <div class="wa-list">${wa.length ? wa.map(c => `<span class="wa-c"><button type="button" class="wa-go" data-wa="${esc(c.id)}">🟢 ${esc(c.name)} <small>${showPhone(c.phone)}</small></button><button type="button" class="wa-x" data-wax="${esc(c.id)}" aria-label="নম্বর মুছুন">×</button></span>`).join('') : '<span class="stp-empty">এখনো কোনো নম্বর নেই — নিচে যোগ করুন।</span>'}</div>
             <div class="wa-add"><input id="waName" autocomplete="off" placeholder="নাম (যেমন Karnafully)"><input id="waNum" inputmode="tel" autocomplete="off" placeholder="WhatsApp নম্বর ০১৭…"><button type="button" class="stp-btn" id="waAdd">＋ যোগ</button></div>
           </div>`}
@@ -369,7 +372,7 @@
         ${window.KhataApp ? '' : '<button type="button" class="stp-btn" data-vx="print">🖨 প্রিন্ট</button>'}
         ${navigator.canShare ? '<button type="button" class="stp-btn" data-vx="share">📤 শেয়ার</button>' : ''}
       </div>
-      ${wa.length ? `<div class="stp-wa vl-wa"><h4>📲 WhatsApp-এ পাঠান</h4><div class="wa-list">${wa.map(c => `<button type="button" class="wa-go" data-vwa="${esc(c.id)}">🟢 ${esc(c.name)} <small>${showPhone(c.phone)}</small></button>`).join('')}</div></div>` : ''}
+      <div class="stp-wa vl-wa"><h4>📲 WhatsApp-এ পাঠান</h4>${anyBtn()}${wa.length ? `<div class="wa-list">${wa.map(c => `<button type="button" class="wa-go" data-vwa="${esc(c.id)}">🟢 ${esc(c.name)} <small>${showPhone(c.phone)}</small></button>`).join('')}</div>` : ''}</div>
       <div class="acts"><button type="button" class="r" id="vlDel">🗑 মুছুন</button><button type="button" data-close>বন্ধ</button></div>`,
       () => { setTimeout(() => URL.revokeObjectURL(url), 1000); saveNote(); });
     p.el.classList.add('vl-pop');
@@ -383,6 +386,7 @@
     note.onchange = saveNote;
     p.el.querySelectorAll('[data-vx]').forEach(b => b.onclick = async () => { const done = await exportBlob(b.dataset.vx, blob, m.name || 'voucher.jpg'); if(done) addAct(id, {k: done}); });
     p.el.querySelectorAll('[data-vwa]').forEach(b => b.onclick = async () => { const c = wa.find(x => x.id === b.dataset.vwa); if(c && await sendWaBlob(c, blob, m.name || 'voucher.jpg')) addAct(id, {k: 'wa', to: c.name}); });
+    p.el.querySelectorAll('[data-waany]').forEach(b => b.onclick = async () => { if(await sendWaBlob(ANY, blob, m.name || 'voucher.jpg')) addAct(id, {k: 'wa', to: 'WhatsApp'}); });
     const del = p.el.querySelector('#vlDel');
     del.onclick = async () => {
       if(!del.classList.contains('sure')){ del.classList.add('sure'); del.textContent = '⚠️ আবার চাপুন — মুছে যাবে'; setTimeout(() => { del.classList.remove('sure'); del.textContent = '🗑 মুছুন'; }, 3500); return; }
@@ -442,6 +446,7 @@
     };
     if($('vlQ')) $('vlQ').oninput = e => { vlQ = e.target.value; vlShow = 24; drawList(); };
     root.querySelectorAll('[data-wa]').forEach(b => b.onclick = () => sendWa(wa.find(c => c.id === b.dataset.wa), b));
+    root.querySelectorAll('[data-waany]').forEach(b => b.onclick = () => sendWa(ANY));
     root.querySelectorAll('[data-wax]').forEach(b => b.onclick = async () => {
       if(!b.classList.contains('sure')){ b.classList.add('sure'); b.textContent = 'মুছুন?'; setTimeout(() => { b.classList.remove('sure'); b.textContent = '×'; }, 3000); return; }
       wa = wa.filter(c => c.id !== b.dataset.wax); await saveWa(); render();
@@ -550,24 +555,25 @@
     return {blob, name: V.name, thumb: scaled(full, 360).toDataURL('image/jpeg', 0.72), w: full.width, h: full.height};
   }
   const toB64 = blob => new Promise(res => { const r = new FileReader(); r.onload = () => res(String(r.result).split(',')[1]); r.readAsDataURL(blob); });
-  // 📲 to one number: Android app → that WhatsApp chat with the picture attached; phone browser → share sheet; else save + open the chat
+  // 📲 to one saved number: Android app → that WhatsApp chat with the picture attached; phone browser → share sheet; else save + open the chat.
+  // ANY (owner: "send to anyone, a group …"): the app opens WhatsApp's own "Send to…" list (every chat + group) with the picture attached.
   async function sendWa(c){
     if(!c) return;
     const f = await current();
-    if(await sendWaBlob(c, f.blob, f.name)) addAct(V.id, {k: 'wa', to: c.name});
+    if(await sendWaBlob(c, f.blob, f.name)) addAct(V.id, {k: 'wa', to: c.name || 'WhatsApp'});
   }
   async function sendWaBlob(c, blob, name){
-    const phone = normPhone(c.phone);
+    const phone = normPhone(c.phone), who = c.phone ? esc(c.name) + '-কে' : 'যে চ্যাট / গ্রুপে চান সেখানে';
     if(window.KhataApp && window.KhataApp.shareWhatsApp){
       if(window.KhataApp.shareWhatsApp(await toB64(blob), name, 'image/jpeg', phone)) return true;
     }
     const file = new File([blob], name, {type: 'image/jpeg'});
     if(!window.KhataApp && navigator.canShare && navigator.canShare({files: [file]})){
-      try{ await navigator.share({files: [file], title: 'ভাউচার'}); toast('<b>WhatsApp বেছে ' + esc(c.name) + '-কে পাঠান</b>', 5000); return true; }catch(e){ if(e && e.name === 'AbortError') return false; }
+      try{ await navigator.share({files: [file], title: 'ভাউচার'}); toast('<b>WhatsApp বেছে ' + who + ' পাঠান</b>', 5000); return true; }catch(e){ if(e && e.name === 'AbortError') return false; }
     }
     await exportBlob('save', blob, name);
-    toast('<b>ছবি নামানো হয়েছে — WhatsApp খুলছে</b><span>' + esc(c.name) + '-এর চ্যাটে 📎 দিয়ে ছবিটা পাঠান।</span>', 7000);
-    window.open('https://wa.me/' + phone, '_blank');
+    toast('<b>ছবি নামানো হয়েছে — WhatsApp খুলছে</b><span>' + who + ' 📎 দিয়ে ছবিটা পাঠান।</span>', 7000);
+    window.open(phone ? 'https://wa.me/' + phone : 'https://web.whatsapp.com/', '_blank');
     return true;
   }
   async function exportImg(how){
