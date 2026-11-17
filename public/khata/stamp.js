@@ -182,6 +182,45 @@
   const normPhone = p => { let d = String(p || '').replace(/[০-৯]/g, c => BD.indexOf(c)).replace(/\D/g, ''); if(d.startsWith('00')) d = d.slice(2); if(d.length === 11 && d[0] === '0') d = '88' + d; return d; };
   const showPhone = p => { const d = normPhone(p); return toBn(d.startsWith('880') ? '0' + d.slice(3) : d); };
 
+  /* ---------- 📁 ভাউচার লিস্ট: finished vouchers are kept on THIS phone / computer only (IndexedDB — never in the
+     online database, the pictures would fill it). meta = {id, ts, date, name, note, thumb, w, h, size, acts[{k, to, ts}]},
+     img = the full JPG. Each device has its own list; clearing the app's data / uninstalling removes it. ---------- */
+  const VL = (() => {
+    let dbp = null;
+    const open = () => dbp || (dbp = new Promise((res, rej) => {
+      if(!window.indexedDB) return rej(new Error('এই ব্রাউজারে জায়গা নেই'));
+      const r = indexedDB.open('khata-vouchers', 1);
+      r.onupgradeneeded = () => { const d = r.result;
+        if(!d.objectStoreNames.contains('meta')) d.createObjectStore('meta', {keyPath: 'id'});
+        if(!d.objectStoreNames.contains('img')) d.createObjectStore('img', {keyPath: 'id'}); };
+      r.onsuccess = () => { const d = r.result; d.onversionchange = () => { d.close(); dbp = null; }; res(d); };
+      r.onerror = () => { dbp = null; rej(r.error || new Error('IndexedDB')); };
+    }));
+    const run = async (stores, mode, fn) => { const d = await open(); return new Promise((res, rej) => {
+      const t = d.transaction(stores, mode); let out;
+      t.oncomplete = () => res(out); t.onerror = t.onabort = () => rej(t.error || new Error('IndexedDB'));
+      const rq = fn(t); if(rq) rq.onsuccess = () => { out = rq.result; };
+    }); };
+    return {
+      all: () => run(['meta'], 'readonly', t => t.objectStore('meta').getAll()).then(l => (l || []).sort((a, b) => b.ts - a.ts)),
+      get: id => run(['meta'], 'readonly', t => t.objectStore('meta').get(id)),
+      img: id => run(['img'], 'readonly', t => t.objectStore('img').get(id)).then(r => r ? new Blob([r.buf], {type: r.type || 'image/jpeg'}) : null),
+      put: (meta, buf) => run(['meta', 'img'], 'readwrite', t => { t.objectStore('meta').put(meta); t.objectStore('img').put({id: meta.id, buf, type: 'image/jpeg'}); }),
+      meta: meta => run(['meta'], 'readwrite', t => { t.objectStore('meta').put(meta); }),
+      del: id => run(['meta', 'img'], 'readwrite', t => { t.objectStore('meta').delete(id); t.objectStore('img').delete(id); }),
+    };
+  })();
+  const blobBuf = b => b.arrayBuffer ? b.arrayBuffer() : new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = rej; r.readAsArrayBuffer(b); });
+  const ymd = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  const bnTime = ts => { const d = new Date(ts), h = d.getHours();
+    return (h < 4 ? 'রাত' : h < 12 ? 'সকাল' : h < 15 ? 'দুপুর' : h < 18 ? 'বিকাল' : h < 20 ? 'সন্ধ্যা' : 'রাত') + ' ' + toBn((h % 12 || 12) + ':' + String(d.getMinutes()).padStart(2, '0')); };
+  const mb = n => toBn((n / 1048576).toFixed(n < 10485760 ? 1 : 0));
+  const ACT = {save: '⬇ নামানো', print: '🖨 প্রিন্ট', share: '📤 শেয়ার'};
+  const tagsOf = m => { const seen = new Set(), out = [];
+    for(const a of (m.acts || [])){ const t = a.k === 'wa' ? '📲 ' + (a.to || 'WhatsApp') : ACT[a.k]; if(t && !seen.has(t)){ seen.add(t); out.push(t); } }
+    return out; };
+  let list = null, vlShow = 24, vlQ = '', persisted = false, keepWarned = false;
+
   /* ---------- page state ---------- */
   let newStamp = null;     // {src, strength, cut} while setting a new stamp
   let V = null;            // voucher: {src, quad, scan, mode, view, step}
@@ -224,20 +263,133 @@
           <p class="sub">স্ট্যাম্পটা আঙুল / মাউস দিয়ে টেনে জায়গামতো বসান।</p>
           <label class="stp-sl">আকার<input type="range" id="pW" min="8" max="70" value="${Math.round(place.w * 100)}"></label>
           <label class="stp-sl">ঘোরান<input type="range" id="pR" min="-45" max="45" value="${Math.round(place.rot)}"></label>` : '<p class="stp-empty">উপরে আগে স্ট্যাম্প সেভ করুন — তাহলে এখানে বসানো যাবে।</p>'}
+          <label class="stp-note">📝 নোট <small>(ইচ্ছা হলে — লিস্টে খুঁজতে সুবিধা)</small><input type="text" id="vNote" autocomplete="off" maxlength="120" value="${esc(V.note || '')}" placeholder="যেমন: Karnafully জমা ৫০,০০০"></label>
           <div class="stp-acts">
             <button type="button" class="stp-btn main" id="vSave">⬇ ছবি নামান</button>
+            <button type="button" class="stp-btn" id="vKeep">${keepLabel()}</button>
             ${window.KhataApp ? '' : '<button type="button" class="stp-btn" id="vPrint">🖨 প্রিন্ট</button>'}
             ${navigator.canShare ? '<button type="button" class="stp-btn" id="vShare">📤 শেয়ার</button>' : ''}
             <button type="button" class="stp-btn" id="vNew">🧾 নতুন ভাউচার</button>
           </div>
+          <p class="stp-hint">নামালে / পাঠালে ভাউচারটা নিজে থেকেই নিচের 📁 ভাউচার লিস্টে জমা হয়।</p>
           <div class="stp-wa">
             <h3>📲 WhatsApp-এ পাঠান</h3>
             <p class="sub">নামে চাপ দিলে ওই নম্বরের WhatsApp চ্যাট খুলবে, ভাউচারের ছবি সাথে থাকবে — শুধু Send চাপুন।</p>
             <div class="wa-list">${wa.length ? wa.map(c => `<span class="wa-c"><button type="button" class="wa-go" data-wa="${esc(c.id)}">🟢 ${esc(c.name)} <small>${showPhone(c.phone)}</small></button><button type="button" class="wa-x" data-wax="${esc(c.id)}" aria-label="নম্বর মুছুন">×</button></span>`).join('') : '<span class="stp-empty">এখনো কোনো নম্বর নেই — নিচে যোগ করুন।</span>'}</div>
             <div class="wa-add"><input id="waName" autocomplete="off" placeholder="নাম (যেমন Karnafully)"><input id="waNum" inputmode="tel" autocomplete="off" placeholder="WhatsApp নম্বর ০১৭…"><button type="button" class="stp-btn" id="waAdd">＋ যোগ</button></div>
           </div>`}
+      </section>
+
+      <section class="stp-card stp-vl" id="vlCard">
+        <h2>📁 ভাউচার লিস্ট</h2>
+        <p class="sub" id="vlSum">শুধু এই ফোন / কম্পিউটারে রাখা — অনলাইন ডেটাবেসে না।</p>
+        <div class="vl-q" id="vlQw" hidden><input type="search" id="vlQ" autocomplete="off" placeholder="🔍 নোট, নাম বা তারিখ (যেমন ১৭ নভেম্বর)" value="${esc(vlQ)}"></div>
+        <div id="vlBox"><p class="loading">খোলা হচ্ছে…</p></div>
       </section>`;
     bind();
+    drawList();
+  }
+
+  // the 💾 button: not kept yet / kept / changed since it was kept
+  const keepLabel = () => !V || !V.id ? '💾 লিস্টে রাখুন' : V.dirty ? '💾 বদলসহ আবার রাখুন' : '✓ লিস্টে রাখা আছে';
+  const changed = () => { if(V && V.id && !V.dirty){ V.dirty = true; const b = root.querySelector('#vKeep'); if(b) b.textContent = keepLabel(); } };
+
+  async function drawList(){
+    const box = root.querySelector('#vlBox'); if(!box) return;
+    if(!list){
+      try{ list = await VL.all(); }
+      catch(e){ box.innerHTML = `<p class="stp-empty">⚠️ এই ব্রাউজারে ভাউচার লিস্ট রাখা যাচ্ছে না (${esc(e.message)})।</p>`; return; }
+      if(!root.querySelector('#vlBox')) return;
+    }
+    const size = list.reduce((s, m) => s + (m.size || 0), 0);
+    const sum = root.querySelector('#vlSum');
+    if(sum) sum.innerHTML = `শুধু এই ফোন / কম্পিউটারে রাখা — অনলাইন ডেটাবেসে না।${list.length ? ` <b>মোট ${toBn(list.length)}টা · ${mb(size)} MB</b>` : ''}`;
+    const qw = root.querySelector('#vlQw'); if(qw) qw.hidden = list.length < 4 && !vlQ;
+    if(!list.length){ box.innerHTML = '<p class="stp-empty">এখনো কোনো ভাউচার নেই — উপরে ভাউচার বানিয়ে ⬇ নামান / 📲 পাঠান / 💾 লিস্টে রাখুন চাপলে এখানে তারিখ অনুযায়ী জমা থাকবে।</p>'; return; }
+    const q = toBn(vlQ.trim().toLowerCase());
+    const rows = q ? list.filter(m => toBn((m.note || '').toLowerCase()).includes(q) || bnLongDate(m.date).includes(q) || tagsOf(m).some(t => t.toLowerCase().includes(q))) : list;
+    if(!rows.length){ box.innerHTML = '<p class="stp-empty">এই খোঁজে কোনো ভাউচার নেই।</p>'; return; }
+    const perDay = {}; rows.forEach(m => { perDay[m.date] = (perDay[m.date] || 0) + 1; });
+    let html = '', day = null;
+    rows.slice(0, vlShow).forEach(m => {
+      if(m.date !== day){ if(day) html += '</div>'; day = m.date;
+        html += `<h3 class="vl-day">📅 ${bnLongDate(day)}<small>${toBn(perDay[day])}টা ভাউচার</small></h3><div class="vl-grid">`; }
+      const tags = tagsOf(m);
+      html += `<button type="button" class="vl-it" data-vid="${esc(m.id)}">
+        <span class="vl-img"><img src="${m.thumb}" alt="" loading="lazy"></span>
+        <span class="vl-tm">🕘 ${bnTime(m.ts)}</span>
+        ${m.note ? `<span class="vl-nt">${esc(m.note)}</span>` : ''}
+        ${tags.length ? `<span class="vl-tg">${tags.map(t => `<i>${esc(t)}</i>`).join('')}</span>` : ''}</button>`;
+    });
+    html += '</div>';
+    if(rows.length > vlShow) html += `<button type="button" class="stp-btn vl-more" id="vlMore">▾ আরো পুরনো ভাউচার (বাকি ${toBn(rows.length - vlShow)}টা)</button>`;
+    box.innerHTML = html;
+    box.querySelectorAll('[data-vid]').forEach(b => b.onclick = () => openV(b.dataset.vid));
+    const more = box.querySelector('#vlMore'); if(more) more.onclick = () => { vlShow += 24; drawList(); };
+  }
+
+  // keep the voucher on screen in the list (the same voucher is updated, not added again)
+  async function keep(f){
+    const now = Date.now();
+    let m = V.id ? ((list && list.find(x => x.id === V.id)) || await VL.get(V.id)) : null;
+    m = m ? {...m} : {id: 'v' + now.toString(36) + Math.random().toString(36).slice(2, 6), ts: now, date: ymd(new Date(now)), acts: []};
+    Object.assign(m, {upd: now, name: f.name, note: V.note || '', thumb: f.thumb, w: f.w, h: f.h, size: f.blob.size});
+    await VL.put(m, await blobBuf(f.blob));
+    V.id = m.id; V.dirty = false; list = null;
+    if(!persisted){ persisted = true; try{ navigator.storage && navigator.storage.persist && navigator.storage.persist(); }catch(_){} }   // ask the browser not to clear it by itself
+    const b = root.querySelector('#vKeep'); if(b) b.textContent = keepLabel();
+    drawList();
+    return m;
+  }
+  // the finished voucher on screen, kept in the list first (if the list can't be written, saving / sending still works)
+  async function current(){
+    const f = await finished();
+    try{ if(!V.id || V.dirty) await keep(f); }
+    catch(e){ if(!keepWarned){ keepWarned = true; toast('<b>⚠️ ভাউচার লিস্টে রাখা গেল না</b><span>' + esc(e.message || e) + '</span>', 5000); } }
+    return f;
+  }
+  async function addAct(id, act){
+    if(!id || !act) return;
+    try{ const m = await VL.get(id); if(!m) return; m.acts = [...(m.acts || []), {...act, ts: Date.now()}]; await VL.meta(m); list = null; drawList(); }catch(_){}
+  }
+
+  // one kept voucher: big picture + নামান / শেয়ার / প্রিন্ট / WhatsApp / নোট / মুছুন
+  async function openV(id){
+    const m = (list || []).find(x => x.id === id) || await VL.get(id).catch(() => null); if(!m) return;
+    const blob = await VL.img(id).catch(() => null);
+    if(!blob){ toast('<b>⚠️ ছবিটা পাওয়া গেল না</b>'); return; }
+    const url = URL.createObjectURL(blob), tags = tagsOf(m);
+    const p = __auPop(`<h3>🧾 ভাউচার <button class="x" data-close aria-label="বন্ধ">✕</button></h3>
+      <p class="sub">📅 ${bnLongDate(m.date)} · ${bnTime(m.ts)}${m.size ? ' · ' + mb(m.size) + ' MB' : ''}</p>
+      <div class="vl-big"><img src="${url}" alt="ভাউচার"></div>
+      ${tags.length ? `<p class="vl-tg vl-tg-b">${tags.map(t => `<i>${esc(t)}</i>`).join('')}</p>` : ''}
+      <label class="f" for="vlNote">📝 নোট</label><input type="text" id="vlNote" autocomplete="off" maxlength="120" value="${esc(m.note || '')}" placeholder="যেমন: Karnafully জমা ৫০,০০০">
+      <div class="stp-acts">
+        <button type="button" class="stp-btn main" data-vx="save">⬇ ছবি নামান</button>
+        ${window.KhataApp ? '' : '<button type="button" class="stp-btn" data-vx="print">🖨 প্রিন্ট</button>'}
+        ${navigator.canShare ? '<button type="button" class="stp-btn" data-vx="share">📤 শেয়ার</button>' : ''}
+      </div>
+      ${wa.length ? `<div class="stp-wa vl-wa"><h4>📲 WhatsApp-এ পাঠান</h4><div class="wa-list">${wa.map(c => `<button type="button" class="wa-go" data-vwa="${esc(c.id)}">🟢 ${esc(c.name)} <small>${showPhone(c.phone)}</small></button>`).join('')}</div></div>` : ''}
+      <div class="acts"><button type="button" class="r" id="vlDel">🗑 মুছুন</button><button type="button" data-close>বন্ধ</button></div>`,
+      () => { setTimeout(() => URL.revokeObjectURL(url), 1000); saveNote(); });
+    p.el.classList.add('vl-pop');
+    const note = p.el.querySelector('#vlNote');
+    const saveNote = async () => {
+      const v = note.value.trim(); if(v === (m.note || '')) return;
+      m.note = v; try{ const cur = await VL.get(id); if(cur){ cur.note = v; await VL.meta(cur); } }catch(_){}
+      if(V && V.id === id){ V.note = v; const n = root.querySelector('#vNote'); if(n) n.value = v; }
+      list = null; drawList();
+    };
+    note.onchange = saveNote;
+    p.el.querySelectorAll('[data-vx]').forEach(b => b.onclick = async () => { const done = await exportBlob(b.dataset.vx, blob, m.name || 'voucher.jpg'); if(done) addAct(id, {k: done}); });
+    p.el.querySelectorAll('[data-vwa]').forEach(b => b.onclick = async () => { const c = wa.find(x => x.id === b.dataset.vwa); if(c && await sendWaBlob(c, blob, m.name || 'voucher.jpg')) addAct(id, {k: 'wa', to: c.name}); });
+    const del = p.el.querySelector('#vlDel');
+    del.onclick = async () => {
+      if(!del.classList.contains('sure')){ del.classList.add('sure'); del.textContent = '⚠️ আবার চাপুন — মুছে যাবে'; setTimeout(() => { del.classList.remove('sure'); del.textContent = '🗑 মুছুন'; }, 3500); return; }
+      try{ await VL.del(id); }catch(e){ toast('<b>⚠️ মোছা গেল না</b><span>' + esc(e.message) + '</span>'); return; }
+      if(V && V.id === id){ V.id = null; V.dirty = false; const b = root.querySelector('#vKeep'); if(b) b.textContent = keepLabel(); }
+      m.note = note.value.trim(); list = null; p.close(); drawList(); toast('<b>🗑 ভাউচার মুছে ফেলা হয়েছে</b><span>শুধু এই ফোনের লিস্ট থেকে।</span>');
+    };
   }
 
   function bind(){
@@ -252,7 +404,7 @@
           if(!newStamp.cut){ newStamp = null; toast('<b>⚠️ ছবিতে স্ট্যাম্প / সই পাওয়া গেল না</b><span>সাদা কাগজে, আলোতে আবার ছবি তুলুন।</span>', 5000); }
         } else {
           const src = await fileToCanvas(f, 2200);
-          V = {src, quad: findPaper(src), scan: null, mode: 'color', step: 1};
+          V = {src, quad: findPaper(src), scan: null, mode: 'orig', step: 1};   // owner: আসল রঙ (গাঢ়) by default
         }
         render();
       }catch(e){ toast('<b>⚠️ ' + esc(e.message) + '</b>'); }
@@ -272,12 +424,23 @@
     if($('vWhole')) $('vWhole').onclick = () => { V.quad = [{x:0,y:0},{x:V.src.width,y:0},{x:V.src.width,y:V.src.height},{x:0,y:V.src.height}]; scanNow(); };
     root.querySelectorAll('#vNew').forEach(b => b.onclick = () => { V = null; render(); });
     // voucher step 2: mode, stamp place, export
-    root.querySelectorAll('[data-mode]').forEach(b => b.onclick = () => { V.mode = b.dataset.mode; V.view = enhance(V.scan, V.mode); render(); });
+    root.querySelectorAll('[data-mode]').forEach(b => b.onclick = () => { if(V.mode === b.dataset.mode) return; V.mode = b.dataset.mode; V.view = enhance(V.scan, V.mode); changed(); render(); });
     if($('vPlace')) placeUI($('vPlace'));
-    if($('pOn')) $('pOn').onchange = e => { place.on = e.target.checked; keepPlace(); drawPlace($('vPlace')); };
-    if($('pW')) $('pW').oninput = e => { place.w = e.target.value / 100; keepPlace(); drawPlace($('vPlace')); };
-    if($('pR')) $('pR').oninput = e => { place.rot = +e.target.value; keepPlace(); drawPlace($('vPlace')); };
+    if($('pOn')) $('pOn').onchange = e => { place.on = e.target.checked; keepPlace(); changed(); drawPlace($('vPlace')); };
+    if($('pW')) $('pW').oninput = e => { place.w = e.target.value / 100; keepPlace(); changed(); drawPlace($('vPlace')); };
+    if($('pR')) $('pR').oninput = e => { place.rot = +e.target.value; keepPlace(); changed(); drawPlace($('vPlace')); };
     if($('vSave')) $('vSave').onclick = () => exportImg('save');
+    // 📝 note: kept with the voucher in the list
+    if($('vNote')){ let tm = 0; $('vNote').oninput = e => { V.note = e.target.value.trim(); if(V.id){ clearTimeout(tm); tm = setTimeout(async () => {
+      try{ const m = await VL.get(V.id); if(m){ m.note = V.note; await VL.meta(m); list = null; drawList(); } }catch(_){} }, 500); } }; }
+    if($('vKeep')) $('vKeep').onclick = async () => {
+      const b = $('vKeep'); if(V.id && !V.dirty){ root.querySelector('#vlCard').scrollIntoView({behavior: 'smooth', block: 'start'}); return; }
+      b.disabled = true; b.textContent = '⏳ রাখা হচ্ছে…';
+      try{ await keep(await finished()); toast('<b>✓ ভাউচার লিস্টে রাখা হয়েছে</b><span>নিচে 📁 ভাউচার লিস্টে আজকের তারিখে আছে (শুধু এই ফোনে)।</span>'); }
+      catch(e){ toast('<b>⚠️ লিস্টে রাখা গেল না</b><span>' + esc(e.message || e) + '</span>', 5000); }
+      b.disabled = false; b.textContent = keepLabel();
+    };
+    if($('vlQ')) $('vlQ').oninput = e => { vlQ = e.target.value; vlShow = 24; drawList(); };
     root.querySelectorAll('[data-wa]').forEach(b => b.onclick = () => sendWa(wa.find(c => c.id === b.dataset.wa), b));
     root.querySelectorAll('[data-wax]').forEach(b => b.onclick = async () => {
       if(!b.classList.contains('sure')){ b.classList.add('sure'); b.textContent = 'মুছুন?'; setTimeout(() => { b.classList.remove('sure'); b.textContent = '×'; }, 3000); return; }
@@ -376,36 +539,47 @@
       const near = Math.hypot((p.x - place.cx) * cv.width, (p.y - place.cy) * cv.height) < place.w * cv.width * 0.8;
       if(!near) drag = {dx: 0, dy: 0}; place.cx = p.x + drag.dx; place.cy = p.y + drag.dy; drawPlace(cv); cv.setPointerCapture(e.pointerId); e.preventDefault(); };
     cv.onpointermove = e => { if(!drag) return; const p = pos(e); place.cx = clamp(p.x + drag.dx, 0, 1); place.cy = clamp(p.y + drag.dy, 0, 1); drawPlace(cv); };
-    cv.onpointerup = cv.onpointercancel = () => { if(drag){ drag = null; keepPlace(); } };
+    cv.onpointerup = cv.onpointercancel = () => { if(drag){ drag = null; keepPlace(); changed(); } };
   }
 
   async function finished(){
     const v = V.view, full = newCanvas(v.width, v.height); compose(full, 1);
     const blob = await new Promise(r => full.toBlob(r, 'image/jpeg', 0.92));
-    const d = new Date(), name = `voucher-${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}-${String(d.getHours()).padStart(2,'0')}${String(d.getMinutes()).padStart(2,'0')}.jpg`;
-    return {blob, name};
+    const d = new Date();
+    if(!V.name) V.name = `voucher-${ymd(d)}-${String(d.getHours()).padStart(2,'0')}${String(d.getMinutes()).padStart(2,'0')}.jpg`;
+    return {blob, name: V.name, thumb: scaled(full, 360).toDataURL('image/jpeg', 0.72), w: full.width, h: full.height};
   }
   const toB64 = blob => new Promise(res => { const r = new FileReader(); r.onload = () => res(String(r.result).split(',')[1]); r.readAsDataURL(blob); });
   // 📲 to one number: Android app → that WhatsApp chat with the picture attached; phone browser → share sheet; else save + open the chat
-  async function sendWa(c, btn){
+  async function sendWa(c){
     if(!c) return;
-    const {blob, name} = await finished(), phone = normPhone(c.phone);
+    const f = await current();
+    if(await sendWaBlob(c, f.blob, f.name)) addAct(V.id, {k: 'wa', to: c.name});
+  }
+  async function sendWaBlob(c, blob, name){
+    const phone = normPhone(c.phone);
     if(window.KhataApp && window.KhataApp.shareWhatsApp){
-      if(window.KhataApp.shareWhatsApp(await toB64(blob), name, 'image/jpeg', phone)) return;
+      if(window.KhataApp.shareWhatsApp(await toB64(blob), name, 'image/jpeg', phone)) return true;
     }
     const file = new File([blob], name, {type: 'image/jpeg'});
     if(!window.KhataApp && navigator.canShare && navigator.canShare({files: [file]})){
-      try{ await navigator.share({files: [file], title: 'ভাউচার'}); toast('<b>WhatsApp বেছে ' + esc(c.name) + '-কে পাঠান</b>', 5000); return; }catch(e){ if(e && e.name === 'AbortError') return; }
+      try{ await navigator.share({files: [file], title: 'ভাউচার'}); toast('<b>WhatsApp বেছে ' + esc(c.name) + '-কে পাঠান</b>', 5000); return true; }catch(e){ if(e && e.name === 'AbortError') return false; }
     }
-    await exportImg('save');
+    await exportBlob('save', blob, name);
     toast('<b>ছবি নামানো হয়েছে — WhatsApp খুলছে</b><span>' + esc(c.name) + '-এর চ্যাটে 📎 দিয়ে ছবিটা পাঠান।</span>', 7000);
     window.open('https://wa.me/' + phone, '_blank');
+    return true;
   }
   async function exportImg(how){
-    const {blob, name} = await finished();
+    const f = await current();
+    const done = await exportBlob(how, f.blob, f.name);
+    if(done) addAct(V.id, {k: done});
+  }
+  // returns what was done ('share' / 'print' / 'save') or false (cancelled)
+  async function exportBlob(how, blob, name){
     if(how === 'share'){
       const file = new File([blob], name, {type: 'image/jpeg'});
-      try{ if(navigator.canShare && navigator.canShare({files: [file]})){ await navigator.share({files: [file], title: 'ভাউচার'}); return; } }catch(e){ if(e && e.name === 'AbortError') return; }
+      try{ if(navigator.canShare && navigator.canShare({files: [file]})){ await navigator.share({files: [file], title: 'ভাউচার'}); return 'share'; } }catch(e){ if(e && e.name === 'AbortError') return false; }
       how = 'save';
     }
     if(how === 'print'){
@@ -418,17 +592,18 @@
       const img = f.contentDocument.querySelector('img');
       const go = () => { f.contentWindow.focus(); f.contentWindow.print(); };
       if(img.complete) go(); else img.onload = go;
-      return;
+      return 'print';
     }
     if(window.KhataApp && window.KhataApp.saveFile){   // inside the Android app: Download/HisabKhata
-      const r = new FileReader(); r.onload = () => window.KhataApp.saveFile(String(r.result).split(',')[1], name, 'image/jpeg'); r.readAsDataURL(blob); return;
+      window.KhataApp.saveFile(await toB64(blob), name, 'image/jpeg'); return 'save';
     }
     const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(a.href), 4000);
     toast('<b>✓ ছবি নামানো হয়েছে</b><span>' + esc(name) + '</span>');
+    return 'save';
   }
 
   window.addEventListener('resize', () => { if(root.hidden || !V) return; const c = root.querySelector('#vPlace'); if(c) drawPlace(c); });
   window.__stampRender = render;
-  window.__stampTools = {findPaper, warp, enhance, cutStamp, fileToCanvas};   // for checks
+  window.__stampTools = {findPaper, warp, enhance, cutStamp, fileToCanvas, VL};   // for checks
 })();
