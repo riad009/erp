@@ -66,10 +66,10 @@
     }
     return b.map((v, i) => v / A[i][i]);
   }
-  function warp(src, q){
+  function warp(src, q, max){
     const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
     let W = Math.max(dist(q[0], q[1]), dist(q[3], q[2])), H = Math.max(dist(q[0], q[3]), dist(q[1], q[2]));
-    const k = Math.min(1, 2400 / Math.max(W, H)); W = Math.round(W * k); H = Math.round(H * k);
+    const k = Math.min(1, (max || 2400) / Math.max(W, H)); W = Math.round(W * k); H = Math.round(H * k);
     const h = homography([[0, 0], [W, 0], [W, H], [0, H]], q);
     const sw = src.width, sh = src.height, sd = src.getContext('2d').getImageData(0, 0, sw, sh).data;
     const out = newCanvas(W, H), octx = out.getContext('2d'), od = octx.createImageData(W, H), o = od.data;
@@ -217,7 +217,8 @@
   const mb = n => toBn((n / 1048576).toFixed(n < 10485760 ? 1 : 0));
   const ACT = {save: '⬇ নামানো', print: '🖨 প্রিন্ট', share: '📤 শেয়ার'};
   const ANY = {id: '*', name: '', phone: ''};
-  const anyBtn = () => '<button type="button" class="wa-any" data-waany>📲 WhatsApp-এ শেয়ার করুন<small>যে কাউকে · যেকোনো গ্রুপে</small></button>';
+  const anyBtn = (label = '📲 WhatsApp-এ শেয়ার করুন', attr = 'data-waany') => `<button type="button" class="wa-any" ${attr}>${label}<small>যে কাউকে · যেকোনো গ্রুপে</small></button>`;
+  const waAddHTML = () => '<div class="wa-add"><input id="waName" autocomplete="off" placeholder="নাম (যেমন Karnafully)"><input id="waNum" inputmode="tel" autocomplete="off" placeholder="WhatsApp নম্বর ০১৭…"><button type="button" class="stp-btn" id="waAdd">＋ যোগ</button></div>';
   const tagsOf = m => { const seen = new Set(), out = [];
     for(const a of (m.acts || [])){ const t = a.k === 'wa' ? '📲 ' + (a.to || 'WhatsApp') : ACT[a.k]; if(t && !seen.has(t)){ seen.add(t); out.push(t); } }
     return out; };
@@ -225,19 +226,26 @@
 
   /* ---------- page state ---------- */
   let newStamp = null;     // {src, strength, cut} while setting a new stamp
-  let V = null;            // voucher: {src, quad, scan, mode, view, step}
+  let V = null;            // voucher on screen: {file, src, quad, scan, mode, view, step, name, note, id, dirty} (+ item / place when it is one of many)
+  let Q = null;            // many vouchers at once (owner): [{file, quad, mode, place, note, ps, pv, id, dirty, name, f}] — ps / pv = small scan / look for the previews
+  let qBusy = null, qRunning = false;
+  const MODES = [['color','✨ পরিষ্কার সাদা'],['orig','🎨 আসল রঙ (গাঢ়)']];
   let place = {cx: 0.62, cy: 0.62, w: 0.26, rot: -8, on: true};
   try{ Object.assign(place, JSON.parse(localStorage.getItem('kg-khata-stamp-place') || '{}')); }catch(_){}
   const keepPlace = () => { try{ localStorage.setItem('kg-khata-stamp-place', JSON.stringify(place)); }catch(_){} };
 
-  const pickBtns = (id) => `<div class="stp-pick">
-      <label class="stp-btn main">📷 ছবি তুলুন<input type="file" accept="image/*" capture="environment" data-pick="${id}" hidden></label>
-      <label class="stp-btn">🖼 গ্যালারি থেকে<input type="file" accept="image/*" data-pick="${id}" hidden></label></div>`;
+  // 📷 = the camera (Android app ≥ 1.4 opens it straight away) · 🖼 = gallery, several vouchers at once
+  const pickBtns = (id, cam = '📷 ছবি তুলুন', gal = '🖼 গ্যালারি থেকে') => `<div class="stp-pick">
+      <label class="stp-btn main">${cam}<input type="file" accept="image/*" capture="environment" data-pick="${id}" hidden></label>
+      <label class="stp-btn">${gal}<input type="file" accept="image/*" ${id === 'stamp' ? '' : 'multiple'} data-pick="${id}" hidden></label></div>`;
+  // the stamp place of the voucher on screen (one of many has its own)
+  const P = () => (V && V.place) || place;
 
   function render(){
     if(root.hidden) return;
     if(!stampLoaded || !waLoaded){ root.innerHTML = uHead('🔖 স্ট্যাম্প', 'ভাউচারে স্ট্যাম্প ও সই') + '<p class="loading">খোলা হচ্ছে…</p>'; Promise.all([stampLoaded || loadStamp(), waLoaded || loadWa()]).then(render); return; }
-    const steps = ['ছবি', 'কোণা ঠিক', 'স্ট্যাম্প বসান', 'প্রিন্ট / নামান'], cur = !V ? 0 : V.step;
+    const steps = ['ছবি', 'কোণা ঠিক', 'স্ট্যাম্প বসান', 'প্রিন্ট / নামান'], cur = V ? V.step : Q ? 2 : 0, pl = P();
+    const item = V && V.item, itemNo = item ? toBn(Q.indexOf(item) + 1) + ' / ' + toBn(Q.length) : '';
     root.innerHTML = uHead('🔖 স্ট্যাম্প', 'ভাউচারে স্ট্যাম্প ও সই বসিয়ে প্রিন্ট') + `
       <section class="stp-card">
         <h2>✍️ আপনার স্ট্যাম্প ও সই</h2>
@@ -251,21 +259,24 @@
       </section>
 
       <section class="stp-card">
-        <h2>🧾 ভাউচার</h2>
+        <h2>🧾 ভাউচার${item ? ` <small class="q-h">${itemNo} নং ঠিক করুন</small>` : !V && Q ? ` <small class="q-h">${toBn(Q.length)}টা একসাথে</small>` : ''}</h2>
         <ol class="stp-steps">${steps.map((s, i) => `<li class="${i === cur ? 'now' : i < cur ? 'done' : ''}">${toBn(i + 1)}. ${s}</li>`).join('')}</ol>
-        ${!V ? `<p class="sub">ব্যাংকের ভাউচার / রসিদের ছবি তুলুন — অ্যাপ নিজে কাগজটা খুঁজে সোজা আর পরিষ্কার করবে (CamScanner-এর মতো), তারপর আপনার স্ট্যাম্প বসাবে।</p>${pickBtns('voucher')}`
+        ${!V && Q ? batchHTML()
+        : !V ? `<p class="sub">ব্যাংকের ভাউচার / রসিদের ছবি তুলুন — অ্যাপ নিজে কাগজটা খুঁজে সোজা আর পরিষ্কার করবে (CamScanner-এর মতো), তারপর আপনার স্ট্যাম্প বসাবে।</p>${pickBtns('voucher')}
+          <p class="stp-hint">🖼 গ্যালারি থেকে একসাথে অনেকগুলো ভাউচার বাছাই করতে পারেন — সবগুলোতে একসাথে স্ট্যাম্প বসবে।</p>`
         : V.step === 1 ? `
           <p class="sub">কাগজের ৪ কোণায় গোল দাগগুলো টেনে ঠিক জায়গায় বসান।</p>
           <div class="stp-stage"><canvas id="vCrop"></canvas></div>
-          <div class="stp-acts"><button type="button" class="stp-btn main" id="vScan">✨ স্ক্যান করুন</button><button type="button" class="stp-btn" id="vWhole">পুরো ছবি রাখুন</button><button type="button" class="stp-btn" id="vNew">বাতিল</button></div>`
+          <div class="stp-acts"><button type="button" class="stp-btn main" id="vScan">✨ স্ক্যান করুন</button><button type="button" class="stp-btn" id="vWhole">পুরো ছবি রাখুন</button>${item ? '<button type="button" class="stp-btn" id="vBack">← সব ভাউচারে ফিরুন</button>' : '<button type="button" class="stp-btn" id="vNew">বাতিল</button>'}</div>`
         : `
-          <div class="stp-modes" role="group" aria-label="ছবির ধরন">${[['color','✨ পরিষ্কার সাদা'],['orig','🎨 আসল রঙ (গাঢ়)']].map(([k, l]) => `<button type="button" data-mode="${k}" aria-pressed="${V.mode === k}">${l}</button>`).join('')}</div>
+          <div class="stp-modes" role="group" aria-label="ছবির ধরন">${MODES.map(([k, l]) => `<button type="button" data-mode="${k}" aria-pressed="${V.mode === k}">${l}</button>`).join('')}</div>
           <div class="stp-stage"><canvas id="vPlace"></canvas></div>
-          ${stampImg ? `<label class="stp-on"><input type="checkbox" id="pOn" ${place.on ? 'checked' : ''}> স্ট্যাম্প ও সই দিন</label>
+          ${stampImg ? `<label class="stp-on"><input type="checkbox" id="pOn" ${pl.on ? 'checked' : ''}> স্ট্যাম্প ও সই দিন</label>
           <p class="sub">স্ট্যাম্পটা আঙুল / মাউস দিয়ে টেনে জায়গামতো বসান।</p>
-          <label class="stp-sl">আকার<input type="range" id="pW" min="8" max="70" value="${Math.round(place.w * 100)}"></label>
-          <label class="stp-sl">ঘোরান<input type="range" id="pR" min="-45" max="45" value="${Math.round(place.rot)}"></label>` : '<p class="stp-empty">উপরে আগে স্ট্যাম্প সেভ করুন — তাহলে এখানে বসানো যাবে।</p>'}
+          <label class="stp-sl">আকার<input type="range" id="pW" min="8" max="70" value="${Math.round(pl.w * 100)}"></label>
+          <label class="stp-sl">ঘোরান<input type="range" id="pR" min="-45" max="45" value="${Math.round(pl.rot)}"></label>` : '<p class="stp-empty">উপরে আগে স্ট্যাম্প সেভ করুন — তাহলে এখানে বসানো যাবে।</p>'}
           <label class="stp-note">📝 নোট <small>(ইচ্ছা হলে — লিস্টে খুঁজতে সুবিধা)</small><input type="text" id="vNote" autocomplete="off" maxlength="120" value="${esc(V.note || '')}" placeholder="যেমন: Karnafully জমা ৫০,০০০"></label>
+          ${item ? `<div class="stp-acts"><button type="button" class="stp-btn main" id="vDone">✓ ঠিক আছে — সব ভাউচারে ফিরুন</button></div>` : `
           <div class="stp-acts">
             <button type="button" class="stp-btn main" id="vSave">⬇ ছবি নামান</button>
             <button type="button" class="stp-btn" id="vKeep">${keepLabel()}</button>
@@ -274,13 +285,14 @@
             <button type="button" class="stp-btn" id="vNew">🧾 নতুন ভাউচার</button>
           </div>
           <p class="stp-hint">নামালে / পাঠালে ভাউচারটা নিজে থেকেই নিচের 📁 ভাউচার লিস্টে জমা হয়।</p>
+          <div class="q-more"><h3>＋ একসাথে আরো ভাউচার</h3><p class="sub">আরো ছবি দিলে সবগুলোতে একই জায়গায় স্ট্যাম্প বসবে — একবারে নামান / পাঠান।</p>${pickBtns('more', '📷 আরো ছবি তুলুন', '🖼 আরো গ্যালারি থেকে')}</div>
           <div class="stp-wa">
             <h3>📲 WhatsApp-এ পাঠান</h3>
             ${anyBtn()}
             <p class="sub">অথবা সেভ করা নামে চাপ দিন — সরাসরি ওই নম্বরের চ্যাট খুলবে, ছবি সাথে থাকবে — শুধু Send চাপুন।</p>
             <div class="wa-list">${wa.length ? wa.map(c => `<span class="wa-c"><button type="button" class="wa-go" data-wa="${esc(c.id)}">🟢 ${esc(c.name)} <small>${showPhone(c.phone)}</small></button><button type="button" class="wa-x" data-wax="${esc(c.id)}" aria-label="নম্বর মুছুন">×</button></span>`).join('') : '<span class="stp-empty">এখনো কোনো নম্বর নেই — নিচে যোগ করুন।</span>'}</div>
-            <div class="wa-add"><input id="waName" autocomplete="off" placeholder="নাম (যেমন Karnafully)"><input id="waNum" inputmode="tel" autocomplete="off" placeholder="WhatsApp নম্বর ০১৭…"><button type="button" class="stp-btn" id="waAdd">＋ যোগ</button></div>
-          </div>`}
+            ${waAddHTML()}
+          </div>`}`}
       </section>
 
       <section class="stp-card stp-vl" id="vlCard">
@@ -291,6 +303,189 @@
       </section>`;
     bind();
     drawList();
+  }
+
+  /* ---------- 🧾 many vouchers at once (owner: "10টা ভাউচার বাছাই করলে সবগুলোতে স্ট্যাম্প") ---------- */
+  function batchHTML(){
+    const allMode = k => Q.length && Q.every(it => it.mode === k), n = toBn(Q.length);
+    return `
+      <p class="sub">সবগুলোতে একই জায়গায় স্ট্যাম্প বসেছে। কোনোটার কোণা / স্ট্যাম্পের জায়গা বদলাতে ✎ চাপুন।</p>
+      ${qBusy ? `<p class="q-busy" id="qBusy">⏳ ${qBusy}</p>` : ''}
+      ${Q.length ? `
+      <div class="stp-modes" role="group" aria-label="ছবির ধরন (সব)">${MODES.map(([k, l]) => `<button type="button" data-qmode="${k}" aria-pressed="${allMode(k)}">${l}</button>`).join('')}</div>
+      ${stampImg ? `<label class="stp-on"><input type="checkbox" id="qOn" ${place.on ? 'checked' : ''}> সবগুলোতে স্ট্যাম্প ও সই দিন</label>
+      <label class="stp-sl">আকার (সব)<input type="range" id="qW" min="8" max="70" value="${Math.round(place.w * 100)}"></label>
+      <label class="stp-sl">ঘোরান (সব)<input type="range" id="qR" min="-45" max="45" value="${Math.round(place.rot)}"></label>` : '<p class="stp-empty">উপরে আগে স্ট্যাম্প সেভ করুন — তাহলে এখানে বসানো যাবে।</p>'}
+      <div class="q-grid">${Q.map((it, i) => `<div class="q-it">
+        <button type="button" class="q-pv" data-qedit="${i}" aria-label="${toBn(i + 1)} নং ভাউচার ঠিক করুন"><canvas data-qcv="${i}"></canvas><span class="q-no">${toBn(i + 1)}</span>${it.id && !it.dirty ? '<span class="q-kept">✓ লিস্টে</span>' : ''}</button>
+        ${it.note ? `<span class="q-nt">${esc(it.note)}</span>` : ''}
+        <div class="q-row"><button type="button" class="q-ed" data-qedit="${i}">✎ ঠিক করুন</button><button type="button" class="q-x" data-qx="${i}" aria-label="এই ভাউচার বাদ দিন">×</button></div></div>`).join('')}</div>
+      <div class="stp-acts">
+        <button type="button" class="stp-btn main" data-qrun="save">⬇ সব নামান (${n}টা)</button>
+        <button type="button" class="stp-btn" data-qrun="keep">💾 সব লিস্টে রাখুন</button>
+        ${window.KhataApp ? '' : '<button type="button" class="stp-btn" data-qrun="print">🖨 সব প্রিন্ট</button>'}
+        ${navigator.canShare ? '<button type="button" class="stp-btn" data-qrun="share">📤 সব শেয়ার</button>' : ''}
+      </div>
+      <p class="stp-hint">নামালে / পাঠালে প্রতিটা ভাউচার নিজে থেকেই নিচের 📁 ভাউচার লিস্টে জমা হয়।</p>` : ''}
+      <div class="q-more"><h3>＋ আরো ভাউচার যোগ করুন</h3>${pickBtns('more', '📷 আরো ছবি তুলুন', '🖼 আরো গ্যালারি থেকে')}</div>
+      <div class="stp-acts"><button type="button" class="stp-btn" id="qNew">🧾 নতুন করে শুরু (সব বাদ)</button></div>
+      ${Q.length ? `<div class="stp-wa">
+        <h3>📲 WhatsApp-এ সব পাঠান (${n}টা)</h3>
+        ${anyBtn(`📲 WhatsApp-এ ${n}টা শেয়ার করুন`, 'data-qwaany')}
+        <p class="sub">অথবা সেভ করা নামে চাপ দিন — সরাসরি ওই নম্বরের চ্যাটে সব ছবি যাবে।</p>
+        <div class="wa-list">${wa.length ? wa.map(c => `<span class="wa-c"><button type="button" class="wa-go" data-qwa="${esc(c.id)}">🟢 ${esc(c.name)} <small>${showPhone(c.phone)}</small></button><button type="button" class="wa-x" data-wax="${esc(c.id)}" aria-label="নম্বর মুছুন">×</button></span>`).join('') : '<span class="stp-empty">এখনো কোনো নম্বর নেই — নিচে যোগ করুন।</span>'}</div>
+        ${waAddHTML()}
+      </div>` : ''}`;
+  }
+  const tick = (ms = 16) => new Promise(r => setTimeout(r, ms));
+  // one photo → one voucher of many: corners found by themselves, the stamp where the last one was
+  async function makeItem(file, mode){
+    const src = await fileToCanvas(file, 2200), quad = findPaper(src), ps = warp(src, quad, 720);
+    return {file, quad, mode, place: {...place}, note: '', ps, pv: enhance(ps, mode), id: null, dirty: false, name: null, f: null};
+  }
+  // the voucher on screen becomes no. 1 of many
+  function itemFromV(){
+    const ps = V.scan ? scaled(V.scan, 720) : warp(V.src, V.quad, 720);
+    return {file: V.file, quad: V.quad, mode: V.mode, place: {...(V.place || place)}, note: V.note || '', ps, pv: enhance(ps, V.mode), id: V.id || null, dirty: !!V.dirty, name: V.name || null, f: null};
+  }
+  async function addFiles(files){
+    if(!Q) Q = [];
+    if(V && !V.item && V.file) Q.push(itemFromV());
+    V = null;
+    const mode = Q.length && Q.every(it => it.mode === Q[0].mode) ? Q[0].mode : 'orig';
+    qBusy = `${toBn(files.length)}টা ছবি থেকে ভাউচার তৈরি হচ্ছে…`; render();
+    let done = 0;
+    for(const f of files){
+      await tick(30);
+      try{ Q.push(await makeItem(f, mode)); }catch(e){ toast('<b>⚠️ একটা ছবি খোলা গেল না</b><span>' + esc(f.name || '') + '</span>'); }
+      done++; const b = root.querySelector('#qBusy'); if(b) b.textContent = `⏳ ${toBn(done)} / ${toBn(files.length)} তৈরি হচ্ছে…`;
+    }
+    qBusy = null; if(!Q.length) Q = null;
+    render();
+  }
+  // small pictures of every voucher with its stamp
+  function drawQ(){
+    root.querySelectorAll('[data-qcv]').forEach(cv => {
+      const it = Q && Q[+cv.dataset.qcv]; if(!it) return;
+      const w = Math.min(320, cv.parentElement.clientWidth || 240) * Math.min(2, window.devicePixelRatio || 1), k = w / it.pv.width;
+      cv.width = Math.round(it.pv.width * k); cv.height = Math.round(it.pv.height * k);
+      compose(cv, k, {view: it.pv, place: it.place});
+    });
+  }
+  // a change for all of them (look / stamp size / turn / on-off)
+  function qAll(fn, again){
+    Q.forEach(it => { if(fn(it)){ it.f = null; if(it.id) it.dirty = true; } });
+    if(again) render(); else drawQ();
+  }
+  async function editItem(i){
+    const it = Q && Q[i]; if(!it) return;
+    try{
+      const src = await fileToCanvas(it.file, 2200);
+      V = {file: it.file, src, quad: it.quad.map(p => ({...p})), scan: null, mode: it.mode, place: {...it.place}, note: it.note, step: 1, item: it, id: it.id, dirty: it.dirty, name: it.name};
+      render();
+      const c = root.querySelector('.stp-steps'); if(c) c.scrollIntoView({block: 'start'});
+    }catch(e){ toast('<b>⚠️ ছবিটা খোলা গেল না</b><span>' + esc(e.message || e) + '</span>'); }
+  }
+  function doneItem(){
+    const it = V.item, i = Q.indexOf(it), was = JSON.stringify([it.quad, it.mode, it.place, it.note]);
+    Object.assign(it, {quad: V.quad, mode: V.mode, place: V.place, note: V.note || '', id: V.id || it.id});
+    if(JSON.stringify([it.quad, it.mode, it.place, it.note]) !== was){
+      it.f = null; if(it.id) it.dirty = true;
+      if(V.scan){ it.ps = scaled(V.scan, 720); it.pv = enhance(it.ps, it.mode); }
+    }
+    V = null; render();
+    const c = root.querySelector(`[data-qcv="${i}"]`); if(c) c.scrollIntoView({block: 'center'});
+  }
+  // the full-size picture of one of many (made again from the photo, so phones don't run out of memory)
+  async function fullOf(it, i, base){
+    if(it.f) return it.f;
+    const src = await fileToCanvas(it.file, 2200), scan = warp(src, it.quad), view = enhance(scan, it.mode);
+    const full = newCanvas(view.width, view.height); compose(full, 1, {view, place: it.place});
+    const blob = await new Promise(r => full.toBlob(r, 'image/jpeg', 0.92));
+    if(!it.name) it.name = `${base}-${i + 1}.jpg`;
+    it.f = {blob, name: it.name, thumb: scaled(full, 360).toDataURL('image/jpeg', 0.72), w: full.width, h: full.height};
+    return it.f;
+  }
+  // ⬇ / 💾 / 🖨 / 📤 / 📲 for all of them
+  async function qRun(how, c, btn){
+    if(!Q || !Q.length || qRunning) return;
+    qRunning = true;
+    const label = btn ? btn.innerHTML : '', d = new Date(), outs = [];
+    const base = `voucher-${ymd(d)}-${String(d.getHours()).padStart(2,'0')}${String(d.getMinutes()).padStart(2,'0')}${String(d.getSeconds()).padStart(2,'0')}`;
+    root.querySelectorAll('[data-qrun], [data-qwa], [data-qwaany]').forEach(b => b.disabled = true);
+    try{
+      for(let i = 0; i < Q.length; i++){
+        if(btn) btn.textContent = `⏳ ${toBn(i + 1)} / ${toBn(Q.length)} তৈরি হচ্ছে…`;
+        await tick();
+        const it = Q[i], f = await fullOf(it, i, base);
+        try{ if(!it.id || it.dirty) await keep(f, it); }
+        catch(e){ if(!keepWarned){ keepWarned = true; toast('<b>⚠️ ভাউচার লিস্টে রাখা গেল না</b><span>' + esc(e.message || e) + '</span>', 5000); } }
+        outs.push({f, it});
+      }
+    }catch(e){ toast('<b>⚠️ ' + esc(e.message || e) + '</b>', 5000); }
+    if(btn) btn.innerHTML = label;
+    root.querySelectorAll('[data-qrun], [data-qwa], [data-qwaany]').forEach(b => b.disabled = false);
+    qRunning = false;
+    if(outs.length !== Q.length) return;
+    const fs = outs.map(o => o.f);
+    let done = null;
+    if(how === 'keep'){ toast(`<b>✓ ${toBn(fs.length)}টা ভাউচার লিস্টে রাখা হয়েছে</b><span>নিচে 📁 ভাউচার লিস্টে আছে (শুধু এই ফোনে)।</span>`); }
+    else if(how === 'save') done = await saveMany(fs);
+    else if(how === 'print') done = printMany(fs);
+    else if(how === 'share') done = await shareMany(fs);
+    else if(how === 'wa') done = await waMany(c, fs) ? 'wa' : null;
+    if(done) for(const o of outs) await addAct(o.it.id, done === 'wa' ? {k: 'wa', to: c.name || 'WhatsApp'} : {k: done}, true);
+    list = null; render();
+  }
+  async function saveMany(fs){
+    const app = window.KhataApp;
+    if(app && (app.saveFileQuiet || app.saveFile)){   // Android app: Download/HisabKhata (1.4: without opening each one)
+      for(const f of fs){ const b = await toB64(f.blob); if(app.saveFileQuiet) app.saveFileQuiet(b, f.name, 'image/jpeg'); else app.saveFile(b, f.name, 'image/jpeg'); }
+    } else {
+      for(const f of fs){
+        const a = document.createElement('a'); a.href = URL.createObjectURL(f.blob); a.download = f.name; document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(() => URL.revokeObjectURL(a.href), 8000); await tick(350);
+      }
+    }
+    toast(`<b>✓ ${toBn(fs.length)}টা ছবি নামানো হয়েছে</b>${app ? '<span>Download/HisabKhata ফোল্ডারে।</span>' : ''}`, 5000);
+    return 'save';
+  }
+  function printMany(fs){
+    const urls = fs.map(f => URL.createObjectURL(f.blob)), f = document.createElement('iframe');
+    f.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0';
+    document.body.appendChild(f);
+    f.contentDocument.write(`<html><head><title>ভাউচার</title><style>@page{margin:10mm}body{margin:0}div{page-break-after:always;break-after:page}div:last-child{page-break-after:auto;break-after:auto}img{max-width:100%;max-height:96vh;display:block;margin:0 auto}</style></head><body>${urls.map(u => `<div><img src="${u}"></div>`).join('')}</body></html>`);
+    f.contentDocument.close();
+    f.contentWindow.onafterprint = () => setTimeout(() => { f.remove(); urls.forEach(u => URL.revokeObjectURL(u)); }, 500);
+    const imgs = [...f.contentDocument.querySelectorAll('img')];
+    Promise.all(imgs.map(i => i.complete ? 1 : new Promise(r => { i.onload = i.onerror = r; }))).then(() => { f.contentWindow.focus(); f.contentWindow.print(); });
+    return 'print';
+  }
+  async function shareMany(fs){
+    const files = fs.map(f => new File([f.blob], f.name, {type: 'image/jpeg'}));
+    try{ if(navigator.canShare && navigator.canShare({files})){ await navigator.share({files, title: 'ভাউচার'}); return 'share'; } }catch(e){ if(e && e.name === 'AbortError') return null; }
+    return saveMany(fs);
+  }
+  async function waMany(c, fs){
+    const app = window.KhataApp, phone = normPhone(c.phone), who = c.phone ? esc(c.name) + '-কে' : 'যে চ্যাট / গ্রুপে চান সেখানে';
+    if(fs.length === 1) return sendWaBlob(c, fs[0].blob, fs[0].name);
+    if(app && app.addShareFile){   // Android app 1.4: all pictures in one go
+      app.clearShareFiles();
+      for(const f of fs) app.addShareFile(await toB64(f.blob), f.name);
+      if(app.shareWhatsAppFiles('image/jpeg', phone)) return true;
+    }
+    if(app){   // older app (1.3): one picture at a time only
+      toast('<b>একসাথে সব পাঠাতে নতুন অ্যাপ (১.৪) লাগবে</b><span>এখন শুধু ১ নং ভাউচার যাচ্ছে।</span>', 7000);
+      return sendWaBlob(c, fs[0].blob, fs[0].name);
+    }
+    const files = fs.map(f => new File([f.blob], f.name, {type: 'image/jpeg'}));
+    if(navigator.canShare && navigator.canShare({files})){
+      try{ await navigator.share({files, title: 'ভাউচার'}); toast('<b>WhatsApp বেছে ' + who + ' পাঠান</b>', 5000); return true; }catch(e){ if(e && e.name === 'AbortError') return false; }
+    }
+    await saveMany(fs);
+    toast(`<b>${toBn(fs.length)}টা ছবি নামানো হয়েছে — WhatsApp খুলছে</b><span>${who} 📎 দিয়ে ছবিগুলো পাঠান।</span>`, 7000);
+    window.open(phone ? 'https://wa.me/' + phone : 'https://web.whatsapp.com/', '_blank');
+    return true;
   }
 
   // the 💾 button: not kept yet / kept / changed since it was kept
@@ -332,15 +527,15 @@
   }
 
   // keep the voucher on screen in the list (the same voucher is updated, not added again)
-  async function keep(f){
+  async function keep(f, o = V){
     const now = Date.now();
-    let m = V.id ? ((list && list.find(x => x.id === V.id)) || await VL.get(V.id)) : null;
+    let m = o.id ? ((list && list.find(x => x.id === o.id)) || await VL.get(o.id)) : null;
     m = m ? {...m} : {id: 'v' + now.toString(36) + Math.random().toString(36).slice(2, 6), ts: now, date: ymd(new Date(now)), acts: []};
-    Object.assign(m, {upd: now, name: f.name, note: V.note || '', thumb: f.thumb, w: f.w, h: f.h, size: f.blob.size});
+    Object.assign(m, {upd: now, name: f.name, note: o.note || '', thumb: f.thumb, w: f.w, h: f.h, size: f.blob.size});
     await VL.put(m, await blobBuf(f.blob));
-    V.id = m.id; V.dirty = false; list = null;
+    o.id = m.id; o.dirty = false; list = null;
     if(!persisted){ persisted = true; try{ navigator.storage && navigator.storage.persist && navigator.storage.persist(); }catch(_){} }   // ask the browser not to clear it by itself
-    const b = root.querySelector('#vKeep'); if(b) b.textContent = keepLabel();
+    const b = o === V && root.querySelector('#vKeep'); if(b) b.textContent = keepLabel();
     drawList();
     return m;
   }
@@ -351,9 +546,9 @@
     catch(e){ if(!keepWarned){ keepWarned = true; toast('<b>⚠️ ভাউচার লিস্টে রাখা গেল না</b><span>' + esc(e.message || e) + '</span>', 5000); } }
     return f;
   }
-  async function addAct(id, act){
+  async function addAct(id, act, quiet){
     if(!id || !act) return;
-    try{ const m = await VL.get(id); if(!m) return; m.acts = [...(m.acts || []), {...act, ts: Date.now()}]; await VL.meta(m); list = null; drawList(); }catch(_){}
+    try{ const m = await VL.get(id); if(!m) return; m.acts = [...(m.acts || []), {...act, ts: Date.now()}]; await VL.meta(m); list = null; if(!quiet) drawList(); }catch(_){}
   }
 
   // one kept voucher: big picture + নামান / শেয়ার / প্রিন্ট / WhatsApp / নোট / মুছুন
@@ -399,16 +594,18 @@
   function bind(){
     const $ = id => root.querySelector('#' + id);
     root.querySelectorAll('[data-pick]').forEach(inp => inp.onchange = async () => {
-      const f = inp.files && inp.files[0]; if(!f) return;
+      const files = [...(inp.files || [])], f = files[0], kind = inp.dataset.pick; if(!f) return;
+      inp.value = '';
       try{
-        if(inp.dataset.pick === 'stamp'){
+        if(kind !== 'stamp' && (kind === 'more' || files.length > 1 || Q)){ await addFiles(files); return; }   // many vouchers at once
+        if(kind === 'stamp'){
           // only the white paper (a table / hand around it must not count as ink), straightened
           const photo = await fileToCanvas(f, 1600), src = warp(photo, findPaper(photo));
           newStamp = {src, strength: 0.5, cut: null}; newStamp.cut = cutStamp(src, 0.5);
           if(!newStamp.cut){ newStamp = null; toast('<b>⚠️ ছবিতে স্ট্যাম্প / সই পাওয়া গেল না</b><span>সাদা কাগজে, আলোতে আবার ছবি তুলুন।</span>', 5000); }
         } else {
           const src = await fileToCanvas(f, 2200);
-          V = {src, quad: findPaper(src), scan: null, mode: 'orig', step: 1};   // owner: আসল রঙ (গাঢ়) by default
+          V = {file: f, src, quad: findPaper(src), scan: null, mode: 'orig', step: 1};   // owner: আসল রঙ (গাঢ়) by default
         }
         render();
       }catch(e){ toast('<b>⚠️ ' + esc(e.message) + '</b>'); }
@@ -430,9 +627,27 @@
     // voucher step 2: mode, stamp place, export
     root.querySelectorAll('[data-mode]').forEach(b => b.onclick = () => { if(V.mode === b.dataset.mode) return; V.mode = b.dataset.mode; V.view = enhance(V.scan, V.mode); changed(); render(); });
     if($('vPlace')) placeUI($('vPlace'));
-    if($('pOn')) $('pOn').onchange = e => { place.on = e.target.checked; keepPlace(); changed(); drawPlace($('vPlace')); };
-    if($('pW')) $('pW').oninput = e => { place.w = e.target.value / 100; keepPlace(); changed(); drawPlace($('vPlace')); };
-    if($('pR')) $('pR').oninput = e => { place.rot = +e.target.value; keepPlace(); changed(); drawPlace($('vPlace')); };
+    if($('pOn')) $('pOn').onchange = e => { P().on = e.target.checked; keepPlace(); changed(); drawPlace($('vPlace')); };
+    if($('pW')) $('pW').oninput = e => { P().w = e.target.value / 100; keepPlace(); changed(); drawPlace($('vPlace')); };
+    if($('pR')) $('pR').oninput = e => { P().rot = +e.target.value; keepPlace(); changed(); drawPlace($('vPlace')); };
+    if($('vBack')) $('vBack').onclick = () => { V = null; render(); };
+    if($('vDone')) $('vDone').onclick = () => doneItem();
+    // many vouchers: look / stamp for all, ✎ one, × one, actions for all
+    root.querySelectorAll('[data-qmode]').forEach(b => b.onclick = () => qAll(it => { if(it.mode === b.dataset.qmode) return false; it.mode = b.dataset.qmode; it.pv = enhance(it.ps, it.mode); return true; }, true));
+    if($('qOn')) $('qOn').onchange = e => { place.on = e.target.checked; keepPlace(); qAll(it => { it.place.on = place.on; return true; }); };
+    if($('qW')) $('qW').oninput = e => { place.w = e.target.value / 100; keepPlace(); qAll(it => { it.place.w = place.w; return true; }); };
+    if($('qR')) $('qR').oninput = e => { place.rot = +e.target.value; keepPlace(); qAll(it => { it.place.rot = place.rot; return true; }); };
+    root.querySelectorAll('[data-qedit]').forEach(b => b.onclick = () => editItem(+b.dataset.qedit));
+    root.querySelectorAll('[data-qx]').forEach(b => b.onclick = () => { Q.splice(+b.dataset.qx, 1); if(!Q.length) Q = null; render(); });
+    root.querySelectorAll('[data-qrun]').forEach(b => b.onclick = () => qRun(b.dataset.qrun, null, b));
+    root.querySelectorAll('[data-qwa]').forEach(b => b.onclick = () => qRun('wa', wa.find(c => c.id === b.dataset.qwa), b));
+    root.querySelectorAll('[data-qwaany]').forEach(b => b.onclick = () => qRun('wa', ANY, b));
+    if($('qNew')) $('qNew').onclick = () => {
+      const b = $('qNew');
+      if(Q && Q.length > 1 && !b.classList.contains('sure')){ b.classList.add('sure'); b.textContent = '⚠️ আবার চাপুন — সব বাদ যাবে'; setTimeout(() => { b.classList.remove('sure'); b.textContent = '🧾 নতুন করে শুরু (সব বাদ)'; }, 3500); return; }
+      Q = null; V = null; render();
+    };
+    if(Q && !V) drawQ();
     if($('vSave')) $('vSave').onclick = () => exportImg('save');
     // 📝 note: kept with the voucher in the list
     if($('vNote')){ let tm = 0; $('vNote').oninput = e => { V.note = e.target.value.trim(); if(V.id){ clearTimeout(tm); tm = setTimeout(async () => {
@@ -518,14 +733,15 @@
     return c;
   }
   // the voucher with the stamp on it (full size for saving, or scaled for the screen)
-  function compose(target, k){
-    const v = V.view, ctx = target.getContext('2d');
+  function compose(target, k, o){
+    o = o || V;
+    const v = o.view, pl = o.place || place, ctx = target.getContext('2d');
     ctx.globalCompositeOperation = 'source-over'; ctx.drawImage(v, 0, 0, v.width * k, v.height * k);
-    const st = place.on ? boldStamp() : null;
+    const st = pl.on ? boldStamp() : null;
     if(st){
-      const w = v.width * place.w * k, h = w * st.height / st.width;
+      const w = v.width * pl.w * k, h = w * st.height / st.width;
       ctx.save(); ctx.globalCompositeOperation = 'multiply';   // like real ink: the paper shows through
-      ctx.translate(v.width * place.cx * k, v.height * place.cy * k); ctx.rotate(place.rot * Math.PI / 180);
+      ctx.translate(v.width * pl.cx * k, v.height * pl.cy * k); ctx.rotate(pl.rot * Math.PI / 180);
       ctx.drawImage(st, -w / 2, -h / 2, w, h); ctx.restore();
     }
   }
@@ -540,10 +756,10 @@
     drawPlace(cv);
     let drag = null;
     const pos = e => { const r = cv.getBoundingClientRect(); return {x: (e.clientX - r.left) / r.width, y: (e.clientY - r.top) / r.height}; };
-    cv.onpointerdown = e => { if(!stampImg || !place.on) return; const p = pos(e); drag = {dx: place.cx - p.x, dy: place.cy - p.y};
-      const near = Math.hypot((p.x - place.cx) * cv.width, (p.y - place.cy) * cv.height) < place.w * cv.width * 0.8;
-      if(!near) drag = {dx: 0, dy: 0}; place.cx = p.x + drag.dx; place.cy = p.y + drag.dy; drawPlace(cv); cv.setPointerCapture(e.pointerId); e.preventDefault(); };
-    cv.onpointermove = e => { if(!drag) return; const p = pos(e); place.cx = clamp(p.x + drag.dx, 0, 1); place.cy = clamp(p.y + drag.dy, 0, 1); drawPlace(cv); };
+    cv.onpointerdown = e => { const pl = P(); if(!stampImg || !pl.on) return; const p = pos(e); drag = {dx: pl.cx - p.x, dy: pl.cy - p.y};
+      const near = Math.hypot((p.x - pl.cx) * cv.width, (p.y - pl.cy) * cv.height) < pl.w * cv.width * 0.8;
+      if(!near) drag = {dx: 0, dy: 0}; pl.cx = p.x + drag.dx; pl.cy = p.y + drag.dy; drawPlace(cv); cv.setPointerCapture(e.pointerId); e.preventDefault(); };
+    cv.onpointermove = e => { if(!drag) return; const p = pos(e), pl = P(); pl.cx = clamp(p.x + drag.dx, 0, 1); pl.cy = clamp(p.y + drag.dy, 0, 1); drawPlace(cv); };
     cv.onpointerup = cv.onpointercancel = () => { if(drag){ drag = null; keepPlace(); changed(); } };
   }
 
@@ -609,7 +825,7 @@
     return 'save';
   }
 
-  window.addEventListener('resize', () => { if(root.hidden || !V) return; const c = root.querySelector('#vPlace'); if(c) drawPlace(c); });
+  window.addEventListener('resize', () => { if(root.hidden) return; if(V){ const c = root.querySelector('#vPlace'); if(c) drawPlace(c); } else if(Q) drawQ(); });
   window.__stampRender = render;
   window.__stampTools = {findPaper, warp, enhance, cutStamp, fileToCanvas, VL};   // for checks
 })();

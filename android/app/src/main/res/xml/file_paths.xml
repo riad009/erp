@@ -2,4 +2,5 @@
 <paths>
     <external-files-path name="downloads" path="Download/" />
     <cache-path name="share" path="share/" />
+    <cache-path name="camera" path="camera/" />
 </paths>

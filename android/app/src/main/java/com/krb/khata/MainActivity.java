@@ -2,6 +2,7 @@ package com.krb.khata;
 
 import android.app.Activity;
 import android.content.ActivityNotFoundException;
+import android.content.ClipData;
 import android.content.ContentValues;
 import android.content.Intent;
 import android.graphics.Color;
@@ -33,6 +34,7 @@ import androidx.core.content.FileProvider;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.OutputStream;
+import java.util.ArrayList;
 
 /**
  * হিসাব খাতা: the live site in the app's own web view (no browser in between, so it opens on every phone).
@@ -43,10 +45,13 @@ public class MainActivity extends Activity {
     static final String START = "https://" + HOST + "/khata/index.html";
     static final int BLUE = Color.parseColor("#1F4AA8");
     static final int PICK_FILE = 7;
+    static final int TAKE_PHOTO = 8;
 
     private WebView web;
     private View statusBg;
     private ValueCallback<Uri[]> fileCallback;
+    private Uri cameraUri;      // 📷 the photo the camera app is writing
+    private File cameraFile;
 
     @Override
     protected void onCreate(Bundle saved) {
@@ -76,6 +81,7 @@ public class MainActivity extends Activity {
         CookieManager.getInstance().setAcceptThirdPartyCookies(web, false);
 
         web.addJavascriptInterface(new Bridge(), "KhataApp");
+        cleanCache();
         web.setWebViewClient(new WebViewClient() {
             @Override
             public boolean shouldOverrideUrlLoading(WebView v, WebResourceRequest r) {
@@ -96,8 +102,26 @@ public class MainActivity extends Activity {
             public boolean onShowFileChooser(WebView v, ValueCallback<Uri[]> cb, FileChooserParams p) {
                 if (fileCallback != null) fileCallback.onReceiveValue(null);
                 fileCallback = cb;
+                // 📷 ছবি তুলুন (<input capture>): open the camera itself — the plain file picker has no camera on most phones
+                if (p.isCaptureEnabled() && wantsImages(p)) {
+                    try {
+                        File dir = new File(getCacheDir(), "camera");
+                        if (!dir.exists() && !dir.mkdirs()) throw new Exception("no dir");
+                        cameraFile = new File(dir, "photo-" + System.currentTimeMillis() + ".jpg");
+                        cameraUri = FileProvider.getUriForFile(MainActivity.this, getPackageName() + ".files", cameraFile);
+                        Intent cam = new Intent(MediaStore.ACTION_IMAGE_CAPTURE).putExtra(MediaStore.EXTRA_OUTPUT, cameraUri)
+                                .addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION | Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                        startActivityForResult(cam, TAKE_PHOTO);
+                        return true;
+                    } catch (Exception e) {
+                        cameraUri = null; cameraFile = null;   // no camera app → the normal picker below
+                    }
+                }
                 try {
-                    startActivityForResult(p.createIntent(), PICK_FILE);
+                    Intent pick = p.createIntent();
+                    // 🖼 গ্যালারি: several vouchers at once
+                    if (p.getMode() == FileChooserParams.MODE_OPEN_MULTIPLE) pick.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
+                    startActivityForResult(pick, PICK_FILE);
                 } catch (ActivityNotFoundException e) {
                     fileCallback = null;
                     return false;
@@ -170,12 +194,38 @@ public class MainActivity extends Activity {
         }
     }
 
+    static boolean wantsImages(WebChromeClient.FileChooserParams p) {
+        String[] types = p.getAcceptTypes();
+        if (types == null || types.length == 0) return true;
+        for (String t : types) if (t == null || t.isEmpty() || t.startsWith("image") || t.equals("*/*")) return true;
+        return false;
+    }
+
     @Override
     protected void onActivityResult(int req, int res, Intent data) {
         super.onActivityResult(req, res, data);
-        if (req == PICK_FILE && fileCallback != null) {
-            fileCallback.onReceiveValue(WebChromeClient.FileChooserParams.parseResult(res, data));
-            fileCallback = null;
+        if (fileCallback == null || (req != PICK_FILE && req != TAKE_PHOTO)) return;
+        Uri[] out = null;
+        if (req == TAKE_PHOTO) {
+            if (res == RESULT_OK && cameraUri != null && cameraFile != null && cameraFile.length() > 0) out = new Uri[]{cameraUri};
+            cameraUri = null; cameraFile = null;
+        } else if (res == RESULT_OK && data != null) {
+            ClipData many = data.getClipData();   // several pictures picked
+            if (many != null && many.getItemCount() > 0) {
+                out = new Uri[many.getItemCount()];
+                for (int k = 0; k < out.length; k++) out[k] = many.getItemAt(k).getUri();
+            } else if (data.getData() != null) out = new Uri[]{data.getData()};
+        }
+        fileCallback.onReceiveValue(out);
+        fileCallback = null;
+    }
+
+    // old camera photos / shared pictures (older than 2 days) are removed so the app doesn't grow
+    void cleanCache() {
+        long old = System.currentTimeMillis() - 2L * 24 * 3600 * 1000;
+        for (String d : new String[]{"camera", "share"}) {
+            File[] fs = new File(getCacheDir(), d).listFiles();
+            if (fs != null) for (File f : fs) if (f.lastModified() < old) f.delete();
         }
     }
 
@@ -201,6 +251,16 @@ public class MainActivity extends Activity {
     class Bridge {
         @JavascriptInterface
         public boolean saveFile(String base64, String name, String mime) {
+            return store(base64, name, mime, true);
+        }
+
+        /** the same, without opening each file (many vouchers at once); the page shows one message */
+        @JavascriptInterface
+        public boolean saveFileQuiet(String base64, String name, String mime) {
+            return store(base64, name, mime, false);
+        }
+
+        boolean store(String base64, String name, String mime, boolean openIt) {
             try {
                 byte[] bytes = Base64.decode(base64, Base64.DEFAULT);
                 String safe = name.replaceAll("[\\\\/:*?\"<>|]", "_");
@@ -221,6 +281,7 @@ public class MainActivity extends Activity {
                     uri = FileProvider.getUriForFile(MainActivity.this, getPackageName() + ".files", f);
                 }
                 final Uri open = uri;
+                if (!openIt) return true;
                 runOnUiThread(() -> {
                     Toast.makeText(MainActivity.this, "✓ সেভ হয়েছে: Download/HisabKhata/" + safe, Toast.LENGTH_LONG).show();
                     Intent v = new Intent(Intent.ACTION_VIEW).setDataAndType(open, mime).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
@@ -236,26 +297,65 @@ public class MainActivity extends Activity {
         @JavascriptInterface
         public boolean shareWhatsApp(String base64, String name, String mime, String phone) {
             try {
-                byte[] bytes = Base64.decode(base64, Base64.DEFAULT);
-                File dir = new File(getCacheDir(), "share");
-                if (!dir.exists() && !dir.mkdirs()) return false;
-                File f = new File(dir, name.replaceAll("[\\\\/:*?\"<>|]", "_"));
-                try (OutputStream o = new FileOutputStream(f)) { o.write(bytes); }
-                final Uri uri = FileProvider.getUriForFile(MainActivity.this, getPackageName() + ".files", f);
-                final String digits = phone == null ? "" : phone.replaceAll("[^0-9]", "");
-                runOnUiThread(() -> {
-                    Intent send = new Intent(Intent.ACTION_SEND).setType(mime).putExtra(Intent.EXTRA_STREAM, uri)
-                            .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-                    if (!digits.isEmpty()) send.putExtra("jid", digits + "@s.whatsapp.net");   // that person's chat
-                    for (String pkg : WHATSAPP) {
-                        try { startActivity(new Intent(send).setPackage(pkg)); return; } catch (ActivityNotFoundException ignored) { }
-                    }
-                    try { startActivity(Intent.createChooser(send, "পাঠান")); } catch (ActivityNotFoundException ignored) { }   // no WhatsApp on this phone
-                });
+                ArrayList<Uri> one = new ArrayList<>();
+                one.add(shareUri(base64, name));
+                openWhatsApp(one, mime, phone);
                 return true;
             } catch (Exception e) {
                 return false;
             }
+        }
+
+        // several vouchers in one go: addShareFile(...) for each, then shareWhatsAppFiles(mime, phone) ('' = WhatsApp's own chat list)
+        private final ArrayList<Uri> staged = new ArrayList<>();
+
+        @JavascriptInterface
+        public void clearShareFiles() {
+            synchronized (staged) { staged.clear(); }
+        }
+
+        @JavascriptInterface
+        public boolean addShareFile(String base64, String name) {
+            try {
+                Uri u = shareUri(base64, name);
+                synchronized (staged) { staged.add(u); }
+                return true;
+            } catch (Exception e) {
+                return false;
+            }
+        }
+
+        @JavascriptInterface
+        public boolean shareWhatsAppFiles(String mime, String phone) {
+            ArrayList<Uri> list;
+            synchronized (staged) { list = new ArrayList<>(staged); staged.clear(); }
+            if (list.isEmpty()) return false;
+            openWhatsApp(list, mime, phone);
+            return true;
+        }
+
+        Uri shareUri(String base64, String name) throws Exception {
+            byte[] bytes = Base64.decode(base64, Base64.DEFAULT);
+            File dir = new File(getCacheDir(), "share");
+            if (!dir.exists() && !dir.mkdirs()) throw new Exception("no dir");
+            File f = new File(dir, name.replaceAll("[\\\\/:*?\"<>|]", "_"));
+            try (OutputStream o = new FileOutputStream(f)) { o.write(bytes); }
+            return FileProvider.getUriForFile(MainActivity.this, getPackageName() + ".files", f);
+        }
+
+        void openWhatsApp(ArrayList<Uri> uris, String mime, String phone) {
+            final String digits = phone == null ? "" : phone.replaceAll("[^0-9]", "");
+            runOnUiThread(() -> {
+                Intent send = uris.size() == 1
+                        ? new Intent(Intent.ACTION_SEND).putExtra(Intent.EXTRA_STREAM, uris.get(0))
+                        : new Intent(Intent.ACTION_SEND_MULTIPLE).putParcelableArrayListExtra(Intent.EXTRA_STREAM, uris);
+                send.setType(mime).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                if (!digits.isEmpty()) send.putExtra("jid", digits + "@s.whatsapp.net");   // that person's chat; none = WhatsApp's chat list
+                for (String pkg : WHATSAPP) {
+                    try { startActivity(new Intent(send).setPackage(pkg)); return; } catch (ActivityNotFoundException ignored) { }
+                }
+                try { startActivity(Intent.createChooser(send, "পাঠান")); } catch (ActivityNotFoundException ignored) { }   // no WhatsApp on this phone
+            });
         }
     }
 
