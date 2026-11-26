@@ -25,15 +25,17 @@
   const NS = [1, 2, 4, 6, 9];
   if(!NS.includes(opts.n)) opts.n = 1;
 
+  // a small copy for the screen (the real file is used for printing)
+  async function looks(f){
+    const im = await decode(f), w = im.naturalWidth, h = im.naturalHeight, k = Math.min(1, 480 / Math.max(w, h));
+    const thumb = newCanvas(w * k, h * k); thumb.getContext('2d').drawImage(im, 0, 0, thumb.width, thumb.height);
+    return {w, h, thumb};
+  }
   async function addFiles(files){
     busy = `⏳ ${toBn(files.length)}টা ছবি খোলা হচ্ছে…`; render();
     let bad = 0;
     for(const f of files){
-      try{
-        const im = await decode(f), w = im.naturalWidth, h = im.naturalHeight, k = Math.min(1, 480 / Math.max(w, h));
-        const thumb = newCanvas(w * k, h * k); thumb.getContext('2d').drawImage(im, 0, 0, thumb.width, thumb.height);
-        items.push({key: ++seq, file: f, name: f.name || 'ছবি', w, h, thumb, rot: 0});
-      }catch(_){ bad++; }
+      try{ items.push({key: ++seq, file: f, name: f.name || 'ছবি', rot: 0, ...(await looks(f))}); }catch(_){ bad++; }
       await tick();
     }
     busy = '';
@@ -101,14 +103,13 @@
       ${n ? `
       <section class="stp-card">
         <h2>🖼 ছবি <small class="q-h">${toBn(n)}টা</small></h2>
-        <p class="sub">⟳ দিয়ে ঘোরান, ◀ ▶ দিয়ে আগে-পরে সরান।</p>
+        <p class="sub">⟲ ⟳ দিয়ে ঘোরান, ✂ দিয়ে যতটুকু দরকার ততটুকু কেটে রাখুন।</p>
         <div class="prn-grid">${items.map((it, i) => `<div class="prn-it">
           <div class="prn-th"><canvas data-pth="${i}"></canvas><span class="q-no">${toBn(i + 1)}</span></div>
           <div class="prn-row">
             <button type="button" data-prot="${i}" data-d="-90" aria-label="বাঁয়ে ঘোরান">⟲</button>
             <button type="button" data-prot="${i}" data-d="90" aria-label="ডানে ঘোরান">⟳</button>
-            <button type="button" data-pmv="${i}" data-d="-1" ${i ? '' : 'disabled'} aria-label="আগে নিন">◀</button>
-            <button type="button" data-pmv="${i}" data-d="1" ${i < n - 1 ? '' : 'disabled'} aria-label="পরে নিন">▶</button>
+            <button type="button" class="cr" data-pcrop="${i}" aria-label="কাটুন">✂ কাটুন</button>
             <button type="button" class="x" data-px="${i}" aria-label="বাদ দিন">×</button>
           </div></div>`).join('')}</div>
         <div class="stp-acts"><button type="button" class="stp-btn" id="prRotAll">⟳ সব ঘোরান</button><button type="button" class="stp-btn" id="prClear">🗑 সব বাদ দিন</button></div>
@@ -153,7 +154,7 @@
     if($('prPdf')) $('prPdf').onchange = async e => { const f = e.target.files && e.target.files[0]; e.target.value = ''; if(f) await printPdfFile(f); };
     if($('prVl')) $('prVl').onclick = pickVouchers;
     root.querySelectorAll('[data-prot]').forEach(b => b.onclick = () => { const it = items[+b.dataset.prot]; it.rot = (it.rot + Number(b.dataset.d) + 360) % 360; render(); });
-    root.querySelectorAll('[data-pmv]').forEach(b => b.onclick = () => { const i = +b.dataset.pmv, j = i + Number(b.dataset.d); if(j < 0 || j >= items.length) return; [items[i], items[j]] = [items[j], items[i]]; render(); });
+    root.querySelectorAll('[data-pcrop]').forEach(b => b.onclick = () => cropItem(+b.dataset.pcrop));
     root.querySelectorAll('[data-px]').forEach(b => b.onclick = () => { items.splice(+b.dataset.px, 1); render(); });
     if($('prRotAll')) $('prRotAll').onclick = () => { items.forEach(it => { it.rot = (it.rot + 90) % 360; }); render(); };
     if($('prClear')) $('prClear').onclick = () => {
@@ -226,6 +227,94 @@
     fr.onload = () => setTimeout(() => { try{ fr.contentWindow.focus(); fr.contentWindow.print(); }catch(_){ window.open(url, '_blank'); } }, 300);
     fr.src = url; document.body.appendChild(fr);
     setTimeout(() => { fr.remove(); URL.revokeObjectURL(url); }, 120000);
+  }
+
+  /* ---------- ✂ কাটুন: keep only a part of one picture (drag the box / its corners; ✨ finds the paper by itself) ----------
+     The cut is made from the full photo, turned the way it shows; the result becomes the picture (↺ brings the original back). */
+  async function cropItem(i){
+    const it = items[i]; if(!it) return;
+    let im; try{ im = await decode(it.file); }catch(e){ toast('<b>⚠️ ছবিটা খোলা গেল না</b>'); return; }
+    const r = ((it.rot % 360) + 360) % 360, side = r === 90 || r === 270;
+    const W0 = side ? im.naturalHeight : im.naturalWidth, H0 = side ? im.naturalWidth : im.naturalHeight;
+    const turned = (c, k, ox, oy) => {   // the photo turned by r, scaled by k, moved by (ox, oy)
+      const ctx = c.getContext('2d'); ctx.save(); ctx.translate(W0 * k / 2 - ox, H0 * k / 2 - oy); ctx.rotate(r * Math.PI / 180);
+      ctx.drawImage(im, -im.naturalWidth * k / 2, -im.naturalHeight * k / 2, im.naturalWidth * k, im.naturalHeight * k); ctx.restore();
+    };
+    const kv = Math.min(1, 1400 / Math.max(W0, H0)), view = newCanvas(W0 * kv, H0 * kv); turned(view, kv, 0, 0);
+    let rc = {x: 0.03, y: 0.03, w: 0.94, h: 0.94};
+    const finder = window.__stampTools && window.__stampTools.findPaper;
+    const p = __auPop(`<h3>✂ ছবি কাটুন <button class="x" data-close aria-label="বন্ধ">✕</button></h3>
+      <p class="sub">সাদা বাক্সের কোণা টেনে যতটুকু রাখবেন ততটুকু বাছাই করুন — বাক্সের ভিতরে টেনে পুরো বাক্স সরান।</p>
+      <div class="prn-crop"><canvas id="crCv"></canvas></div>
+      <div class="stp-acts">${finder ? '<button type="button" class="stp-btn" id="crAuto">✨ কাগজ নিজে খুঁজুন</button>' : ''}<button type="button" class="stp-btn" id="crAll">⬜ পুরো ছবি</button>${it.orig ? '<button type="button" class="stp-btn" id="crBack">↺ আসল ছবি ফেরত</button>' : ''}</div>
+      <div class="acts"><button type="button" data-close>বাতিল</button><button type="button" class="p" id="crOk">✓ কাটুন</button></div>`);
+    p.el.classList.add('prn-pop');
+    const cv = p.el.querySelector('#crCv'), ctx = cv.getContext('2d');
+    const box = p.el.querySelector('.prn-crop'), maxW = Math.max(200, box.clientWidth - 4), maxH = Math.max(220, window.innerHeight * 0.55);
+    const ks = Math.min(maxW / view.width, maxH / view.height, 1); cv.width = Math.round(view.width * ks); cv.height = Math.round(view.height * ks);
+    const draw = () => {
+      ctx.drawImage(view, 0, 0, cv.width, cv.height);
+      const x = rc.x * cv.width, y = rc.y * cv.height, w = rc.w * cv.width, h = rc.h * cv.height;
+      ctx.fillStyle = 'rgba(15,23,42,.55)'; ctx.beginPath(); ctx.rect(0, 0, cv.width, cv.height); ctx.rect(x + w, y, -w, h); ctx.fill('evenodd');
+      ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.strokeRect(x, y, w, h);
+      ctx.setLineDash([4, 4]); ctx.strokeStyle = 'rgba(255,255,255,.6)'; ctx.lineWidth = 1;
+      for(const t of [1 / 3, 2 / 3]){ ctx.beginPath(); ctx.moveTo(x + w * t, y); ctx.lineTo(x + w * t, y + h); ctx.moveTo(x, y + h * t); ctx.lineTo(x + w, y + h * t); ctx.stroke(); }
+      ctx.setLineDash([]);
+      [[x, y], [x + w, y], [x + w, y + h], [x, y + h]].forEach(([a, b]) => { ctx.beginPath(); ctx.arc(a, b, 10, 0, Math.PI * 2); ctx.fillStyle = '#fff'; ctx.fill(); ctx.lineWidth = 3; ctx.strokeStyle = '#1F4AA8'; ctx.stroke(); });
+    };
+    draw();
+    const pos = e => { const b = cv.getBoundingClientRect(); return {x: (e.clientX - b.left) / b.width, y: (e.clientY - b.top) / b.height, px: b.width, py: b.height}; };
+    let drag = null;
+    cv.onpointerdown = e => {
+      const q = pos(e), cs = [[rc.x, rc.y], [rc.x + rc.w, rc.y], [rc.x + rc.w, rc.y + rc.h], [rc.x, rc.y + rc.h]];
+      let best = -1, bd = 1e9; cs.forEach(([a, b], k) => { const d = Math.hypot((a - q.x) * q.px, (b - q.y) * q.py); if(d < bd){ bd = d; best = k; } });
+      if(bd < 34) drag = {k: best};
+      else if(q.x > rc.x && q.x < rc.x + rc.w && q.y > rc.y && q.y < rc.y + rc.h) drag = {move: true, dx: q.x - rc.x, dy: q.y - rc.y};
+      else drag = {k: 2, from: {x: q.x, y: q.y}};   // outside the box: draw a new one from here
+      if(drag.from){ rc = {x: q.x, y: q.y, w: 0.02, h: 0.02}; }
+      cv.setPointerCapture(e.pointerId); e.preventDefault();
+    };
+    cv.onpointermove = e => {
+      if(!drag) return;
+      const q = pos(e), X = Math.min(1, Math.max(0, q.x)), Y = Math.min(1, Math.max(0, q.y)), MIN = 0.04;
+      if(drag.move){ rc.x = Math.min(1 - rc.w, Math.max(0, X - drag.dx)); rc.y = Math.min(1 - rc.h, Math.max(0, Y - drag.dy)); }
+      else {
+        let x1 = rc.x, y1 = rc.y, x2 = rc.x + rc.w, y2 = rc.y + rc.h;
+        if(drag.from){ x1 = Math.min(drag.from.x, X); x2 = Math.max(drag.from.x, X); y1 = Math.min(drag.from.y, Y); y2 = Math.max(drag.from.y, Y); }
+        else {
+          if(drag.k === 0 || drag.k === 3) x1 = Math.min(X, x2 - MIN); else x2 = Math.max(X, x1 + MIN);
+          if(drag.k === 0 || drag.k === 1) y1 = Math.min(Y, y2 - MIN); else y2 = Math.max(Y, y1 + MIN);
+        }
+        rc = {x: x1, y: y1, w: Math.max(MIN, x2 - x1), h: Math.max(MIN, y2 - y1)};
+      }
+      draw();
+    };
+    cv.onpointerup = cv.onpointercancel = () => { drag = null; };
+    const $p = id => p.el.querySelector('#' + id);
+    if($p('crAuto')) $p('crAuto').onclick = () => {
+      try{
+        const q = finder(view), xs = q.map(t => t.x / view.width), ys = q.map(t => t.y / view.height);
+        const x1 = Math.max(0, Math.min(...xs)), y1 = Math.max(0, Math.min(...ys)), x2 = Math.min(1, Math.max(...xs)), y2 = Math.min(1, Math.max(...ys));
+        if(x2 - x1 > 0.05 && y2 - y1 > 0.05) rc = {x: x1, y: y1, w: x2 - x1, h: y2 - y1};
+        draw();
+      }catch(_){ toast('<b>কাগজ খুঁজে পাওয়া গেল না</b><span>কোণা টেনে নিজে ঠিক করুন।</span>'); }
+    };
+    $p('crAll').onclick = () => { rc = {x: 0, y: 0, w: 1, h: 1}; draw(); };
+    if($p('crBack')) $p('crBack').onclick = async () => {
+      Object.assign(it, {file: it.orig.file, rot: it.orig.rot}, await looks(it.orig.file)); delete it.orig; p.close(); render();
+    };
+    $p('crOk').onclick = async () => {
+      const b = $p('crOk'); b.disabled = true; b.textContent = '⏳ কাটা হচ্ছে…';
+      try{
+        const sx = Math.round(rc.x * W0), sy = Math.round(rc.y * H0), cw = Math.max(8, Math.round(rc.w * W0)), ch = Math.max(8, Math.round(rc.h * H0));
+        const c = newCanvas(cw, ch), g = c.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, cw, ch);
+        turned(c, 1, sx, sy);
+        const blob = await new Promise(res => c.toBlob(res, 'image/jpeg', 0.92));
+        if(!it.orig) it.orig = {file: it.file, rot: it.rot};
+        Object.assign(it, {file: blob, rot: 0}, await looks(blob));
+        p.close(); render();
+      }catch(e){ b.disabled = false; b.textContent = '✓ কাটুন'; toast('<b>⚠️ কাটা গেল না</b><span>' + esc(e.message || e) + '</span>'); }
+    };
   }
 
   /* ---------- 📁 from the voucher list (kept on this phone by the স্ট্যাম্প page) ---------- */
