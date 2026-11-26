@@ -10,8 +10,8 @@ android {
         applicationId 'com.krb.khata'
         minSdk 24   // Android 7.0 and newer
         targetSdk 36
-        versionCode 5
-        versionName '1.4'
+        versionCode 6
+        versionName '1.5'
     }
 
     signingConfigs {

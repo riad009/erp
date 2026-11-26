@@ -211,6 +211,14 @@
   const mb = n => toBn((n / 1048576).toFixed(n < 10485760 ? 1 : 0));
   const ACT = {save: '⬇ নামানো', print: '🖨 প্রিন্ট', share: '📤 শেয়ার'};
   const ANY = {id: '*', name: '', phone: ''};
+  // 🖨 in a browser always; in the Android app only from 1.5 (KhataApp.printPdf → the phone's print screen → HP printer)
+  const canPrint = () => !window.KhataApp || !!window.KhataApp.printPdf;
+  const blobUrl = b => new Promise(res => { const r = new FileReader(); r.onload = () => res(r.result); r.readAsDataURL(b); });
+  async function appPrintVouchers(fs){
+    const P = window.__khataPrint; if(!P) return null;
+    const pdf = await P.imgsToPdf(await Promise.all(fs.map(f => blobUrl(f.blob))));
+    return await P.appPrint(pdf, fs.length > 1 ? `ভাউচার-${toBn(fs.length)}টা.pdf` : fs[0].name.replace(/\.jpg$/, '.pdf'));
+  }
   const anyBtn = (label = '📲 WhatsApp-এ শেয়ার করুন', attr = 'data-waany') => `<button type="button" class="wa-any" ${attr}>${label}<small>যে কাউকে · যেকোনো গ্রুপে</small></button>`;
   const tagsOf = m => { const seen = new Set(), out = [];
     for(const a of (m.acts || [])){ const t = a.k === 'wa' ? '📲 ' + (a.to || 'WhatsApp') : ACT[a.k]; if(t && !seen.has(t)){ seen.add(t); out.push(t); } }
@@ -274,7 +282,7 @@
           <div class="stp-acts">
             <button type="button" class="stp-btn main" id="vSave">⬇ ছবি নামান</button>
             <button type="button" class="stp-btn" id="vKeep">${keepLabel()}</button>
-            ${window.KhataApp ? '' : '<button type="button" class="stp-btn" id="vPrint">🖨 প্রিন্ট</button>'}
+            ${canPrint() ? '<button type="button" class="stp-btn" id="vPrint">🖨 প্রিন্ট</button>' : ''}
             ${navigator.canShare ? '<button type="button" class="stp-btn" id="vShare">📤 শেয়ার</button>' : ''}
           </div>
           <div class="stp-wa">${anyBtn()}<p class="sub">WhatsApp খুলবে — যে কাউকে বা যেকোনো গ্রুপে বেছে Send চাপুন।</p></div>
@@ -318,7 +326,7 @@
         <div class="stp-acts">
           <button type="button" class="stp-btn main" data-qrun="save">⬇ সব নামান (${n}টা)</button>
           <button type="button" class="stp-btn" data-qrun="keep">💾 সব লিস্টে রাখুন</button>
-          ${window.KhataApp ? '' : '<button type="button" class="stp-btn" data-qrun="print">🖨 সব প্রিন্ট</button>'}
+          ${canPrint() ? '<button type="button" class="stp-btn" data-qrun="print">🖨 সব প্রিন্ট</button>' : ''}
           ${navigator.canShare ? '<button type="button" class="stp-btn" data-qrun="share">📤 সব শেয়ার</button>' : ''}
         </div>
         <div class="stp-wa">${anyBtn(`📲 WhatsApp-এ ${n}টা শেয়ার করুন`, 'data-qrun="wa"')}<p class="sub">WhatsApp খুলবে — যে কাউকে বা যেকোনো গ্রুপে বেছে Send চাপুন।</p></div>
@@ -474,7 +482,7 @@
       if(btn) btn.textContent = how === 'wa' ? '⏳ WhatsApp খুলছে…' : '⏳ একটু অপেক্ষা…';
       let done = null;
       if(how === 'save') done = await saveMany(fs);
-      else if(how === 'print') done = printMany(fs);
+      else if(how === 'print') done = await printMany(fs);
       else if(how === 'share') done = await shareMany(fs);
       else if(how === 'wa') done = await waMany(ANY, fs) ? 'wa' : null;
       for(let i = 0; i < items.length; i++){
@@ -501,6 +509,7 @@
     return 'save';
   }
   function printMany(fs){
+    if(window.KhataApp) return appPrintVouchers(fs);
     const urls = fs.map(f => URL.createObjectURL(f.blob)), f = document.createElement('iframe');
     f.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0';
     document.body.appendChild(f);
@@ -645,7 +654,7 @@
       <label class="f" for="vlNote">📝 নোট</label><input type="text" id="vlNote" autocomplete="off" maxlength="120" value="${esc(m.note || '')}" placeholder="যেমন: Karnafully জমা ৫০,০০০">
       <div class="stp-acts">
         <button type="button" class="stp-btn main" data-vx="save">⬇ ছবি নামান</button>
-        ${window.KhataApp ? '' : '<button type="button" class="stp-btn" data-vx="print">🖨 প্রিন্ট</button>'}
+        ${canPrint() ? '<button type="button" class="stp-btn" data-vx="print">🖨 প্রিন্ট</button>' : ''}
         ${navigator.canShare ? '<button type="button" class="stp-btn" data-vx="share">📤 শেয়ার</button>' : ''}
       </div>
       <div class="stp-wa vl-wa">${anyBtn()}</div>
@@ -882,6 +891,7 @@
       try{ if(navigator.canShare && navigator.canShare({files: [file]})){ await navigator.share({files: [file], title: 'ভাউচার'}); return 'share'; } }catch(e){ if(e && e.name === 'AbortError') return false; }
       how = 'save';
     }
+    if(how === 'print' && window.KhataApp) return appPrintVouchers([{blob, name}]);
     if(how === 'print'){
       const url = URL.createObjectURL(blob), f = document.createElement('iframe');
       f.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0';

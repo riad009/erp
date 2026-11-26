@@ -9,6 +9,13 @@ import android.graphics.Color;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.CancellationSignal;
+import android.os.ParcelFileDescriptor;
+import android.print.PageRange;
+import android.print.PrintAttributes;
+import android.print.PrintDocumentAdapter;
+import android.print.PrintDocumentInfo;
+import android.print.PrintManager;
 import android.os.Environment;
 import android.provider.MediaStore;
 import android.util.Base64;
@@ -32,6 +39,8 @@ import android.window.OnBackInvokedDispatcher;
 import androidx.core.content.FileProvider;
 
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.InputStream;
 import java.io.FileOutputStream;
 import java.io.OutputStream;
 import java.util.ArrayList;
@@ -223,7 +232,7 @@ public class MainActivity extends Activity {
     // old camera photos / shared pictures (older than 2 days) are removed so the app doesn't grow
     void cleanCache() {
         long old = System.currentTimeMillis() - 2L * 24 * 3600 * 1000;
-        for (String d : new String[]{"camera", "share"}) {
+        for (String d : new String[]{"camera", "share", "print"}) {
             File[] fs = new File(getCacheDir(), d).listFiles();
             if (fs != null) for (File f : fs) if (f.lastModified() < old) f.delete();
         }
@@ -300,6 +309,43 @@ public class MainActivity extends Activity {
                 ArrayList<Uri> one = new ArrayList<>();
                 one.add(shareUri(base64, name));
                 openWhatsApp(one, mime, phone);
+                return true;
+            } catch (Exception e) {
+                return false;
+            }
+        }
+
+        /** 🖨 window.KhataApp.printPdf(base64, name): the phone's print screen with this PDF (pick the printer, e.g. the shop's HP on the same Wi-Fi). */
+        @JavascriptInterface
+        public boolean printPdf(String base64, String name) {
+            try {
+                byte[] bytes = Base64.decode(base64, Base64.DEFAULT);
+                File dir = new File(getCacheDir(), "print");
+                if (!dir.exists() && !dir.mkdirs()) return false;
+                final File f = new File(dir, "print-" + System.currentTimeMillis() + ".pdf");
+                try (OutputStream o = new FileOutputStream(f)) { o.write(bytes); }
+                final String job = (name == null || name.isEmpty() ? "হিসাব খাতা" : name).replaceAll("\\.pdf$", "");
+                runOnUiThread(() -> {
+                    PrintManager pm = (PrintManager) getSystemService(PRINT_SERVICE);
+                    if (pm == null) return;
+                    pm.print(job, new PrintDocumentAdapter() {
+                        @Override
+                        public void onLayout(PrintAttributes oldA, PrintAttributes newA, CancellationSignal cancel, LayoutResultCallback cb, Bundle extras) {
+                            if (cancel.isCanceled()) { cb.onLayoutCancelled(); return; }
+                            cb.onLayoutFinished(new PrintDocumentInfo.Builder(job + ".pdf").setContentType(PrintDocumentInfo.CONTENT_TYPE_DOCUMENT).build(), true);
+                        }
+                        @Override
+                        public void onWrite(PageRange[] pages, ParcelFileDescriptor dest, CancellationSignal cancel, WriteResultCallback cb) {
+                            try (InputStream in = new FileInputStream(f); OutputStream out = new FileOutputStream(dest.getFileDescriptor())) {
+                                byte[] buf = new byte[16384]; int n;
+                                while ((n = in.read(buf)) > 0) { if (cancel.isCanceled()) { cb.onWriteCancelled(); return; } out.write(buf, 0, n); }
+                                cb.onWriteFinished(new PageRange[]{PageRange.ALL_PAGES});
+                            } catch (Exception e) {
+                                cb.onWriteFailed(e.getMessage());
+                            }
+                        }
+                    }, new PrintAttributes.Builder().setMediaSize(PrintAttributes.MediaSize.ISO_A4).build());
+                });
                 return true;
             } catch (Exception e) {
                 return false;

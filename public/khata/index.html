@@ -630,6 +630,8 @@ body:not(.on-ledger) .tabs button[aria-selected="true"]{background:#1F4AA8;color
 .lsum .big b{font-size:28px;color:var(--red)}
 .pdfbtn{display:block;width:100%;padding:12px;margin:0 0 12px;background:var(--blue);color:#fff;font-family:var(--print);font-weight:700;font-size:16px;border-radius:8px}
 .pdfbtn:disabled{opacity:.7}
+.pdfbtns{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:0 0 12px}
+.pdfbtns .pdfbtn{margin:0}
 
 /* the paper sheet (screen + PDF) */
 .lpaper{background:#fff;border:1px solid #E5C7CC;border-left:3px double #E28B97;border-radius:2px;padding:14px 12px 16px 16px;box-shadow:0 2px 6px rgba(0,0,0,.06);color:#1B2347}
@@ -1397,6 +1399,8 @@ body.theme-pro .tabs button[aria-selected="true"]{background:#EAF0FC!important;c
 .bk-note{font-family:"Tiro Bangla",serif;font-size:13px;color:var(--muted);margin:8px 0}
 .bk-pdf{width:100%;padding:13px;border-radius:10px;background:var(--blue);color:#fff;font-family:"Tiro Bangla",serif;font-weight:700;font-size:16px}
 .bk-pdf:disabled{opacity:.5}
+.bk-btns{display:flex;flex-wrap:wrap;gap:8px}
+.bk-btns .bk-pdf{flex:1 1 140px}
 .bk-t td.nm small.ld{display:none}
 @media (max-width: 520px){ .bk-t th.d,.bk-t td.d{display:none} .bk-t td.nm small.ld{display:block;font-size:12px} }
 @media (min-width: 900px){
@@ -1405,7 +1409,7 @@ body.theme-pro .tabs button[aria-selected="true"]{background:#EAF0FC!important;c
   .bk-sum>div+div{border-left:1px dashed var(--line)}
   .bk-tools{flex-direction:row;align-items:center;flex-wrap:wrap}
   .bk-tools input{flex:1 1 260px;width:auto}
-  .bk-pdf{width:auto;padding:11px 22px}
+  .bk-pdf{width:auto;padding:11px 22px} .bk-btns .bk-pdf{flex:0 0 auto}
 }
 /* PDF paper */
 .bkpaper{width:760px;background:#fff;color:#1B2347;padding:28px 30px;font-family:"Noto Sans Bengali","Hind Siliguri",sans-serif}
@@ -2920,6 +2924,8 @@ html body #stock .ssub .st[aria-selected="false"]:hover{filter:brightness(.97)}
 .mrow.mrow2 .mst .mdel{margin-left:auto;font-family:"Noto Sans Bengali",sans-serif;font-size:13px;font-weight:700;color:#B3122B;background:#fff;border:1.5px solid #E8A3AE;border-radius:999px;padding:3px 10px;cursor:pointer}
 .mrow.mrow2 .mst .mdel:hover{background:#FDE8EB}
 .m-acts:has(#mDel){grid-template-columns:repeat(4,minmax(0,1fr))}
+.m-acts:has(#mPrint){grid-template-columns:repeat(5,minmax(0,1fr))}
+@media (max-width: 600px){ .m-acts:has(#mPrint){grid-template-columns:repeat(3,minmax(0,1fr))} }
 .mbtn.del{background:#fff!important;color:#B3122B!important;border:1.5px solid #E8A3AE}
 #ledger .acct .lbtn.ldel{color:#B3122B!important;border-color:#E8A3AE!important;background:#fff!important}
 .nz.np .np3.np2{grid-template-columns:repeat(2,minmax(0,1fr))}
@@ -7239,8 +7245,45 @@ document.addEventListener('input', e=>{
   }) });
   const getDL = () => { if(!dlP) dlP = window.KhataApp && window.KhataApp.saveFile ? Promise.resolve(appDL())
     : (window.claude && typeof window.claude.use === 'function') ? window.claude.use('downloads').catch(()=>null) : Promise.resolve(null); return dlP; };
-  async function makePdf(paperHtml, filename, btn, fitOne){
-    const orig = btn ? btn.innerHTML : '';
+  // 🖨 প্রিন্ট (owner bought an HP Smart Tank 580): computer / phone browser → the browser's print window (pick the HP printer there);
+  // Android app ≥ 1.5 → the phone's own print screen (KhataApp.printPdf); older app → the PDF is saved and opened, print from there
+  const blobB64 = blob => new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(String(r.result).split(',')[1]); r.onerror = rej; r.readAsDataURL(blob); });
+  function printImgs(imgs, title){
+    const f = document.createElement('iframe');
+    f.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0';
+    document.body.appendChild(f);
+    f.contentDocument.write(`<html><head><title>${String(title || '').replace(/[<>&]/g, '')}</title><style>@page{size:A4;margin:8mm}html,body{margin:0;background:#fff}div{page-break-after:always;break-after:page}div:last-child{page-break-after:auto;break-after:auto}img{display:block;width:100%;height:auto;max-height:279mm;object-fit:contain;margin:0 auto}</style></head><body>${imgs.map(u => `<div><img src="${u}"></div>`).join('')}</body></html>`);
+    f.contentDocument.close();
+    const done = () => setTimeout(() => f.remove(), 800);
+    f.contentWindow.onafterprint = done;
+    const all = [...f.contentDocument.querySelectorAll('img')];
+    Promise.all(all.map(i => i.complete ? 1 : new Promise(r => { i.onload = i.onerror = r; }))).then(() => { f.contentWindow.focus(); f.contentWindow.print(); setTimeout(() => { if(f.isConnected) done(); }, 60000); });
+  }
+  async function appPrint(blob, filename){
+    const app = window.KhataApp;
+    if(app.printPdf) return app.printPdf(await blobB64(blob), filename) ? 'print' : false;
+    const dl = await getDL(); await dl.save({filename, data: blob});
+    kToast('<b>সরাসরি প্রিন্টের জন্য নতুন অ্যাপ (১.৫) লাগবে</b><span>এখন PDF খোলা হলো — সেখান থেকে প্রিন্ট করুন।</span>', 7000);
+    return 'pdf';
+  }
+  // pictures (vouchers) → one PDF, one A4 page each, turned to fit the picture
+  async function imgsToPdf(urls){
+    await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
+    const { jsPDF } = window.jspdf; let pdf = null;
+    for(const u of urls){
+      const im = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = u; });
+      const o = im.naturalWidth > im.naturalHeight ? 'landscape' : 'portrait';
+      if(!pdf) pdf = new jsPDF({unit:'pt', format:'a4', orientation:o}); else pdf.addPage('a4', o);
+      const pw = pdf.internal.pageSize.getWidth(), ph = pdf.internal.pageSize.getHeight(), m = 18;
+      const k = Math.min((pw - 2*m) / im.naturalWidth, (ph - 2*m) / im.naturalHeight), w = im.naturalWidth * k, h = im.naturalHeight * k;
+      pdf.addImage(u, 'JPEG', (pw - w) / 2, m, w, h);
+    }
+    return pdf.output('blob');
+  }
+  window.__khataPrint = {printImgs, appPrint, imgsToPdf, canPrint: () => !window.KhataApp || !!window.KhataApp.printPdf};
+
+  async function makePdf(paperHtml, filename, btn, fitOne, mode){
+    const orig = btn ? btn.innerHTML : '', imgs = [];
     const say = t => { if(btn) btn.innerHTML = t; };
     try{
       say('তৈরি হচ্ছে…'); if(btn) btn.disabled = true;
@@ -7268,8 +7311,8 @@ document.addEventListener('input', e=>{
       if(fitOne){
         // a memo always goes on ONE page: shrink to fit if needed
         const s = Math.min((pw - 2*margin) / canvas.width, (ph - 2*margin) / canvas.height);
-        const w = canvas.width * s, h = canvas.height * s;
-        pdf.addImage(canvas.toDataURL('image/jpeg', 0.92), 'JPEG', (pw - w)/2, margin, w, h);
+        const w = canvas.width * s, h = canvas.height * s, u = canvas.toDataURL('image/jpeg', 0.92);
+        pdf.addImage(u, 'JPEG', (pw - w)/2, margin, w, h); imgs.push(u);
       } else {
         // long lists: split into pages only between rows
         const s = (pw - 2*margin) / canvas.width;
@@ -7283,11 +7326,18 @@ document.addEventListener('input', e=>{
           const g = part.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0,0,part.width,part.height);
           g.drawImage(canvas, 0, y, canvas.width, end - y, 0, 0, canvas.width, end - y);
           if(i) pdf.addPage();
-          pdf.addImage(part.toDataURL('image/jpeg', 0.92), 'JPEG', margin, margin, pw - 2*margin, (end - y) * s);
+          const u = part.toDataURL('image/jpeg', 0.92); imgs.push(u);
+          pdf.addImage(u, 'JPEG', margin, margin, pw - 2*margin, (end - y) * s);
           y = end; i++;
         }
       }
       const blob = pdf.output('blob');
+      if(mode === 'print'){
+        if(window.KhataApp){ const r = await appPrint(blob, filename); say(r === 'print' ? '✓ প্রিন্ট খোলা হয়েছে' : r ? '✓ PDF খোলা হয়েছে' : 'প্রিন্ট হয়নি'); }
+        else { printImgs(imgs, filename.replace(/\.pdf$/, '')); say('✓ প্রিন্ট খোলা হয়েছে'); }
+        setTimeout(()=>{ if(btn && btn.isConnected){ btn.innerHTML = orig; btn.disabled = false; } }, 2500);
+        return;
+      }
       const dl = await getDL();
       if(dl){
         try{ await dl.save({filename, data: blob}); say('✓ সেভ হয়েছে'); }
@@ -7296,7 +7346,7 @@ document.addEventListener('input', e=>{
         const url = URL.createObjectURL(blob); const w = window.open(url, '_blank');
         say(w ? '✓ খোলা হয়েছে' : 'এখানে ডাউনলোড চলে না');
       }
-    }catch(e){ say('PDF তৈরি হয়নি'); }
+    }catch(e){ say(mode === 'print' ? 'প্রিন্ট হয়নি' : 'PDF তৈরি হয়নি'); }
     setTimeout(()=>{ if(btn && btn.isConnected){ btn.innerHTML = orig; btn.disabled = false; } }, 2500);
   }
 
@@ -7508,6 +7558,7 @@ document.addEventListener('input', e=>{
         ${P.kg && P.e.status !== 'confirmed' ? `<div class="m-acts1"><div class="m-paynote warn">⏳ স্টকে মাল কম — এই মেমোর মাল এখনো যায়নি। স্টকে মাল আসলে নিজে থেকে যাবে।</div></div>` : ''}
         <div class="m-acts">
           <button type="button" class="mbtn" id="mEdit">✎ বদলান</button>
+          <button type="button" class="mbtn" id="mPrint">🖨 প্রিন্ট</button>
           <button type="button" class="mbtn" id="mPdf">⬇ PDF</button>
           <button type="button" class="mbtn del" id="mDel">🗑 ডিলিট</button>
           <button type="button" class="mbtn ghost" id="mClose">বন্ধ</button>
@@ -7523,6 +7574,7 @@ document.addEventListener('input', e=>{
     if(!window.__memoEsc){ window.__memoEsc = true; document.addEventListener('keydown', e => { if(e.key === 'Escape' && document.querySelector('.msheet-bg')) closeMemo(); }); }
     msheet.querySelector('#mEdit').onclick = () => { closeMemo(); L().edit(aid, eid); };
     msheet.querySelector('#mPdf').onclick = ev => makePdf(memoView(memoParts(aid,eid), true), `মেমো-${P.e.memoNo||''}-${P.a.name}.pdf`, ev.currentTarget, true);
+    msheet.querySelector('#mPrint').onclick = ev => makePdf(memoView(memoParts(aid,eid), true), `মেমো-${P.e.memoNo||''}-${P.a.name}.pdf`, ev.currentTarget, true, 'print');
     const c = msheet.querySelector('#mCfm'), u = msheet.querySelector('#mUnc');
     if(c) c.onclick = async () => { if(!c.classList.contains('armed')){ c.classList.add('armed'); c.textContent = `আবার চাপুন — মেমো #${toBn(P.e.memoNo||'')} এর মাল গেছে নিশ্চিত হবে`; return; } if(window.__canSend && !(await window.__canSend(aid, eid))){ window.showMemo(aid, eid); return; } L().setStatus(aid, eid, 'confirmed'); window.showMemo(aid, eid); };
     if(u) u.onclick = () => { L().setStatus(aid, eid, 'pending'); window.showMemo(aid, eid); };
@@ -7707,15 +7759,17 @@ document.addEventListener('input', e=>{
         <div><span>মেমো</span><b>${bn(D.lines.length)} টি</b></div>
         <div class="big"><span>মোট লেবার খরচ</span><b>${bn(D.lab)} ৳</b></div>
       </section>
-      <button type="button" class="pdfbtn" id="lPdf">⬇ PDF ডাউনলোড (প্রিন্টের জন্য)</button>
+      <div class="pdfbtns"><button type="button" class="pdfbtn" id="lPrint">🖨 প্রিন্ট</button><button type="button" class="pdfbtn" id="lPdf">⬇ PDF ডাউনলোড</button></div>
       ${labourPaper(D,false)}
       <p class="tnote">যে মেমোর মাল গেছে তার লেবার এখানে আসে, যেদিন মাল গেছে সেই তারিখে। কোনো লাইনে চাপ দিলে মেমো খুলবে।</p>`;
-    splitCols(lroot, '.lrate, .chips, .crange, .rlabel, .lsum, .pdfbtn');
+    splitCols(lroot, '.lrate, .chips, .crange, .rlabel, .lsum, .pdfbtns');
     bindPeriod(lroot, lst, 'l', 'kg-khata-labour-view', renderLabour);
     const ri = document.getElementById('lRate');
     ri.onchange = () => { const v = num(ri.value); if(v > 0){ lrate = v; saveLRate(); renderLabour(); } };
     ri.onkeydown = ev => { if(ev.key==='Enter'){ ev.preventDefault(); ri.blur(); } };
-    document.getElementById('lPdf').onclick = ev => makePdf(labourPaper(labourData(), true), `লেবার-হিসাব-${D.f===D.t?D.f:D.f+'_'+D.t}.pdf`.replace('0000-01-01_9999-12-31','সব'), ev.currentTarget);
+    const lName = () => `লেবার-হিসাব-${D.f===D.t?D.f:D.f+'_'+D.t}.pdf`.replace('0000-01-01_9999-12-31','সব');
+    document.getElementById('lPdf').onclick = ev => makePdf(labourPaper(labourData(), true), lName(), ev.currentTarget);
+    document.getElementById('lPrint').onclick = ev => makePdf(labourPaper(labourData(), true), lName(), ev.currentTarget, false, 'print');
     lroot.querySelectorAll('.lpaper .lp-row[data-a]').forEach(()=>{});
     const rows = lroot.querySelectorAll('.lpaper .lp-row:not(.empty)');
     rows.forEach((r,i) => { r.tabIndex = 0; r.onclick = () => window.showMemo(D.lines[i].a.id, D.lines[i].e.id); });
@@ -7923,7 +7977,7 @@ setTimeout(() => { try{ if(window.__ledger && window.__ledger.autoSend) window._
         ${list.length ? `<div class="bk-tot"><span>মোট (${toBn(list.length)} জন)</span><b class="${listTot<0?'g':''}">${amt(listTot)}</b></div>` : ''}`;
       })()}
       <p class="bk-note">লাইনে চাপ দিলে ওই পার্টির খতিয়ান খুলবে।</p>
-      <button type="button" class="bk-pdf" id="bkPdf" ${list.length ? '' : 'disabled'}>⬇ বাকি লিস্ট PDF</button>`;
+      <div class="bk-btns"><button type="button" class="bk-pdf" id="bkPrint" ${list.length ? '' : 'disabled'}>🖨 প্রিন্ট</button><button type="button" class="bk-pdf" id="bkPdf" ${list.length ? '' : 'disabled'}>⬇ বাকি লিস্ট PDF</button></div>`;
 
     const q = document.getElementById('bkQ');
     q.oninput = () => { view.q = q.value; render(); };
@@ -7936,6 +7990,7 @@ setTimeout(() => { try{ if(window.__ledger && window.__ledger.autoSend) window._
     });
     const pb = document.getElementById('bkPdf');
     pb.onclick = ev => { if(window.__makePdf) window.__makePdf(paper(list, listTot), `বাকি-লিস্ট-${new Date().toISOString().slice(0,10)}.pdf`, ev.currentTarget); };
+    document.getElementById('bkPrint').onclick = ev => { if(window.__makePdf) window.__makePdf(paper(list, listTot), `বাকি-লিস্ট-${new Date().toISOString().slice(0,10)}.pdf`, ev.currentTarget, false, 'print'); };
   }
   window.__bakiRender = render;
   const prev = window.__extrasRefresh;
