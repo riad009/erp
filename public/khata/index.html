@@ -3263,6 +3263,21 @@ body.addmodal-on{overflow:hidden}
 .wa-any:active{background:#178C46}
 .stp-wait{margin:12px 0 0;padding:10px 12px;border-radius:10px;background:#FFF8E6;border:1px dashed #E5C46B;color:#7A5A0B;font-weight:700;font-size:14px}
 .stp-wait[hidden]{display:none}
+/* 🖨 the final look before printing */
+.kp-bg{position:fixed;inset:0;z-index:330;background:#4A5163;display:flex;flex-direction:column;font-family:"Noto Sans Bengali","Hind Siliguri",sans-serif}
+.kp-top{display:flex;align-items:center;gap:10px;padding:calc(10px + env(safe-area-inset-top)) 14px 10px;background:#1B2347;color:#fff}
+.kp-top h3{margin:0;flex:1;font-family:"Tiro Bangla","Noto Sans Bengali",serif;font-size:18px}
+.kp-top small{display:block;font-family:"Noto Sans Bengali",sans-serif;font-size:12.5px;font-weight:600;opacity:.85;margin-top:2px}
+.kp-top .x{border:0;background:rgba(255,255,255,.14);color:#fff;border-radius:10px;width:38px;height:38px;font-size:17px;cursor:pointer}
+.kp-pages{flex:1;overflow:auto;padding:16px;display:flex;flex-direction:column;align-items:center;gap:6px;-webkit-overflow-scrolling:touch}
+.kp-sheet{flex:none;box-sizing:border-box;background:#fff;box-shadow:0 8px 26px rgba(0,0,0,.4);display:flex;justify-content:center;align-items:flex-start}
+.kp-sheet img{display:block;width:auto;height:auto}
+.kp-no{color:#E3E7F0;font-size:13px;font-weight:700;margin:2px 0 12px}
+.kp-bot{display:flex;gap:10px;padding:12px 14px calc(12px + env(safe-area-inset-bottom));background:#1B2347}
+.kp-bot button{flex:1;padding:14px 10px;border-radius:12px;border:0;font-family:inherit;font-size:16.5px;font-weight:800;cursor:pointer}
+.kp-bot .no{background:#fff;color:#344054;flex:0 0 32%}
+.kp-bot .go{background:#1FA855;color:#fff}
+.kp-bot .go:disabled{opacity:.75;cursor:wait}
 /* 🖨 প্রিন্ট page */
 .prn-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px;margin-top:8px}
 .prn-it{display:flex;flex-direction:column;gap:6px;padding:6px;border:1.5px solid #DCE3EE;border-radius:12px;background:#fff;min-width:0}
@@ -7283,7 +7298,9 @@ document.addEventListener('input', e=>{
   // owner's phone printed the WHOLE screen (menu, buttons… 2 pages): phone browsers (iPhone Safari, Chrome on Android) ignore
   // print() inside a hidden frame. So the pictures go into the page itself and a print-only style hides everything else;
   // each picture is kept inside one page (memo = always 1 page). full = the picture is already a whole A4 page (🖨 প্রিন্ট tab).
-  function printImgs(imgs, title, opt){
+  function printImgs(imgs, title, opt){ previewPrint(imgs, title, opt, null); }
+  // the print-only copy of the pages (ready before the print button is tapped, so the pictures are loaded)
+  function printHost(imgs, title, opt){
     const o = opt || {}, land = !!o.land;
     ['khPrintHost', 'khPrintCss'].forEach(id => { const el = document.getElementById(id); if(el) el.remove(); });
     const host = document.createElement('div'); host.id = 'khPrintHost';
@@ -7301,13 +7318,40 @@ document.addEventListener('input', e=>{
   .kp-pg img{display:block;width:auto;height:auto;max-width:${maxW};max-height:${maxH}}
 }`;
     document.head.appendChild(css); document.body.appendChild(host);
-    const oldTitle = document.title; document.title = String(title || oldTitle);
-    const clean = () => { window.removeEventListener('afterprint', clean); host.remove(); css.remove(); document.title = oldTitle; };
-    const all = [...host.querySelectorAll('img')];
-    Promise.all(all.map(i => (i.decode ? i.decode() : Promise.resolve()).catch(() => {}))).then(() => {
-      window.addEventListener('afterprint', clean);
-      window.print();
-    });
+    return () => { host.remove(); css.remove(); };
+  }
+  // owner: "print-er age final ekta preview dekhabe" — a full-screen look at exactly what will be printed (A4 pages, how many),
+  // and only its 🖨 প্রিন্ট করুন opens the printer screen. go = what that button does (Android app: the phone's print screen);
+  // none = the browser's print window with these pictures (only they are printed — printHost).
+  function previewPrint(imgs, title, opt, go){
+    const o = opt || {}, land = !!o.land, old = document.getElementById('kpPreview'); if(old) old.remove();
+    const clean = go ? null : printHost(imgs, title, o);
+    const avail = Math.min(window.innerWidth - 32, land ? 760 : 560), W = Math.max(220, avail), H = W * (land ? 210 / 297 : 297 / 210), mm = W / (land ? 297 : 210);
+    const pad = (o.full ? 5 : 8) * mm, maxH = (o.full ? (land ? 186 : 272) : (land ? 180 : 262)) * mm, maxW = o.full ? (land ? 272 : 186) * mm : W - 2 * pad;
+    const n = imgs.length, bn = v => String(v).replace(/[0-9]/g, d => '০১২৩৪৫৬৭৮৯'[d]);
+    const bg = document.createElement('div'); bg.className = 'kp-bg'; bg.id = 'kpPreview';
+    bg.setAttribute('role', 'dialog'); bg.setAttribute('aria-modal', 'true'); bg.setAttribute('aria-label', 'প্রিন্টের আগে দেখে নিন');
+    bg.innerHTML = `<div class="kp-top"><h3>🖨 প্রিন্টের আগে দেখে নিন<small>যা দেখছেন ঠিক তাই প্রিন্ট হবে · A4 ${land ? 'আড়াআড়ি' : 'খাড়া'} · ${bn(n)} পাতা</small></h3><button type="button" class="x" data-close aria-label="বন্ধ">✕</button></div>
+      <div class="kp-pages">${imgs.map((u, i) => `<div class="kp-sheet" style="width:${W}px;height:${H}px;padding:${pad}px"><img src="${u}" alt="পাতা ${bn(i + 1)}" style="max-width:${maxW}px;max-height:${maxH}px"></div><div class="kp-no">পাতা ${bn(i + 1)} / ${bn(n)}</div>`).join('')}</div>
+      <div class="kp-bot"><button type="button" class="no" data-close>বাতিল</button><button type="button" class="go" id="kpGo">🖨 প্রিন্ট করুন (${bn(n)} পাতা)</button></div>`;
+    document.body.appendChild(bg);
+    const close = () => { bg.remove(); window.removeEventListener('keydown', key, true); };
+    const key = e => { if(e.key === 'Escape'){ e.stopPropagation(); if(clean) clean(); close(); } };   // only the preview closes (not the memo under it)
+    window.addEventListener('keydown', key, true);
+    bg.querySelectorAll('[data-close]').forEach(b => b.onclick = () => { if(clean) clean(); close(); });
+    const btn = bg.querySelector('#kpGo');
+    btn.onclick = async () => {
+      if(!go){   // the browser: its print window, then everything back to normal
+        const after = () => { window.removeEventListener('afterprint', after); clean(); close(); };
+        window.addEventListener('afterprint', after);
+        const oldTitle = document.title; document.title = String(title || oldTitle);
+        window.print();
+        setTimeout(() => { document.title = oldTitle; }, 1500);
+        return;
+      }
+      btn.disabled = true; btn.textContent = '⏳ প্রিন্ট খোলা হচ্ছে…';
+      try{ await go(); close(); }catch(e){ btn.disabled = false; btn.textContent = '🖨 প্রিন্ট করুন'; if(typeof kToast === 'function') kToast('<b>⚠️ প্রিন্ট হয়নি</b><span>' + String(e && e.message || e) + '</span>', 5000); }
+    };
   }
   async function appPrint(blob, filename){
     const app = window.KhataApp;
@@ -7330,7 +7374,7 @@ document.addEventListener('input', e=>{
     }
     return pdf.output('blob');
   }
-  window.__khataPrint = {printImgs, appPrint, imgsToPdf, canPrint: () => !window.KhataApp || !!window.KhataApp.printPdf};
+  window.__khataPrint = {printImgs, previewPrint, appPrint, imgsToPdf, canPrint: () => !window.KhataApp || !!window.KhataApp.printPdf};
 
   async function makePdf(paperHtml, filename, btn, fitOne, mode){
     const orig = btn ? btn.innerHTML : '', imgs = [];
@@ -7383,9 +7427,8 @@ document.addEventListener('input', e=>{
       }
       const blob = pdf.output('blob');
       if(mode === 'print'){
-        if(window.KhataApp){ const r = await appPrint(blob, filename); say(r === 'print' ? '✓ প্রিন্ট খোলা হয়েছে' : r ? '✓ PDF খোলা হয়েছে' : 'প্রিন্ট হয়নি'); }
-        else { printImgs(imgs, filename.replace(/\.pdf$/, '')); say('✓ প্রিন্ট খোলা হয়েছে'); }
-        setTimeout(()=>{ if(btn && btn.isConnected){ btn.innerHTML = orig; btn.disabled = false; } }, 2500);
+        previewPrint(imgs, filename.replace(/\.pdf$/, ''), {}, window.KhataApp ? () => appPrint(blob, filename) : null);
+        if(btn){ btn.innerHTML = orig; btn.disabled = false; }   // ready again at once (the preview is open now)
         return;
       }
       const dl = await getDL();

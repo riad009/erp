@@ -510,8 +510,9 @@
   }
   // 🖨 vouchers: each on its own page (only the voucher is printed — see printImgs in index.html)
   async function printMany(fs){
-    if(window.KhataApp) return appPrintVouchers(fs);
-    window.__khataPrint.printImgs(fs.map(f => URL.createObjectURL(f.blob)), fs.length > 1 ? 'ভাউচার' : fs[0].name);
+    const urls = fs.map(f => URL.createObjectURL(f.blob)), title = fs.length > 1 ? 'ভাউচার' : fs[0].name;
+    // the final look first (owner), then the printer screen
+    window.__khataPrint.previewPrint(urls, title, {}, window.KhataApp ? () => appPrintVouchers(fs) : null);
     return 'print';
   }
   async function shareMany(fs){
@@ -885,7 +886,6 @@
       try{ if(navigator.canShare && navigator.canShare({files: [file]})){ await navigator.share({files: [file], title: 'ভাউচার'}); return 'share'; } }catch(e){ if(e && e.name === 'AbortError') return false; }
       how = 'save';
     }
-    if(how === 'print' && window.KhataApp) return appPrintVouchers([{blob, name}]);
     if(how === 'print') return printMany([{blob, name}]);
     if(window.KhataApp && window.KhataApp.saveFile){   // inside the Android app: Download/HisabKhata
       window.KhataApp.saveFile(await toB64(blob), name, 'image/jpeg'); return 'save';

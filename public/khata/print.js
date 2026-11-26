@@ -210,9 +210,8 @@
       const urls = await buildPages(btn);
       btn.textContent = '⏳ একটু অপেক্ষা…';
       if(how === 'pdf') await savePdf(await toPdf(urls), fileName());
-      else if(window.KhataApp){   // Android app: the phone's print screen (1.5) — older app opens the PDF
-        const P = window.__khataPrint;
-        if(P) await P.appPrint(await toPdf(urls), fileName()); else await savePdf(await toPdf(urls), fileName());
+      else if(window.KhataApp){   // Android app: the final look, then the phone's print screen (1.5) — older app opens the PDF
+        window.__khataPrint.previewPrint(urls, 'প্রিন্ট', {full: true, land: opts.land}, async () => window.__khataPrint.appPrint(await toPdf(urls), fileName()));
       } else printInBrowser(urls);
     }catch(e){ toast('<b>⚠️ ' + esc(e.message || e) + '</b>', 5000); }
     setTimeout(() => { running = false; if(btn.isConnected){ btn.innerHTML = label; btn.disabled = false; } }, 1500);
