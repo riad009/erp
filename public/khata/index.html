@@ -3279,6 +3279,7 @@ body.addmodal-on{overflow:hidden}
 .kp-bot button{flex:1;padding:14px 10px;border-radius:12px;border:0;font-family:inherit;font-size:16.5px;font-weight:800;cursor:pointer}
 .kp-bot .no{background:#fff;color:#344054;flex:0 0 32%}
 .kp-bot .go{background:#1FA855;color:#fff}
+.kp-bot .no.done{background:#E3F4E8;color:#14632F;flex:1}
 .kp-bot .go:disabled{opacity:.75;cursor:wait}
 /* 🖨 প্রিন্ট page */
 .prn-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px;margin-top:8px}
@@ -7337,18 +7338,24 @@ document.addEventListener('input', e=>{
       <div class="kp-pages">${imgs.map((u, i) => `<div class="kp-sheet" style="width:${W}px;height:${H}px;padding:${pad}px"><img src="${u}" alt="পাতা ${bn(i + 1)}" style="max-width:${maxW}px;max-height:${maxH}px"></div><div class="kp-no">পাতা ${bn(i + 1)} / ${bn(n)}</div>`).join('')}</div>
       <div class="kp-bot"><button type="button" class="no" data-close>বাতিল</button><button type="button" class="go" id="kpGo">🖨 প্রিন্ট করুন (${bn(n)} পাতা)</button></div>`;
     document.body.appendChild(bg);
-    const close = () => { bg.remove(); window.removeEventListener('keydown', key, true); };
+    const oldTitle = document.title;
+    const close = () => { bg.remove(); window.removeEventListener('keydown', key, true); document.title = oldTitle; };
     const key = e => { if(e.key === 'Escape'){ e.stopPropagation(); if(clean) clean(); close(); } };   // only the preview closes (not the memo under it)
     window.addEventListener('keydown', key, true);
     bg.querySelectorAll('[data-close]').forEach(b => b.onclick = () => { if(clean) clean(); close(); });
     const btn = bg.querySelector('#kpGo');
     btn.onclick = async () => {
-      if(!go){   // the browser: its print window, then everything back to normal
-        const after = () => { window.removeEventListener('afterprint', after); clean(); close(); };
-        window.addEventListener('afterprint', after);
-        const oldTitle = document.title; document.title = String(title || oldTitle);
+      if(!go){
+        // the browser's print window. A computer waits inside print() until it is closed → back to normal at once.
+        // iPhone / Android return from print() straight away (and even say "printed") while their print screen is still
+        // drawing the page — owner's iPhone printed the whole app on 2 pages because the print copy was removed then.
+        // So on a phone the print copy stays until this screen is closed.
+        document.title = String(title || oldTitle);
+        const t0 = Date.now();
         window.print();
-        setTimeout(() => { document.title = oldTitle; }, 1500);
+        if(Date.now() - t0 > 400){ clean(); close(); return; }
+        btn.textContent = '🖨 আবার প্রিন্ট করুন';
+        const no = bg.querySelector('.kp-bot .no'); no.textContent = '✓ শেষ — বন্ধ করুন'; no.classList.add('done');
         return;
       }
       btn.disabled = true; btn.textContent = '⏳ প্রিন্ট খোলা হচ্ছে…';
