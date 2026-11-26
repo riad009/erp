@@ -508,16 +508,10 @@
     toast(`<b>✓ ${toBn(fs.length)}টা ছবি নামানো হয়েছে</b>${app ? '<span>Download/HisabKhata ফোল্ডারে।</span>' : ''}`, 5000);
     return 'save';
   }
-  function printMany(fs){
+  // 🖨 vouchers: each on its own page (only the voucher is printed — see printImgs in index.html)
+  async function printMany(fs){
     if(window.KhataApp) return appPrintVouchers(fs);
-    const urls = fs.map(f => URL.createObjectURL(f.blob)), f = document.createElement('iframe');
-    f.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0';
-    document.body.appendChild(f);
-    f.contentDocument.write(`<html><head><title>ভাউচার</title><style>@page{margin:10mm}body{margin:0}div{page-break-after:always;break-after:page}div:last-child{page-break-after:auto;break-after:auto}img{max-width:100%;max-height:96vh;display:block;margin:0 auto}</style></head><body>${urls.map(u => `<div><img src="${u}"></div>`).join('')}</body></html>`);
-    f.contentDocument.close();
-    f.contentWindow.onafterprint = () => setTimeout(() => { f.remove(); urls.forEach(u => URL.revokeObjectURL(u)); }, 500);
-    const imgs = [...f.contentDocument.querySelectorAll('img')];
-    Promise.all(imgs.map(i => i.complete ? 1 : new Promise(r => { i.onload = i.onerror = r; }))).then(() => { f.contentWindow.focus(); f.contentWindow.print(); });
+    window.__khataPrint.printImgs(fs.map(f => URL.createObjectURL(f.blob)), fs.length > 1 ? 'ভাউচার' : fs[0].name);
     return 'print';
   }
   async function shareMany(fs){
@@ -892,18 +886,7 @@
       how = 'save';
     }
     if(how === 'print' && window.KhataApp) return appPrintVouchers([{blob, name}]);
-    if(how === 'print'){
-      const url = URL.createObjectURL(blob), f = document.createElement('iframe');
-      f.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0';
-      document.body.appendChild(f);
-      f.contentDocument.write(`<html><head><title>${name}</title><style>@page{margin:10mm}body{margin:0}img{max-width:100%;max-height:96vh;display:block;margin:0 auto}</style></head><body><img src="${url}"></body></html>`);
-      f.contentDocument.close();
-      f.contentWindow.onafterprint = () => setTimeout(() => { f.remove(); URL.revokeObjectURL(url); }, 500);
-      const img = f.contentDocument.querySelector('img');
-      const go = () => { f.contentWindow.focus(); f.contentWindow.print(); };
-      if(img.complete) go(); else img.onload = go;
-      return 'print';
-    }
+    if(how === 'print') return printMany([{blob, name}]);
     if(window.KhataApp && window.KhataApp.saveFile){   // inside the Android app: Download/HisabKhata
       window.KhataApp.saveFile(await toB64(blob), name, 'image/jpeg'); return 'save';
     }

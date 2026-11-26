@@ -190,18 +190,8 @@
     return pdf.output('blob');
   }
   const fileName = () => { const d = new Date(); return `print-${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}-${String(d.getHours()).padStart(2, '0')}${String(d.getMinutes()).padStart(2, '0')}.pdf`; };
-  // the pages in the browser's print window (whole A4 pictures, no extra margin)
-  function printInBrowser(urls){
-    const [PW, PH] = paper(), f = document.createElement('iframe');
-    f.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0';
-    document.body.appendChild(f);
-    f.contentDocument.write(`<html><head><title>প্রিন্ট</title><style>@page{size:A4 ${opts.land ? 'landscape' : 'portrait'};margin:0}html,body{margin:0;background:#fff}img{display:block;width:${PW}mm;height:${PH}mm;page-break-after:always;break-after:page}img:last-child{page-break-after:auto;break-after:auto}</style></head><body>${urls.map(u => `<img src="${u}">`).join('')}</body></html>`);
-    f.contentDocument.close();
-    const done = () => setTimeout(() => f.remove(), 800);
-    f.contentWindow.onafterprint = done;
-    const imgs = [...f.contentDocument.querySelectorAll('img')];
-    Promise.all(imgs.map(i => i.complete ? 1 : new Promise(r => { i.onload = i.onerror = r; }))).then(() => { f.contentWindow.focus(); f.contentWindow.print(); setTimeout(() => { if(f.isConnected) done(); }, 60000); });
-  }
+  // the pages in the browser's print window (each picture is a whole A4 page; only they are printed — printImgs in index.html)
+  function printInBrowser(urls){ window.__khataPrint.printImgs(urls, 'প্রিন্ট', {full: true, land: opts.land}); }
   async function savePdf(blob, name){
     if(window.KhataApp && window.KhataApp.saveFile){
       const b64 = await new Promise(res => { const r = new FileReader(); r.onload = () => res(String(r.result).split(',')[1]); r.readAsDataURL(blob); });

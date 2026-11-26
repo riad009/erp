@@ -7277,16 +7277,34 @@ document.addEventListener('input', e=>{
   // 🖨 প্রিন্ট (owner bought an HP Smart Tank 580): computer / phone browser → the browser's print window (pick the HP printer there);
   // Android app ≥ 1.5 → the phone's own print screen (KhataApp.printPdf); older app → the PDF is saved and opened, print from there
   const blobB64 = blob => new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(String(r.result).split(',')[1]); r.onerror = rej; r.readAsDataURL(blob); });
-  function printImgs(imgs, title){
-    const f = document.createElement('iframe');
-    f.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0';
-    document.body.appendChild(f);
-    f.contentDocument.write(`<html><head><title>${String(title || '').replace(/[<>&]/g, '')}</title><style>@page{size:A4;margin:8mm}html,body{margin:0;background:#fff}div{page-break-after:always;break-after:page}div:last-child{page-break-after:auto;break-after:auto}img{display:block;width:100%;height:auto;max-height:279mm;object-fit:contain;margin:0 auto}</style></head><body>${imgs.map(u => `<div><img src="${u}"></div>`).join('')}</body></html>`);
-    f.contentDocument.close();
-    const done = () => setTimeout(() => f.remove(), 800);
-    f.contentWindow.onafterprint = done;
-    const all = [...f.contentDocument.querySelectorAll('img')];
-    Promise.all(all.map(i => i.complete ? 1 : new Promise(r => { i.onload = i.onerror = r; }))).then(() => { f.contentWindow.focus(); f.contentWindow.print(); setTimeout(() => { if(f.isConnected) done(); }, 60000); });
+  // owner's phone printed the WHOLE screen (menu, buttons… 2 pages): phone browsers (iPhone Safari, Chrome on Android) ignore
+  // print() inside a hidden frame. So the pictures go into the page itself and a print-only style hides everything else;
+  // each picture is kept inside one page (memo = always 1 page). full = the picture is already a whole A4 page (🖨 প্রিন্ট tab).
+  function printImgs(imgs, title, opt){
+    const o = opt || {}, land = !!o.land;
+    ['khPrintHost', 'khPrintCss'].forEach(id => { const el = document.getElementById(id); if(el) el.remove(); });
+    const host = document.createElement('div'); host.id = 'khPrintHost';
+    host.innerHTML = imgs.map(u => `<div class="kp-pg"><img src="${u}" alt=""></div>`).join('');
+    const maxH = o.full ? (land ? '186mm' : '272mm') : (land ? '180mm' : '262mm'), maxW = o.full ? (land ? '272mm' : '186mm') : '100%';
+    const css = document.createElement('style'); css.id = 'khPrintCss';
+    css.textContent = `#khPrintHost{display:none}
+@media print{
+  @page{size:A4 ${land ? 'landscape' : 'portrait'};margin:${o.full ? '5mm' : '8mm'}}
+  html,body{background:#fff!important;margin:0!important;padding:0!important;height:auto!important;min-height:0!important;overflow:visible!important}
+  body>*:not(#khPrintHost){display:none!important}
+  #khPrintHost{display:block!important}
+  .kp-pg{display:flex;justify-content:center;align-items:flex-start;page-break-after:always;break-after:page;page-break-inside:avoid;break-inside:avoid}
+  .kp-pg:last-child{page-break-after:auto;break-after:auto}
+  .kp-pg img{display:block;width:auto;height:auto;max-width:${maxW};max-height:${maxH}}
+}`;
+    document.head.appendChild(css); document.body.appendChild(host);
+    const oldTitle = document.title; document.title = String(title || oldTitle);
+    const clean = () => { window.removeEventListener('afterprint', clean); host.remove(); css.remove(); document.title = oldTitle; };
+    const all = [...host.querySelectorAll('img')];
+    Promise.all(all.map(i => (i.decode ? i.decode() : Promise.resolve()).catch(() => {}))).then(() => {
+      window.addEventListener('afterprint', clean);
+      window.print();
+    });
   }
   async function appPrint(blob, filename){
     const app = window.KhataApp;
