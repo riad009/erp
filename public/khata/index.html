@@ -2,6 +2,7 @@
 <html lang="bn">
 <head>
 <meta charset="UTF-8">
+<script src="/khata/i18n.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <link rel="manifest" href="/manifest.webmanifest">
 <meta name="theme-color" content="#1F4AA8">
@@ -1211,6 +1212,7 @@ body.theme-pro .tabs button[aria-selected="true"]{background:#EAF0FC!important;c
 .seg3 button{padding:10px 6px;font-weight:700;font-size:14.5px;background:#fff;color:#667085;border-radius:0}
 .seg3 button+button{border-left:1px solid #E4E8EF}
 .seg3 button[aria-pressed="true"]{background:#2457C5;color:#fff}
+.seg3.two{grid-template-columns:1fr 1fr}
 
 /* ===== খাতা design on a computer: same paper colours + lines as the phone, side menu in paper colours ===== */
 @media (min-width: 900px){
@@ -7911,6 +7913,16 @@ setTimeout(() => { try{ if(window.__ledger && window.__ledger.autoSend) window._
       ${uHead('⚙️ সেটিং', 'অ্যাপের নিয়ম')}
 
       <section class="setcard">
+        <h2>🌐 ভাষা <span translate="no">/ Language</span></h2>
+        <div class="setrow col">
+          <div class="st-tx"><b>অ্যাপ কোন ভাষায় দেখাবে</b><small>English দিলে পুরো অ্যাপ ইংরেজিতে দেখাবে। আপনার লেখা নাম, ঠিকানা, নোট যেমন আছে তেমন থাকবে। শুধু এই ফোন / কম্পিউটারে বদলাবে।</small></div>
+          <div class="seg3 two" role="group" aria-label="ভাষা">
+            ${[['bn','🇧🇩 বাংলা'],['en','🇬🇧 English']].map(([k,l]) => `<button type="button" data-lang="${k}" translate="no" aria-pressed="${(window.__lang || 'bn') === k}">${l}</button>`).join('')}
+          </div>
+        </div>
+      </section>
+
+      <section class="setcard">
         <h2>🎨 অ্যাপের ডিজাইন</h2>
         <div class="setrow col">
           <div class="st-tx"><b>কোন ডিজাইন দেখাবে</b><small>অটো = ফোনে খাতা, কম্পিউটারে সাদা ডিজাইন (খতিয়ানের টেবিল নীলই থাকে)। খাতা = সব জায়গায় কাগজের ডিজাইন। প্রফেশনাল = সব জায়গায় সাদা ডিজাইন।</small></div>
@@ -7966,6 +7978,7 @@ setTimeout(() => { try{ if(window.__ledger && window.__ledger.autoSend) window._
       render();
     };
     attachBanglish(document.getElementById('sTry'));
+    root.querySelectorAll('[data-lang]').forEach(b => b.onclick = () => { if(b.dataset.lang !== (window.__lang || 'bn') && window.__setLang) window.__setLang(b.dataset.lang); });
     root.querySelectorAll('[data-th]').forEach(b => b.onclick = () => { UI_THEME = b.dataset.th; try{ localStorage.setItem('kg-khata-theme', UI_THEME); }catch(_){}; applyTheme(); render(); });
     root.querySelectorAll('[data-sm]').forEach(b => b.onclick = () => { if(window.__setMemoStyle) window.__setMemoStyle(b.dataset.sm); render(); });
     const li = document.getElementById('sLr');
@@ -8538,22 +8551,25 @@ window.__appBack = () => {
     setTimeout(() => { btn.disabled = false; btn.textContent = orig; }, 3000);
   }
   function askWipe(k){
-    const p = wipeInfo.parts[k], n = wipeInfo.counts[k] || 0, WORD = 'মুছে ফেলুন';
+    // the word to type: "মুছে ফেলুন" (in English: DELETE); the server always gets "মুছে ফেলুন"
+    const p = wipeInfo.parts[k], n = wipeInfo.counts[k] || 0, WORD = window.__lang === 'en' ? 'DELETE' : 'মুছে ফেলুন';
+    const typedOk = () => { const v = $('wpC').value.trim(); return v === WORD || v.toUpperCase() === WORD; };
     const pop = __auPop(`<h3>🗑 ${esc(p.label)} মুছে ফেলবেন? <button class="x" data-close aria-label="বন্ধ">✕</button></h3>
       <div class="wp-what"><b>যা মুছে যাবে:</b> ${esc(p.what)}<br><b>এখন আছে:</b> ${toBn(n)}টা রেকর্ড</div>
       <p class="wp-keep">✓ ইউজার অ্যাকাউন্ট থাকবে · ✓ ভুল হলে 📝 অ্যাক্টিভিটি থেকে ↶ ফেরান করা যাবে · সব ফোন/কম্পিউটার থেকেও মুছে যাবে</p>
       <button type="button" class="wp-bk" id="wpBk2">⬇ আগে ব্যাকআপ নামিয়ে রাখুন</button>
-      <label class="f">নিশ্চিত করতে নিচে লিখুন: <b style="color:#C0152F">${WORD}</b></label>
+      <label class="f">নিশ্চিত করতে নিচে লিখুন: <b style="color:#C0152F" translate="no">${WORD}</b></label>
       <input type="text" id="wpC" autocomplete="off" placeholder="${WORD}">
       <p class="err" id="wpE"></p>
       <div class="acts"><button data-close>বাতিল</button><button class="r" id="wpGo" disabled>🗑 মুছে ফেলুন</button></div>`);
     const $ = id => pop.el.querySelector('#' + id);
     $('wpBk2').onclick = e => backup(e.currentTarget);
-    $('wpC').oninput = () => { $('wpGo').disabled = $('wpC').value.trim() !== WORD; };
+    $('wpC').oninput = () => { $('wpGo').disabled = !typedOk(); };
     $('wpGo').onclick = async () => {
       $('wpGo').disabled = true; $('wpGo').textContent = '⏳ মোছা হচ্ছে…';
       try{
-        await __post('/api/admin', {op:'wipe', part:k, confirm:$('wpC').value.trim()});
+        if(!typedOk()) return;
+        await __post('/api/admin', {op:'wipe', part:k, confirm:'মুছে ফেলুন'});
         pop.close(); kToast(`<b>✓ ${esc(p.label)} মুছে ফেলা হয়েছে</b><span>পাতা নতুন করে খুলছে…</span>`, 3000);
         setTimeout(() => location.reload(), 900);
       }catch(e){ $('wpE').textContent = e.message; $('wpGo').disabled = false; $('wpGo').textContent = '🗑 মুছে ফেলুন'; }

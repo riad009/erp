@@ -2,7 +2,18 @@
 import { useEffect, useState } from 'react';
 
 // লগইন: ইমেইল + পাসওয়ার্ড → /api/auth → back to the app (or the page that was asked for)
+// 🌐 English when it was chosen in the app's ⚙️ সেটিং on this phone (localStorage kg-khata-lang)
+const EN: Record<string, string> = {
+  'খাতা খুলছে…': 'Opening the book…', 'কাজী রোমান এন্ড ব্রাদার্স': 'Kazi Roman & Brothers', 'হিসাব খাতা': 'Account book',
+  'লগইন করুন': 'Log in', 'আপনার ইমেইল আর পাসওয়ার্ড দিন': 'Enter your email and password', 'ইমেইল': 'Email', 'পাসওয়ার্ড': 'Password',
+  'লুকান': 'Hide', 'দেখুন': 'Show', 'ঢুকছে…': 'Logging in…', 'লগইন': 'Log in', 'পাসওয়ার্ড ভুলে গেলে সুপার অ্যাডমিনকে বলুন': 'Forgot the password? Ask the super admin',
+  'লগইন হয়নি': 'Could not log in', 'ইন্টারনেট দেখুন': 'Check the internet', 'ইমেইল বা পাসওয়ার্ড ভুল': 'Wrong email or password',
+  'অনেকবার ভুল হয়েছে — ১০ মিনিট পরে চেষ্টা করুন': 'Too many wrong tries — try again in 10 minutes',
+};
 export default function Login() {
+  const [en, setEn] = useState(false);
+  useEffect(() => { try { setEn(localStorage.getItem('kg-khata-lang') === 'en'); } catch {} }, []);
+  const t = (s: string) => (en && EN[s]) || s;
   const [email, setEmail] = useState('');
   const [pass, setPass] = useState('');
   const [show, setShow] = useState(false);
@@ -68,24 +79,24 @@ export default function Login() {
         .err{margin:14px 0 0;padding:10px 12px;border-radius:10px;background:#FFF1F3;border:1px solid #F3B8C2;color:#A0182E;font-size:14px;font-weight:700}
         .foot{margin:16px 0 0;text-align:center;color:#8A94A8;font-size:12.5px}
       `}</style>
-      {resuming ? <p className="card" style={{ textAlign: 'center', fontWeight: 700 }}>⏳ খাতা খুলছে…</p> :
+      {resuming ? <p className="card" style={{ textAlign: 'center', fontWeight: 700 }}>⏳ {t('খাতা খুলছে…')}</p> :
       <form className="card" onSubmit={submit}>
         <div className="brand">
           <div className="logo" aria-hidden="true">📒</div>
-          <div><b>কাজী রোমান এন্ড ব্রাদার্স</b><small>হিসাব খাতা</small></div>
+          <div><b>{t('কাজী রোমান এন্ড ব্রাদার্স')}</b><small>{t('হিসাব খাতা')}</small></div>
         </div>
-        <h1>লগইন করুন</h1>
-        <p className="sub">আপনার ইমেইল আর পাসওয়ার্ড দিন</p>
-        <label htmlFor="em">ইমেইল</label>
+        <h1>{t('লগইন করুন')}</h1>
+        <p className="sub">{t('আপনার ইমেইল আর পাসওয়ার্ড দিন')}</p>
+        <label htmlFor="em">{t('ইমেইল')}</label>
         <input id="em" type="email" autoComplete="username" inputMode="email" required value={email} onChange={e => setEmail(e.target.value)} placeholder="name@gmail.com" autoFocus />
-        <label htmlFor="pw">পাসওয়ার্ড</label>
+        <label htmlFor="pw">{t('পাসওয়ার্ড')}</label>
         <div className="in">
           <input id="pw" type={show ? 'text' : 'password'} autoComplete="current-password" required value={pass} onChange={e => setPass(e.target.value)} style={{ paddingRight: 70 }} />
-          <button type="button" className="eye" onClick={() => setShow(!show)}>{show ? 'লুকান' : 'দেখুন'}</button>
+          <button type="button" className="eye" onClick={() => setShow(!show)}>{t(show ? 'লুকান' : 'দেখুন')}</button>
         </div>
-        {err && <p className="err" role="alert">⚠️ {err}</p>}
-        <button className="go" disabled={busy}>{busy ? 'ঢুকছে…' : 'লগইন'}</button>
-        <p className="foot">পাসওয়ার্ড ভুলে গেলে সুপার অ্যাডমিনকে বলুন</p>
+        {err && <p className="err" role="alert">⚠️ {t(err)}</p>}
+        <button className="go" disabled={busy}>{t(busy ? 'ঢুকছে…' : 'লগইন')}</button>
+        <p className="foot">{t('পাসওয়ার্ড ভুলে গেলে সুপার অ্যাডমিনকে বলুন')}</p>
       </form>}
     </main>
   );
